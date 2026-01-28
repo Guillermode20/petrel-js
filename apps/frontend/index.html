@@ -11,6 +11,14 @@
     />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
+    <script>
+      if (
+        window.matchMedia('(prefers-color-scheme: dark)').matches ||
+        localStorage.getItem('theme') === 'dark'
+      ) {
+        document.documentElement.classList.add('dark');
+      }
+    </script>
     <title>Petrel</title>
   </head>
   <body>
