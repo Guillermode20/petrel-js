@@ -9,19 +9,20 @@
 ## Phase 1: Project Foundation
 
 ### Environment Setup
-- [ ] Configure Tailwind CSS with monospace font defaults (`font-mono` as base)
-- [ ] Set up shadcn/ui with custom theme (muted colours, terminal-inspired)
-- [ ] Configure SQLite with Drizzle ORM (or similar)
-- [ ] Add development hot-reload for both frontend and backend
+- [x] Configure Tailwind CSS with monospace font defaults (`font-mono` as base)
+- [x] Set up shadcn/ui with custom theme (muted colours, terminal-inspired)
+- [x] Configure SQLite with Drizzle ORM (or similar)
+- [x] Add development hot-reload for both frontend and backend
+- [x] Strip frontend of all default TanStack Start components and replace with basic shadcn components
 
 ### Database Schema Design
-- [ ] `users` table (id, username, password_hash, role, created_at)
-- [ ] `files` table (id, name, path, size, mime_type, hash, uploaded_by, created_at)
-- [ ] `folders` table (id, name, path, parent_id, owner_id)
-- [ ] `shares` table (id, type, target_id, token, expires_at, password_hash, download_count, view_count)
-- [ ] `albums` table (id, name, description, cover_file_id, owner_id, created_at)
-- [ ] `album_files` junction table (album_id, file_id, sort_order)
-- [ ] `share_settings` table (share_id, allow_download, allow_zip, show_metadata)
+- [x] `users` table (id, username, password_hash, role, created_at)
+- [x] `files` table (id, name, path, size, mime_type, hash, uploaded_by, created_at)
+- [x] `folders` table (id, name, path, parent_id, owner_id)
+- [x] `shares` table (id, type, target_id, token, expires_at, password_hash, download_count, view_count)
+- [x] `albums` table (id, name, description, cover_file_id, owner_id, created_at)
+- [x] `album_files` junction table (album_id, file_id, sort_order)
+- [x] `share_settings` table (share_id, allow_download, allow_zip, show_metadata)
 
 ---
 

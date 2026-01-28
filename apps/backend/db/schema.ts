@@ -1,0 +1,85 @@
+import { sql, type AnySQLiteTable } from "drizzle-orm"
+
+export const users = sqliteTable("users", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	username: text("username").notNull().unique(),
+	passwordHash: text("password_hash").notNull(),
+	role: text("role").notNull().default("user"),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+})
+
+export const files = sqliteTable("files", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	name: text("name").notNull(),
+	path: text("path").notNull(),
+	size: integer("size").notNull(),
+	mimeType: text("mime_type").notNull(),
+	hash: text("hash").notNull(),
+	uploadedBy: integer("uploaded_by").references(() => users.id),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+})
+
+export const folders = sqliteTable("folders", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	name: text("name").notNull(),
+	path: text("path").notNull(),
+	parentId: integer("parent_id").references(() => (folders as any).id),
+	ownerId: integer("owner_id").references(() => users.id),
+})
+
+export const shares = sqliteTable("shares", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	type: text("type").notNull(),
+	targetId: integer("target_id").notNull(),
+	token: text("token").notNull().unique(),
+	expiresAt: integer("expires_at", { mode: "timestamp" }),
+	passwordHash: text("password_hash"),
+	downloadCount: integer("download_count").notNull().default(0),
+	viewCount: integer("view_count").notNull().default(0),
+})
+
+export const albums = sqliteTable("albums", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	name: text("name").notNull(),
+	description: text("description"),
+	coverFileId: integer("cover_file_id").references(() => files.id),
+	ownerId: integer("owner_id").references(() => users.id),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+})
+
+export const albumFiles = sqliteTable(
+	"album_files",
+	{
+		albumId: integer("album_id")
+			.notNull()
+			.references(() => albums.id),
+		fileId: integer("file_id")
+			.notNull()
+			.references(() => files.id),
+		sortOrder: integer("sort_order").notNull().default(0),
+	},
+	(table) => ({
+		pk: primaryKey({ columns: [table.albumId, table.fileId] }),
+	})
+)
+
+export const shareSettings = sqliteTable("share_settings", {
+	shareId: integer("share_id")
+		.primaryKey()
+		.references(() => shares.id),
+	allowDownload: integer("allow_download", { mode: "boolean" })
+		.notNull()
+		.default(true),
+	allowZip: integer("allow_zip", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	showMetadata: integer("show_metadata", { mode: "boolean" })
+		.notNull()
+		.default(true),
+})

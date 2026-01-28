@@ -1,69 +1,75 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+
+import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card'
+import { Input } from '../components/ui/input'
 
 export const Route = createFileRoute('/')({
-  component: App,
+  component: Home,
 })
 
-function App() {
-  const [message, setMessage] = useState<string>('Loading...')
-  const [timestamp, setTimestamp] = useState<string>('')
-  const [error, setError] = useState<string>('')
-
-  useEffect(() => {
-    fetch('http://localhost:4000/api/hello')
-      .then((res) => res.json())
-      .then((data) => {
-        setMessage(data.message)
-        setTimestamp(data.timestamp)
-        setError('')
-      })
-      .catch((err) => {
-        setError('Failed to connect to backend: ' + err.message)
-        console.error('Error fetching from backend:', err)
-      })
-  }, [])
-
+function Home() {
   return (
-    <div className="text-center">
-      <header className="min-h-screen flex flex-col items-center justify-center bg-[#282c34] text-white text-[calc(10px+2vmin)]">
-        <div className="mb-8">
-          <h1 className="text-5xl font-bold mb-4 text-[#61dafb]">
-            TanStack Start + Elysia
-          </h1>
-          {error ? (
-            <div className="text-red-400 bg-red-900/20 px-6 py-4 rounded-lg">
-              <p className="text-xl mb-2">⚠️ {error}</p>
-              <p className="text-sm">Make sure the backend is running on port 4000</p>
-            </div>
-          ) : (
-            <div className="bg-green-900/20 px-6 py-4 rounded-lg">
-              <p className="text-3xl mb-2">🎉 {message}</p>
-              {timestamp && (
-                <p className="text-sm text-gray-400">Timestamp: {timestamp}</p>
-              )}
-            </div>
-          )}
+    <div className="space-y-10">
+      <section className="space-y-4">
+        <Badge variant="outline">Petrel Fileserver</Badge>
+        <h1 className="text-4xl font-semibold tracking-tight">
+          Share files and albums with terminal-grade simplicity.
+        </h1>
+        <p className="text-muted-foreground max-w-2xl">
+          Petrel is a minimalist fileserver designed for fast sharing of videos
+          and photo albums. Built with TanStack Start, Elysia, SQLite, and a
+          muted terminal aesthetic.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button>Open Library</Button>
+          <Button variant="outline">Create Share</Button>
         </div>
-        <div className="flex gap-6">
-          <a
-            className="text-[#61dafb] hover:underline"
-            href="https://tanstack.com/router"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            📚 TanStack Router
-          </a>
-          <a
-            className="text-[#61dafb] hover:underline"
-            href="https://elysiajs.com"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            🦊 Elysia.js
-          </a>
-        </div>
-      </header>
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Upload</CardTitle>
+            <CardDescription>
+              Drop a file to generate a shareable link instantly.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input placeholder="Paste file path or URL" />
+            <Button className="w-full">Queue Upload</Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Shared Links</CardTitle>
+            <CardDescription>
+              Manage active shares with expiry and access controls.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+              <span>/s/terminal-demo</span>
+              <Badge variant="secondary">24h</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+              <span>/s/album-night</span>
+              <Badge variant="secondary">7d</Badge>
+            </div>
+            <Button variant="ghost" className="w-full">
+              View all shares
+            </Button>
+          </CardContent>
+        </Card>
+      </section>
     </div>
   )
 }
