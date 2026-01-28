@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "workspaces": [
-    "apps/*"
+    "apps/*",
+    "packages/*"
   ],
   "scripts": {
     "dev": "concurrently \"bun run --filter backend dev\" \"bun run --filter frontend dev\" --names backend,frontend --prefix-colors cyan,green"

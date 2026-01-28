@@ -1,10 +1,10 @@
 import { Elysia } from 'elysia';
-import { users } from '../../../db/schema';
+import type { User as SharedUser, UserRole } from '@petrel/shared';
 
 export interface JWTPayload {
   userId: number;
   username: string;
-  role: string;
+  role: UserRole;
   [key: string]: string | number;
 }
 
@@ -14,7 +14,7 @@ export interface RefreshPayload {
   [key: string]: string | number;
 }
 
-export type User = typeof users.$inferSelect;
+export type User = SharedUser;
 
 export type AuthContext = {
   user: JWTPayload;

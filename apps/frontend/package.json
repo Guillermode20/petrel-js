@@ -12,6 +12,7 @@
     "check": "biome check"
   },
   "dependencies": {
+    "@petrel/shared": "workspace:*",
     "@radix-ui/react-slot": "^1.1.2",
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/react-devtools": "^0.7.0",
@@ -20,7 +21,11 @@
     "@tanstack/router-plugin": "^1.132.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "hls.js": "^1.6.15",
+    "howler": "^2.2.4",
     "lucide-react": "^0.544.0",
+    "pdfjs-dist": "^5.4.530",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.0.2",

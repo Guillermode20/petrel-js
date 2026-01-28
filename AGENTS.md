@@ -426,12 +426,16 @@ const isActive = status === 'active'  // ✅ Clear variable name
 
 ---
 
+## Project Status
+
+Phase 1 is complete: the shared package is online, all approved media libraries are installed, and the schema now includes metadata-aware files, transcode jobs, video tracks, and subtitles. Continue with Phase 2 per docs/plan.todo.md.
+
 ## AI-Specific Rules
 
 ### When Generating Code
 
 1. **Match existing patterns** — Look at 3+ similar files before writing
-2. **Use shared types** — Import from `@petrel/shared`, never redefine
+2. **Use shared types** — Import from `@petrel/shared`, never redefine, and keep the shared README in sync when you add new interfaces
 3. **Follow component template** — See reference below
 4. **One feature per change** — Don't refactor while implementing
 5. **Ask, don't guess** — If unsure about a pattern, ask

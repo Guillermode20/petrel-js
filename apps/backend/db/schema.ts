@@ -19,6 +19,7 @@ export const files = sqliteTable("files", {
 	mimeType: text("mime_type").notNull(),
 	hash: text("hash").notNull(),
 	uploadedBy: integer("uploaded_by").references(() => users.id),
+	metadata: text("metadata", { mode: "json" }),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.notNull()
 		.default(sql`(unixepoch())`),
@@ -83,4 +84,42 @@ export const shareSettings = sqliteTable("share_settings", {
 	showMetadata: integer("show_metadata", { mode: "boolean" })
 		.notNull()
 		.default(true),
+})
+
+export const transcodeJobs = sqliteTable("transcode_jobs", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	fileId: integer("file_id")
+		.notNull()
+		.references(() => files.id),
+	status: text("status").notNull().default("pending"),
+	progress: integer("progress").notNull().default(0),
+	outputPath: text("output_path"),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
+	completedAt: integer("completed_at", { mode: "timestamp" }),
+	error: text("error"),
+})
+
+export const videoTracks = sqliteTable("video_tracks", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	fileId: integer("file_id")
+		.notNull()
+		.references(() => files.id),
+	trackType: text("track_type").notNull(),
+	codec: text("codec").notNull(),
+	language: text("language"),
+	index: integer("index").notNull(),
+	title: text("title"),
+})
+
+export const subtitles = sqliteTable("subtitles", {
+	id: integer("id").primaryKey({ autoIncrement: true }),
+	fileId: integer("file_id")
+		.notNull()
+		.references(() => files.id),
+	language: text("language").notNull(),
+	path: text("path").notNull(),
+	format: text("format").notNull(),
+	title: text("title"),
 })

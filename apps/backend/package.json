@@ -21,8 +21,13 @@
     "@elysiajs/cors": "^1.4.1",
     "@elysiajs/jwt": "^1.4.0",
     "@elysiajs/swagger": "^1.3.1",
+    "@petrel/shared": "workspace:*",
     "drizzle-orm": "^0.36.4",
     "elysia": "^1.4.22",
-    "elysia-rate-limit": "^4.4.2"
+    "elysia-rate-limit": "^4.4.2",
+    "exifr": "^7.1.3",
+    "music-metadata": "^11.11.1",
+    "sharp": "^0.34.5",
+    "shiki": "^3.21.0"
   }
 }

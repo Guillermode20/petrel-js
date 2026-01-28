@@ -14,8 +14,10 @@
 - [x] Configure SQLite with Drizzle ORM (or similar)
 - [x] Add development hot-reload for both frontend and backend
 - [x] Strip frontend of all default TanStack Start components and replace with basic shadcn components
-- [ ] Install approved libraries: hls.js, howler, sharp, exifr, music-metadata, pdf.js, shiki, date-fns
-- [ ] Set up `packages/shared` for shared types between frontend and backend
+- [x] Install approved libraries: hls.js, howler, sharp, exifr, music-metadata, pdf.js, shiki, date-fns
+- [x] Set up `packages/shared` for shared types between frontend and backend
+
+> ✅ Phase 1 complete (2026-01-28). Work now shifts to Phase 2: core backend APIs and pipelines; consult the sections below before starting new work.
 
 ### Database Schema Design
 - [x] `users` table (id, username, password_hash, role, created_at)
@@ -24,9 +26,9 @@
 - [x] `shares` table (id, type, target_id, token, expires_at, password_hash, download_count, view_count, allow_download, allow_zip, show_metadata)
 - [x] `albums` table (id, name, description, cover_file_id, owner_id, created_at)
 - [x] `album_files` junction table (album_id, file_id, sort_order)
-- [ ] `transcode_jobs` table (id, file_id, status, progress, output_path, created_at, completed_at)
-- [ ] `video_tracks` table (file_id, track_type, codec, language, index)
-- [ ] `subtitles` table (file_id, language, path, format)
+- [x] `transcode_jobs` table (id, file_id, status, progress, output_path, created_at, completed_at)
+- [x] `video_tracks` table (file_id, track_type, codec, language, index)
+- [x] `subtitles` table (file_id, language, path, format)
 
 ---
 
