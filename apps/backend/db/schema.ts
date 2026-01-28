@@ -1,4 +1,5 @@
-import { sql, type AnySQLiteTable } from "drizzle-orm"
+import { sql } from "drizzle-orm"
+import { sqliteTable, integer, text, primaryKey } from "drizzle-orm/sqlite-core"
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -27,7 +28,7 @@ export const folders = sqliteTable("folders", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	name: text("name").notNull(),
 	path: text("path").notNull(),
-	parentId: integer("parent_id").references(() => (folders as any).id),
+	parentId: integer("parent_id").references((): any => folders.id),
 	ownerId: integer("owner_id").references(() => users.id),
 })
 
