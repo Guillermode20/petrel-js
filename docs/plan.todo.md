@@ -17,8 +17,6 @@
 - [x] Install approved libraries: hls.js, howler, sharp, exifr, music-metadata, pdf.js, shiki, date-fns
 - [x] Set up `packages/shared` for shared types between frontend and backend
 
-> ✅ Phase 1 complete (2026-01-28). Work now shifts to Phase 2: core backend APIs and pipelines; consult the sections below before starting new work.
-
 ### Database Schema Design
 - [x] `users` table (id, username, password_hash, role, created_at)
 - [x] `files` table (id, name, path, size, mime_type, hash, uploaded_by, created_at, metadata JSON for ffprobe data)
