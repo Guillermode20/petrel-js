@@ -3,14 +3,17 @@ import { cors } from '@elysiajs/cors';
 import { swagger } from '@elysiajs/swagger';
 
 import { db } from './db';
-import { authRoutes, authMiddleware } from './src/modules/auth';
+import { authRoutes } from './src/modules/auth';
+import { fileRoutes } from './src/modules/files';
+import { shareRoutes } from './src/modules/shares';
+import { albumRoutes } from './src/modules/albums';
 
 const app = new Elysia()
   .use(swagger())
   .use(
     cors({
       origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
-      methods: ['GET', 'POST', 'PUT', 'DELETE'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
       credentials: true,
     })
   )
@@ -24,6 +27,12 @@ const app = new Elysia()
   }))
   // Auth routes
   .use(authRoutes)
+  // File routes
+  .use(fileRoutes)
+  // Share routes
+  .use(shareRoutes)
+  // Album routes
+  .use(albumRoutes)
   .listen(4000);
 
 console.log(

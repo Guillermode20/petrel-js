@@ -35,18 +35,18 @@
 ### Authentication
 - [x] JWT-based authentication with refresh tokens (JWT plugin installed)
 - [x] Login/logout endpoints
-- [ ] Optional: guest/anonymous access mode
+- [x] Optional: guest/anonymous access mode
 - [x] Rate limiting on auth endpoints
 
 ### File Operations API
 - [x] `GET /api/hello` - basic health check endpoint
-- [ ] `GET /api/files` - list files/folders with pagination
-- [ ] `GET /api/files/:id` - get file metadata
-- [ ] `GET /api/files/:id/download` - stream file download
-- [ ] `POST /api/files/upload` - chunked upload support
-- [ ] `DELETE /api/files/:id` - delete file
-- [ ] `PATCH /api/files/:id` - rename/move file
-- [ ] `POST /api/folders` - create folder
+- [x] `GET /api/files` - list files/folders with pagination
+- [x] `GET /api/files/:id` - get file metadata
+- [x] `GET /api/files/:id/download` - stream file download
+- [x] `POST /api/files/upload` - chunked upload support
+- [x] `DELETE /api/files/:id` - delete file
+- [x] `PATCH /api/files/:id` - rename/move file
+- [x] `POST /api/folders` - create folder
 
 ### Video Pipeline (Backend) — 2-3 weeks estimated
 - [ ] **Metadata extraction service** — ffprobe probes file for:
@@ -75,41 +75,41 @@
 - [ ] `GET /api/files/:id/sprite` — thumbnail sprite for scrubbing
 
 ### Audio Pipeline (Backend)
-- [ ] **Audio metadata extraction** — music-metadata for:
+- [x] **Audio metadata extraction** — music-metadata for:
   - ID3 tags (title, artist, album)
   - Album art extraction
   - Duration calculation
 - [ ] Waveform data generation (optional)
 
 ### Image Pipeline (Backend)
-- [ ] **Thumbnail generation** — sharp for:
+- [x] **Thumbnail generation** — sharp for:
   - Multiple sizes (small, medium, large)
   - Blur-up placeholder generation
-- [ ] **EXIF extraction** — exifr for:
+- [x] **EXIF extraction** — exifr for:
   - Camera info (make, model, lens)
   - Location (GPS coordinates)
   - Date taken, exposure settings
 
 ### Sharing API
-- [ ] `POST /api/shares` — create share link with options:
+- [x] `POST /api/shares` — create share link with options:
   - Expiry: 1h, 24h, 7d, 30d, never
   - Password protection (optional)
   - Allow download toggle
   - Quality options (if transcoded)
-- [ ] `GET /api/shares/:token` — get shared content (public)
+- [x] `GET /api/shares/:token` — get shared content (public)
   - Token validation (expiry, password)
   - Increment view counter
-- [ ] `DELETE /api/shares/:id` — revoke share
-- [ ] `PATCH /api/shares/:id` — update expiry/password
-- [ ] View/download analytics per share
+- [x] `DELETE /api/shares/:id` — revoke share
+- [x] `PATCH /api/shares/:id` — update expiry/password
+- [x] View/download analytics per share
 
 ### Albums API
-- [ ] `POST /api/albums` - create album
-- [ ] `GET /api/albums/:id` - get album with files
-- [ ] `PATCH /api/albums/:id` - update album metadata
-- [ ] `POST /api/albums/:id/files` - add files to album
-- [ ] `DELETE /api/albums/:id/files/:fileId` - remove from album
-- [ ] `PATCH /api/albums/:id/reorder` - drag-and-drop reordering (sort_order)
+- [x] `POST /api/albums` - create album
+- [x] `GET /api/albums/:id` - get album with files
+- [x] `PATCH /api/albums/:id` - update album metadata
+- [x] `POST /api/albums/:id/files` - add files to album
+- [x] `DELETE /api/albums/:id/files/:fileId` - remove from album
+- [x] `PATCH /api/albums/:id/reorder` - drag-and-drop reordering (sort_order)
 
 ---
 
