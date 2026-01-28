@@ -49,37 +49,37 @@
 - [x] `POST /api/folders` - create folder
 
 ### Video Pipeline (Backend) — 2-3 weeks estimated
-- [ ] **Metadata extraction service** — ffprobe probes file for:
+- [x] **Metadata extraction service** — ffprobe probes file for:
   - Duration, resolution, codecs
   - Audio tracks (language, codec, channels)
   - Embedded subtitles
   - Video codec detection (h264/h265/vp9/av1)
-- [ ] **Thumbnail generation service** — sharp + ffmpeg:
+- [x] **Thumbnail generation service** — sharp + ffmpeg:
   - Frame at ~10% duration for preview card
   - Sprite sheet generation for scrubbing (video hover previews)
-- [ ] **Transcode assessment logic**:
+- [x] **Transcode assessment logic**:
   - Check if web-compatible (h264/h265/vp9 + aac/opus = transmux)
   - Non-compatible = queue transcode job
-- [ ] **HLS transmux-on-demand** — for web-compatible MKVs:
+- [x] **HLS transmux-on-demand** — for web-compatible MKVs:
   - Segment generation without re-encoding
   - Master playlist with quality variants
-- [ ] **Background transcode queue** — for non-compatible files:
+- [x] **Background transcode queue** — for non-compatible files:
   - Queue job with Bull/BullMQ
   - Progress tracking (0-100%)
   - Multiple quality levels (1080p, 720p, 480p)
   - Cache segments to avoid re-processing
-- [ ] **Subtitle extraction** — MKV embedded subs → WebVTT
-- [ ] `GET /api/stream/:fileId/master.m3u8` — HLS manifest endpoint
-- [ ] `GET /api/stream/:fileId/:segment.ts` — HLS segment endpoint
-- [ ] `GET /api/files/:id/thumbnail` — thumbnail serving
-- [ ] `GET /api/files/:id/sprite` — thumbnail sprite for scrubbing
+- [x] **Subtitle extraction** — MKV embedded subs → WebVTT
+- [x] `GET /api/stream/:fileId/master.m3u8` — HLS manifest endpoint
+- [x] `GET /api/stream/:fileId/:segment.ts` — HLS segment endpoint
+- [x] `GET /api/files/:id/thumbnail` — thumbnail serving
+- [x] `GET /api/files/:id/sprite` — thumbnail sprite for scrubbing
 
 ### Audio Pipeline (Backend)
 - [x] **Audio metadata extraction** — music-metadata for:
   - ID3 tags (title, artist, album)
   - Album art extraction
   - Duration calculation
-- [ ] Waveform data generation (optional)
+- [x] Waveform data generation (optional)
 
 ### Image Pipeline (Backend)
 - [x] **Thumbnail generation** — sharp for:

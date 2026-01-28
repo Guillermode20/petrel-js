@@ -7,6 +7,20 @@ import { authMiddleware, requireAuth } from '../auth';
 import { fileService } from '../../services/file.service';
 import { folderService } from '../../services/folder.service';
 import { metadataService } from '../../services/metadata.service';
+import { videoService } from '../../services/video.service';
+import {
+  generateVideoThumbnail,
+  generateVideoSprite,
+  getVideoThumbnailPath,
+  getSpritePath,
+  getSpriteMetaPath,
+  type SpriteMetadata,
+} from '../../lib/thumbnails';
+import {
+  generateWaveformData,
+  generateWaveformImage,
+  type WaveformData,
+} from '../../lib/waveform';
 import {
   buildFileRelativePath,
   ensureDirectory,
@@ -156,6 +170,17 @@ async function enrichMetadata(file: SharedFile): Promise<SharedFile | null> {
   if (file.mimeType.startsWith('image/')) {
     const metadata = await metadataService.extractImageMetadata(fileService.resolveDiskPath(file));
     return await fileService.updateMetadata(file.id, metadata);
+  }
+
+  if (file.mimeType.startsWith('video/')) {
+    try {
+      const filePath = fileService.resolveDiskPath(file);
+      const metadata = await videoService.processVideoFile(file.id, filePath);
+      return await fileService.updateMetadata(file.id, metadata);
+    } catch {
+      // Video processing may fail for unsupported formats
+      return null;
+    }
   }
 
   return null;
@@ -374,15 +399,27 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
         return { data: null, error: 'File not found' };
       }
 
-      if (!file.mimeType.startsWith('image/')) {
-        set.status = 400;
-        return { data: null, error: 'Thumbnail available for images only' };
+      const size = parseThumbnailSize(query.size);
+
+      if (file.mimeType.startsWith('image/')) {
+        const thumbnailPath = await ensureThumbnail(file, size);
+        set.headers['Content-Type'] = 'image/webp';
+        set.headers['Cache-Control'] = 'max-age=31536000';
+        return new Response(Bun.file(thumbnailPath));
       }
 
-      const size = parseThumbnailSize(query.size);
-      const thumbnailPath = await ensureThumbnail(file, size);
-      set.headers['Content-Type'] = 'image/webp';
-      return new Response(Bun.file(thumbnailPath));
+      if (file.mimeType.startsWith('video/')) {
+        const metadata = file.metadata as { duration?: number } | undefined;
+        const duration = metadata?.duration ?? 60;
+        const filePath = fileService.resolveDiskPath(file);
+        const thumbnailPath = await generateVideoThumbnail(filePath, file.id, size, duration);
+        set.headers['Content-Type'] = 'image/webp';
+        set.headers['Cache-Control'] = 'max-age=31536000';
+        return new Response(Bun.file(thumbnailPath));
+      }
+
+      set.status = 400;
+      return { data: null, error: 'Thumbnail available for images and videos only' };
     },
     {
       params: t.Object({
@@ -392,8 +429,163 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
         size: t.Optional(t.String()),
       }),
       detail: {
-        summary: 'Get image thumbnail',
-        description: 'Returns a cached thumbnail for image files',
+        summary: 'Get file thumbnail',
+        description: 'Returns a cached thumbnail for image and video files',
+        tags: ['Files'],
+      },
+    }
+  )
+  .get(
+    '/files/:id/sprite',
+    async ({ params, set, user }) => {
+      if (!canRead(user)) {
+        set.status = 401;
+        return { data: null, error: 'Unauthorized' };
+      }
+
+      const file = await fileService.getById(params.id);
+      if (!file) {
+        set.status = 404;
+        return { data: null, error: 'File not found' };
+      }
+
+      if (!file.mimeType.startsWith('video/')) {
+        set.status = 400;
+        return { data: null, error: 'Sprite available for videos only' };
+      }
+
+      const metadata = file.metadata as { duration?: number } | undefined;
+      const duration = metadata?.duration ?? 60;
+      const filePath = fileService.resolveDiskPath(file);
+      const { spritePath } = await generateVideoSprite(filePath, file.id, duration);
+
+      set.headers['Content-Type'] = 'image/webp';
+      set.headers['Cache-Control'] = 'max-age=31536000';
+      return new Response(Bun.file(spritePath));
+    },
+    {
+      params: t.Object({
+        id: t.Number(),
+      }),
+      detail: {
+        summary: 'Get video sprite sheet',
+        description: 'Returns a sprite sheet for video scrubbing preview',
+        tags: ['Files'],
+      },
+    }
+  )
+  .get(
+    '/files/:id/sprite/meta',
+    async ({ params, set, user }): Promise<{ data: SpriteMetadata | null; error: string | null }> => {
+      if (!canRead(user)) {
+        set.status = 401;
+        return { data: null, error: 'Unauthorized' };
+      }
+
+      const file = await fileService.getById(params.id);
+      if (!file) {
+        set.status = 404;
+        return { data: null, error: 'File not found' };
+      }
+
+      if (!file.mimeType.startsWith('video/')) {
+        set.status = 400;
+        return { data: null, error: 'Sprite available for videos only' };
+      }
+
+      const metadata = file.metadata as { duration?: number } | undefined;
+      const duration = metadata?.duration ?? 60;
+      const filePath = fileService.resolveDiskPath(file);
+      const { metadata: spriteMeta } = await generateVideoSprite(filePath, file.id, duration);
+
+      return { data: spriteMeta, error: null };
+    },
+    {
+      params: t.Object({
+        id: t.Number(),
+      }),
+      detail: {
+        summary: 'Get video sprite metadata',
+        description: 'Returns metadata for the sprite sheet (dimensions, interval)',
+        tags: ['Files'],
+      },
+    }
+  )
+  .get(
+    '/files/:id/waveform',
+    async ({ params, set, user }): Promise<{ data: WaveformData | null; error: string | null }> => {
+      if (!canRead(user)) {
+        set.status = 401;
+        return { data: null, error: 'Unauthorized' };
+      }
+
+      const file = await fileService.getById(params.id);
+      if (!file) {
+        set.status = 404;
+        return { data: null, error: 'File not found' };
+      }
+
+      if (!file.mimeType.startsWith('audio/')) {
+        set.status = 400;
+        return { data: null, error: 'Waveform available for audio files only' };
+      }
+
+      const filePath = fileService.resolveDiskPath(file);
+      const waveformData = await generateWaveformData(filePath, file.id);
+
+      return { data: waveformData, error: null };
+    },
+    {
+      params: t.Object({
+        id: t.Number(),
+      }),
+      detail: {
+        summary: 'Get audio waveform data',
+        description: 'Returns waveform sample data for audio visualization',
+        tags: ['Files'],
+      },
+    }
+  )
+  .get(
+    '/files/:id/waveform/image',
+    async ({ params, query, set, user }) => {
+      if (!canRead(user)) {
+        set.status = 401;
+        return { data: null, error: 'Unauthorized' };
+      }
+
+      const file = await fileService.getById(params.id);
+      if (!file) {
+        set.status = 404;
+        return { data: null, error: 'File not found' };
+      }
+
+      if (!file.mimeType.startsWith('audio/')) {
+        set.status = 400;
+        return { data: null, error: 'Waveform available for audio files only' };
+      }
+
+      const width = Math.min(Math.max(query.width ?? 800, 100), 2000);
+      const height = Math.min(Math.max(query.height ?? 100, 50), 500);
+
+      const filePath = fileService.resolveDiskPath(file);
+      const imagePath = await generateWaveformImage(filePath, file.id, width, height);
+
+      set.headers['Content-Type'] = 'image/png';
+      set.headers['Cache-Control'] = 'max-age=31536000';
+      return new Response(Bun.file(imagePath));
+    },
+    {
+      params: t.Object({
+        id: t.Number(),
+      }),
+      query: t.Object({
+        width: t.Optional(t.Number()),
+        height: t.Optional(t.Number()),
+      }),
+      detail: {
+        summary: 'Get audio waveform image',
+        description: 'Returns a rendered waveform image for audio files',
         tags: ['Files'],
       },
     }

@@ -7,6 +7,7 @@ import { authRoutes } from './src/modules/auth';
 import { fileRoutes } from './src/modules/files';
 import { shareRoutes } from './src/modules/shares';
 import { albumRoutes } from './src/modules/albums';
+import { streamRoutes } from './src/modules/stream';
 
 const app = new Elysia()
   .use(swagger())
@@ -29,6 +30,8 @@ const app = new Elysia()
   .use(authRoutes)
   // File routes
   .use(fileRoutes)
+  // Stream routes
+  .use(streamRoutes)
   // Share routes
   .use(shareRoutes)
   // Album routes
