@@ -1,6 +1,6 @@
 # Petrel: The Fileserver Made For Sharing
 
-> A fileserver built for simplicity with a focus on effortless sharing of videos and photo albums.
+> A fileserver built for simplicity with a focus on effortless sharing of videos and photos.
 
 **Stack:** TanStack Start · Elysia.js · SQLite · Tailwind · shadcn/ui · Monospace aesthetic
 
@@ -22,8 +22,6 @@
 - [x] `files` table (id, name, path, size, mime_type, hash, uploaded_by, created_at, metadata JSON for ffprobe data)
 - [x] `folders` table (id, name, path, parent_id, owner_id)
 - [x] `shares` table (id, type, target_id, token, expires_at, password_hash, download_count, view_count, allow_download, allow_zip, show_metadata)
-- [x] `albums` table (id, name, description, cover_file_id, owner_id, created_at)
-- [x] `album_files` junction table (album_id, file_id, sort_order)
 - [x] `transcode_jobs` table (id, file_id, status, progress, output_path, created_at, completed_at)
 - [x] `video_tracks` table (file_id, track_type, codec, language, index)
 - [x] `subtitles` table (file_id, language, path, format)
@@ -102,14 +100,6 @@
 - [x] `DELETE /api/shares/:id` — revoke share
 - [x] `PATCH /api/shares/:id` — update expiry/password
 - [x] View/download analytics per share
-
-### Albums API
-- [x] `POST /api/albums` - create album
-- [x] `GET /api/albums/:id` - get album with files
-- [x] `PATCH /api/albums/:id` - update album metadata
-- [x] `POST /api/albums/:id/files` - add files to album
-- [x] `DELETE /api/albums/:id/files/:fileId` - remove from album
-- [x] `PATCH /api/albums/:id/reorder` - drag-and-drop reordering (sort_order)
 
 ### Phase 2 Review Recommendations
 
@@ -234,9 +224,9 @@
 - [x] Configure Swagger UI at `/docs` endpoint
 - [x] Add Elysia schema definitions to all routes
 - [x] Document request/response types for all endpoints
-- [x] Add example values for complex request bodies
-- [x] Group endpoints by resource (auth, files, shares, albums, stream)
-- [x] Add authentication documentation to Swagger
+-  - Add example values for complex request bodies
+  - Group endpoints by resource (auth, files, shares, stream)
+  - Add authentication documentation to Swagger
 
 ---
 
@@ -245,7 +235,7 @@
 ### Layout & Navigation
 - [x] Root layout with monospace typography
 - [x] Header component with navigation
-- [x] Sidebar navigation (Files, Albums, Shares, Settings)
+- [x] Sidebar navigation (Files, Shares, Settings)
 - [x] Breadcrumb navigation for folder hierarchy
 - [x] Mobile-responsive drawer navigation
 - [x] Dark mode by default (terminal aesthetic)
@@ -294,16 +284,16 @@
 ### Photo Gallery — Custom lightbox
 **Why custom (not off-the-shelf):** No gallery fits monospace aesthetic
 
-- [ ] `AlbumGallery` grid view:
+- [x] `PhotoGallery` grid view:
   - Masonry or grid layout toggle
   - Lazy-loaded thumbnails with blur-up
-- [ ] `Lightbox` component:
+- [x] `Lightbox` component:
   - Full image display
   - Zoom/pan with CSS transforms
   - EXIF metadata display (camera, lens, location, date)
   - Navigation arrows (← →)
   - Keyboard navigation (arrows, escape)
-- [ ] `AlbumInfo` panel:
+- [x] `PhotoInfo` panel:
   - Total size, image count
   - Location map for geotagged photos
   - Date range
@@ -359,14 +349,6 @@
   - Link, expiry countdown, view/download counts
   - Revoke action
 
-### Albums UI
-- [x] Album UI with sample data
-- [x] `AlbumGrid` view with cover images
-- [x] `AlbumDetail` view (masonry/grid layout)
-- [ ] "Add to album" action from file browser
-- [ ] Album slideshow mode
-- [ ] Album share (entire album as one link)
-
 ---
 
 ## Phase 4: Public Share Views
@@ -389,17 +371,10 @@
 - [ ] Expiry warning banner
 - [ ] "Powered by Petrel" subtle footer
 
-### Shared Album View (`/s/:token` for albums)
-- [ ] Gallery grid layout (same as internal)
-- [ ] Lightbox viewer for individual images
-- [ ] Video playback inline (in gallery)
-- [ ] "Download all as ZIP" button (if permitted)
-- [ ] Slideshow auto-play option
-
 ### Shared Folder View (`/s/:token` for folders)
 - [ ] File listing with folder navigation
 - [ ] Smart defaults:
-  - All images → render as `AlbumGallery`
+  - All images → render as `PhotoGallery`
   - All audio → render as `AudioPlaylist`
   - Mixed → render as `FolderBrowser`
 - [ ] Selective download (checkboxes)
@@ -422,7 +397,7 @@
 - [ ] Playback speed control (0.5x - 2x)
 - [ ] Picture-in-picture support
 
-### Photo Album Enhancements
+### Photo Enhancements
 - [ ] Map view for geotagged photos (leaflet/maplibre)
 - [ ] Date-based auto-organisation
 - [ ] Face detection grouping (stretch goal)
@@ -486,7 +461,7 @@
 | Project setup, auth, basic CRUD | 1 week | AI excels at boilerplate |
 | File browser, upload flow | 1 week | Fiddly state management |
 | **Video pipeline** | **2-3 weeks** | **Hardest part - ffmpeg flags, HLS, codec edge cases** |
-| Photo albums, gallery | 1 week | Easier than video |
+| Photo gallery | 1 week | Easier than video |
 | Audio player, playlists | 1 week | Howler simplifies this |
 | Sharing system | 1 week | Mostly CRUD + auth |
 | Polish, mobile, a11y | 1-2 weeks | Death by a thousand cuts |
@@ -502,7 +477,6 @@
 - [ ] WebDAV support for native file manager integration
 - [ ] S3-compatible backend storage option
 - [ ] End-to-end encryption for sensitive shares
-- [ ] Collaborative albums (multiple contributors)
 - [ ] Comments/reactions on shared content
 - [ ] Telegram/Discord bot for upload notifications
 - [ ] Plugin/extension system
