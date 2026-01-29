@@ -111,6 +111,25 @@
 - [x] `DELETE /api/albums/:id/files/:fileId` - remove from album
 - [x] `PATCH /api/albums/:id/reorder` - drag-and-drop reordering (sort_order)
 
+### Phase 2 Review Recommendations
+
+#### High Priority
+- [ ] **JWT Secret Management** - Move hardcoded JWT secrets to environment variables
+- [ ] **Refresh Token Persistence** - Replace in-memory blacklist with Redis or database storage
+- [ ] **Structured Logging** - Add proper logging library (Winston or Pino) for debugging and monitoring
+- [ ] **Test Coverage** - Implement unit tests for services and integration tests for API routes
+
+#### Medium Priority
+- [ ] **Concurrency Control** - Add parallel processing support to transcode queue
+- [ ] **Caching Layer** - Implement Redis for frequently accessed data
+- [ ] **Documentation** - Add JSDoc comments for complex functions
+- [ ] **Extended Rate Limiting** - Apply rate limiting to additional endpoints beyond auth
+
+#### Low Priority
+- [ ] **Code Refactoring** - Split functions exceeding 50-line limit into smaller helpers
+- [ ] **Configuration Validation** - Add schema validation for environment variables
+- [ ] **API Documentation** - Generate OpenAPI/Swagger documentation
+
 ---
 
 ## Phase 3: Core Frontend (TanStack Start)
