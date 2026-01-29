@@ -34,7 +34,7 @@ export interface Folder {
  */
 export type FileItem = File | Folder
 
-export type ShareType = 'file' | 'folder' | 'album'
+export type ShareType = 'file' | 'folder'
 
 export interface Share {
   id: number
@@ -53,23 +53,6 @@ export interface ShareSettings {
   allowDownload: boolean
   allowZip: boolean
   showMetadata: boolean
-}
-
-export interface Album {
-  id: number
-  name: string
-  description: string | null
-  coverFileId: number | null
-  ownerId: number | null
-  createdAt: Date
-  fileCount?: number
-  files?: File[]
-}
-
-export interface AlbumFile {
-  albumId: number
-  fileId: number
-  sortOrder: number
 }
 
 export type TranscodeStatus = 'pending' | 'processing' | 'completed' | 'failed'

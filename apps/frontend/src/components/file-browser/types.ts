@@ -21,7 +21,6 @@ export interface FileGridProps {
   onShare?: (item: File | Folder) => void
   onDownload?: (item: File | Folder) => void
   onCopyLink?: (item: File | Folder) => void
-  onAddToAlbum?: (item: File) => void
   isLoading?: boolean
 }
 
@@ -37,7 +36,6 @@ export interface FileListProps {
   onShare?: (item: File | Folder) => void
   onDownload?: (item: File | Folder) => void
   onCopyLink?: (item: File | Folder) => void
-  onAddToAlbum?: (item: File) => void
   sortBy: SortField
   sortOrder: 'asc' | 'desc'
   onSort: (field: SortField) => void

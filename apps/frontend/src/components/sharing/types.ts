@@ -1,7 +1,7 @@
 import type { Share } from '@petrel/shared'
 
 export interface CreateShareModalProps {
-  type: 'file' | 'folder' | 'album'
+  type: 'file' | 'folder'
   targetId: number
   targetName: string
   isOpen: boolean

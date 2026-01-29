@@ -13,13 +13,6 @@ export interface LightboxProps {
   onDownload?: (file: File) => void
 }
 
-export interface AlbumGalleryProps {
-  files: File[]
-  onImageClick?: (file: File, index: number) => void
-  className?: string
-  isLoading?: boolean
-}
-
 export interface ExifDisplayProps {
   metadata: ImageMetadata
   className?: string

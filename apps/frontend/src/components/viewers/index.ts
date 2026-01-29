@@ -7,8 +7,8 @@ export { AudioPlayer, Playlist, useAudioPlayer } from './audio-player'
 export type { AudioPlayerProps, PlaylistProps, AudioPlayerState } from './audio-player'
 
 // Image viewer
-export { ImageViewer, Lightbox, AlbumGallery } from './image-viewer'
-export type { ImageViewerProps, LightboxProps, AlbumGalleryProps } from './image-viewer'
+export { ImageViewer, Lightbox } from './image-viewer'
+export type { ImageViewerProps, LightboxProps } from './image-viewer'
 
 // Document viewers
 export { PDFViewer, CodeViewer, MarkdownViewer } from './document-viewer'

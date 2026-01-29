@@ -3,8 +3,6 @@ import type {
   Folder,
   Share,
   ShareSettings,
-  Album,
-  AlbumFile,
   User,
   TranscodeJob,
   VideoTrack,
@@ -327,7 +325,7 @@ class ApiClient {
 
   // Shares endpoints
   async createShare(data: {
-    type: 'file' | 'folder' | 'album'
+    type: 'file' | 'folder'
     targetId: number
     expiresAt?: string
     password?: string
@@ -343,7 +341,7 @@ class ApiClient {
 
   async getShare(token: string, password?: string): Promise<{
     share: Share & ShareSettings
-    content: File | Folder | Album
+    content: File | Folder
     files?: File[]
   }> {
     const params = password ? `?password=${encodeURIComponent(password)}` : ''
@@ -364,53 +362,8 @@ class ApiClient {
     return this.request(`/shares/${id}`, { method: 'DELETE' })
   }
 
-  async getMyShares(): Promise<Array<Share & ShareSettings & { content: File | Folder | Album }>> {
+  async getMyShares(): Promise<Array<Share & ShareSettings & { content: File | Folder }>> {
     return this.request('/shares')
-  }
-
-  // Albums endpoints
-  async createAlbum(data: { name: string; description?: string }): Promise<Album> {
-    return this.request('/albums', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async getAlbum(id: number): Promise<Album & { files: Array<File & { sortOrder: number }> }> {
-    return this.request(`/albums/${id}`)
-  }
-
-  async updateAlbum(id: number, data: { name?: string; description?: string; coverFileId?: number }): Promise<Album> {
-    return this.request(`/albums/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async deleteAlbum(id: number): Promise<void> {
-    return this.request(`/albums/${id}`, { method: 'DELETE' })
-  }
-
-  async addFilesToAlbum(albumId: number, fileIds: number[]): Promise<AlbumFile[]> {
-    return this.request(`/albums/${albumId}/files`, {
-      method: 'POST',
-      body: JSON.stringify({ fileIds }),
-    })
-  }
-
-  async removeFileFromAlbum(albumId: number, fileId: number): Promise<void> {
-    return this.request(`/albums/${albumId}/files/${fileId}`, { method: 'DELETE' })
-  }
-
-  async reorderAlbumFiles(albumId: number, fileIds: number[]): Promise<void> {
-    return this.request(`/albums/${albumId}/reorder`, {
-      method: 'PATCH',
-      body: JSON.stringify({ fileIds }),
-    })
-  }
-
-  async getAlbums(): Promise<Album[]> {
-    return this.request('/albums')
   }
 
   // Stream endpoints

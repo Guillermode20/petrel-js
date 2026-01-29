@@ -9,7 +9,6 @@ import { db } from './db';
 import { authRoutes } from './src/modules/auth';
 import { fileRoutes } from './src/modules/files';
 import { shareRoutes } from './src/modules/shares';
-import { albumRoutes } from './src/modules/albums';
 import { streamRoutes } from './src/modules/stream';
 
 // Initialize Redis (optional caching layer)
@@ -78,7 +77,6 @@ const app = new Elysia()
           { name: 'Authentication', description: 'Auth endpoints' },
           { name: 'Files', description: 'File management endpoints' },
           { name: 'Shares', description: 'Share link management' },
-          { name: 'Albums', description: 'Photo album management' },
           { name: 'Stream', description: 'Media streaming endpoints' },
         ],
       },
@@ -107,8 +105,6 @@ const app = new Elysia()
   .use(streamRoutes)
   // Share routes
   .use(shareRoutes)
-  // Album routes
-  .use(albumRoutes)
   .listen(config.PORT);
 
 logger.info(

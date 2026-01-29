@@ -19,7 +19,6 @@ export function FileGrid({
     onShare,
     onDownload,
     onCopyLink,
-    onAddToAlbum,
     isLoading,
 }: FileGridProps) {
     const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
@@ -82,7 +81,6 @@ export function FileGrid({
                         onDownload={() => onDownload?.(item)}
                         onMove={() => { }} // Custom move menu could be added later
                         onCopyLink={() => onCopyLink?.(item)}
-                        onAddToAlbum={() => onAddToAlbum?.(item as any)}
                     >
                         <FileCard
                             item={item}

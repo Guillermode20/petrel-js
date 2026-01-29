@@ -41,7 +41,7 @@ export function useCreateShare() {
 
   return useMutation({
     mutationFn: (data: {
-      type: 'file' | 'folder' | 'album'
+      type: 'file' | 'folder'
       targetId: number
       expiresAt?: string
       password?: string

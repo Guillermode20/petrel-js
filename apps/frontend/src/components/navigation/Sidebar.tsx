@@ -14,7 +14,6 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { label: 'Files', href: '/files', icon: Files },
-    { label: 'Albums', href: '/albums', icon: Images },
     { label: 'Shares', href: '/shares', icon: Share2 },
     { label: 'Settings', href: '/settings', icon: Settings },
 ]

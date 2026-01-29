@@ -64,33 +64,6 @@ export const shares = sqliteTable("shares", {
 	viewCount: integer("view_count").notNull().default(0),
 })
 
-export const albums = sqliteTable("albums", {
-	id: integer("id").primaryKey({ autoIncrement: true }),
-	name: text("name").notNull(),
-	description: text("description"),
-	coverFileId: integer("cover_file_id").references(() => files.id),
-	ownerId: integer("owner_id").references(() => users.id),
-	createdAt: integer("created_at", { mode: "timestamp" })
-		.notNull()
-		.default(sql`(unixepoch())`),
-})
-
-export const albumFiles = sqliteTable(
-	"album_files",
-	{
-		albumId: integer("album_id")
-			.notNull()
-			.references(() => albums.id),
-		fileId: integer("file_id")
-			.notNull()
-			.references(() => files.id),
-		sortOrder: integer("sort_order").notNull().default(0),
-	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.albumId, table.fileId] }),
-	})
-)
-
 export const shareSettings = sqliteTable("share_settings", {
 	shareId: integer("share_id")
 		.primaryKey()

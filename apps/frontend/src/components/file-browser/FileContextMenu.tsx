@@ -28,7 +28,6 @@ interface FileContextMenuProps {
     onShare: () => void
     onMove: () => void
     onCopyLink: () => void
-    onAddToAlbum?: () => void
 }
 
 /**
@@ -44,7 +43,6 @@ export function FileContextMenu({
     onShare,
     onMove,
     onCopyLink,
-    onAddToAlbum,
 }: FileContextMenuProps) {
     const isFileItem = isFile(item)
     const isImage = isFileItem && item.mimeType.startsWith('image/')
@@ -72,12 +70,6 @@ export function FileContextMenu({
                     <Copy className="mr-2 h-4 w-4" />
                     Copy link
                 </ContextMenuItem>
-                {isImage && onAddToAlbum && (
-                    <ContextMenuItem onClick={onAddToAlbum}>
-                        <ImagePlus className="mr-2 h-4 w-4" />
-                        Add to album
-                    </ContextMenuItem>
-                )}
                 <ContextMenuSeparator />
                 <ContextMenuItem onClick={onRename}>
                     <Pencil className="mr-2 h-4 w-4" />

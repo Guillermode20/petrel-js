@@ -12,7 +12,6 @@ import { SearchBar } from './SearchBar'
 import { UploadZone, UploadBar, UploadProgressList } from './UploadZone'
 import { CreateFolderDialog, RenameDialog, DeleteConfirmDialog } from './FileDialogs'
 import { CreateShareModal } from '@/components/sharing'
-import { AddToAlbumModal } from '@/components/albums'
 import type { ViewMode, SortField, UploadProgress } from './types'
 
 interface FileBrowserProps {
@@ -38,7 +37,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
     const [deleteItem, setDeleteItem] = useState<File | Folder | null>(null)
     const [shareItem, setShareItem] = useState<File | Folder | null>(null)
     const [moveItem, setMoveItem] = useState<File | Folder | null>(null)
-    const [albumItem, setAlbumItem] = useState<File | null>(null)
 
     // Upload state
     const [uploads, setUploads] = useState<UploadProgress[]>([])
@@ -285,7 +283,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                     onShare={setShareItem}
                     onDownload={handleDownload}
                     onCopyLink={handleCopyLink}
-                    onAddToAlbum={(file) => setAlbumItem(file)}
                     isLoading={isLoading}
                 />
             ) : (
@@ -301,7 +298,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                     onShare={setShareItem}
                     onDownload={handleDownload}
                     onCopyLink={handleCopyLink}
-                    onAddToAlbum={(file) => setAlbumItem(file)}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
@@ -337,14 +333,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                     targetName={shareItem.name}
                     isOpen={!!shareItem}
                     onClose={() => setShareItem(null)}
-                />
-            )}
-
-            {albumItem && (
-                <AddToAlbumModal
-                    fileIds={[albumItem.id]}
-                    isOpen={!!albumItem}
-                    onClose={() => setAlbumItem(null)}
                 />
             )}
         </div>

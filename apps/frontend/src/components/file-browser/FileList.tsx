@@ -30,7 +30,6 @@ export function FileList({
     onShare,
     onDownload,
     onCopyLink,
-    onAddToAlbum,
     sortBy,
     sortOrder,
     onSort,
@@ -156,7 +155,6 @@ export function FileList({
                             onDownload={() => onDownload?.(item)}
                             onMove={() => { }}
                             onCopyLink={() => onCopyLink?.(item)}
-                            onAddToAlbum={() => onAddToAlbum?.(item as any)}
                         >
                             <TableRow
                                 className={cn(
