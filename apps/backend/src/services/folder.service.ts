@@ -3,6 +3,7 @@ import { db } from '../../db';
 import { folders } from '../../db/schema';
 import type { Folder } from '@petrel/shared';
 import { normalizeRelativePath } from '../lib/storage';
+import { fileService } from './file.service';
 
 export interface CreateFolderInput {
   name: string;
@@ -71,6 +72,61 @@ export class FolderService {
     }
 
     return created;
+  }
+
+  async updateFolder(id: number, input: { name?: string; parentId?: number | null }): Promise<Folder | null> {
+    const current = await this.getById(id);
+    if (!current) return null;
+
+    const nextName = input.name ?? current.name;
+    let nextParentId = current.parentId;
+    let nextPath = current.path;
+
+    if (input.parentId !== undefined) {
+      nextParentId = input.parentId;
+    }
+
+    if (input.name !== undefined || input.parentId !== undefined) {
+      let parentPath = '';
+      if (nextParentId !== null) {
+        const parent = await this.getById(nextParentId);
+        if (parent) {
+          parentPath = parent.path;
+        }
+      }
+      nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
+    }
+
+    const updated = await db
+      .update(folders)
+      .set({
+        name: nextName,
+        parentId: nextParentId,
+        path: nextPath,
+      })
+      .where(eq(folders.id, id))
+      .returning();
+
+    const updatedFolder = updated[0];
+    if (updatedFolder && nextPath !== current.path) {
+      // Recursively update children paths
+      await this.updateChildrenPaths(id, current.path, nextPath);
+    }
+
+    return updatedFolder ?? null;
+  }
+
+  private async updateChildrenPaths(folderId: number, oldParentPath: string, newParentPath: string): Promise<void> {
+    // Update files in this folder
+    await fileService.updateFilesPathInFolder(oldParentPath, newParentPath);
+
+    // Recursively update subfolders
+    const children = await this.listByParentId(folderId);
+    for (const child of children) {
+      const nextChildPath = newParentPath + child.path.slice(oldParentPath.length);
+      await db.update(folders).set({ path: nextChildPath }).where(eq(folders.id, child.id));
+      await this.updateChildrenPaths(child.id, child.path, nextChildPath);
+    }
   }
 }
 

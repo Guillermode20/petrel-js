@@ -88,6 +88,80 @@ export function UploadZone({ onUpload, isUploading, className }: UploadZoneProps
     )
 }
 
+/**
+ * Smaller horizontal upload bar
+ */
+export function UploadBar({ onUpload, isUploading, className }: UploadZoneProps) {
+    const [isDragOver, setIsDragOver] = useState(false)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragOver(true)
+    }, [])
+
+    const handleDragLeave = useCallback((e: React.DragEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragOver(false)
+    }, [])
+
+    const handleDrop = useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setIsDragOver(false)
+
+            if (e.dataTransfer.files.length > 0) {
+                onUpload(e.dataTransfer.files)
+            }
+        },
+        [onUpload]
+    )
+
+    const handleClick = useCallback(() => {
+        inputRef.current?.click()
+    }, [])
+
+    const handleFileChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            if (e.target.files && e.target.files.length > 0) {
+                onUpload(e.target.files)
+                e.target.value = ''
+            }
+        },
+        [onUpload]
+    )
+
+    return (
+        <div
+            className={cn(
+                'group relative flex h-12 cursor-pointer items-center justify-center gap-3 rounded-lg border-2 border-dashed border-border bg-secondary/20 px-4 transition-all hover:border-primary/50 hover:bg-secondary/40',
+                isDragOver && 'border-primary bg-primary/10 scale-[1.01]',
+                isUploading && 'pointer-events-none opacity-50',
+                className
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={handleClick}
+        >
+            <input
+                ref={inputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+            />
+            <Upload className={cn('h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary', isDragOver && 'text-primary')} />
+            <p className="text-sm font-medium">
+                {isDragOver ? 'Drop files here' : 'Drag and drop files here or click to browse'}
+            </p>
+        </div>
+    )
+}
+
 interface UploadProgressListProps {
     uploads: UploadProgress[]
     onCancel?: (file: globalThis.File) => void

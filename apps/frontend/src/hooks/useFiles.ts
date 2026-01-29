@@ -91,7 +91,7 @@ export function useUpdateFile() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { name?: string; folderId?: number } }) =>
+    mutationFn: ({ id, data }: { id: number; data: { name?: string; folderId?: number | null } }) =>
       api.updateFile(id, data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: fileKeys.lists() })
@@ -109,6 +109,21 @@ export function useCreateFolder() {
   return useMutation({
     mutationFn: ({ name, parentId }: { name: string; parentId?: number }) =>
       api.createFolder(name, parentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: fileKeys.lists() })
+    },
+  })
+}
+
+/**
+ * Hook for updating folders (rename, move)
+ */
+export function useUpdateFolder() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { name?: string; parentId?: number | null } }) =>
+      api.updateFolder(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: fileKeys.lists() })
     },

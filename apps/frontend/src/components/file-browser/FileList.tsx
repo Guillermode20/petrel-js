@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { isFile } from '@/hooks'
+import { isFile, isFolder } from '@/hooks'
 import {
     Table,
     TableBody,
@@ -11,6 +12,7 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FileContextMenu } from './FileContextMenu'
 import { getFileIcon, getFolderIcon, formatFileSize, getFileCategory } from './utils'
 import type { FileListProps, SortField } from './types'
 
@@ -22,13 +24,44 @@ export function FileList({
     selectedIds,
     onSelect,
     onOpen,
-    onContextMenu,
+    onMove,
+    onRename,
+    onDelete,
+    onShare,
+    onDownload,
+    onCopyLink,
+    onAddToAlbum,
     sortBy,
     sortOrder,
     onSort,
     isLoading,
 }: FileListProps) {
+    const [dragOverId, setDragOverId] = useState<number | null>(null)
     const SortIcon = sortOrder === 'asc' ? ArrowUp : ArrowDown
+
+    const handleDragStart = (item: any, e: React.DragEvent) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({ id: item.id, type: isFile(item) ? 'file' : 'folder' }))
+        e.dataTransfer.effectAllowed = 'move'
+    }
+
+    const handleDragOver = (item: any, e: React.DragEvent) => {
+        if (!isFolder(item)) return
+        e.preventDefault()
+        setDragOverId(item.id)
+    }
+
+    const handleDrop = (target: any, e: React.DragEvent) => {
+        if (!isFolder(target)) return
+        e.preventDefault()
+        setDragOverId(null)
+        try {
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+            if (data.id === target.id && data.type === 'folder') return
+            onMove(data, target.id)
+        } catch (err) {
+            console.error('Failed to parse drag data', err)
+        }
+    }
 
     const renderSortableHeader = (field: SortField, label: string) => (
         <button
@@ -109,40 +142,55 @@ export function FileList({
                 {items.map((item) => {
                     const isFileItem = isFile(item)
                     const Icon = isFileItem ? getFileIcon(item.mimeType) : getFolderIcon()
-                    const isSelected = selectedIds.has(item.id)
+                    const selectionKey = `${isFileItem ? 'file' : 'folder'}-${item.id}`
+                    const isSelected = selectedIds.has(selectionKey)
 
                     return (
-                        <TableRow
-                            key={`${'mimeType' in item ? 'file' : 'folder'}-${item.id}`}
-                            className={cn(
-                                'cursor-pointer',
-                                isSelected && 'bg-primary/10'
-                            )}
-                            onClick={(e) => onSelect(item, e)}
-                            onDoubleClick={() => onOpen(item)}
-                            onContextMenu={(e) => {
-                                e.preventDefault()
-                                onContextMenu(item, e)
-                            }}
+                        <FileContextMenu
+                            key={selectionKey}
+                            item={item}
+                            onOpen={() => onOpen(item)}
+                            onRename={() => onRename?.(item)}
+                            onDelete={() => onDelete?.(item)}
+                            onShare={() => onShare?.(item)}
+                            onDownload={() => onDownload?.(item)}
+                            onMove={() => { }}
+                            onCopyLink={() => onCopyLink?.(item)}
+                            onAddToAlbum={() => onAddToAlbum?.(item as any)}
                         >
-                            <TableCell>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50">
-                                        <Icon className="h-4 w-4 text-muted-foreground" />
+                            <TableRow
+                                className={cn(
+                                    'cursor-pointer group',
+                                    isSelected && 'bg-primary/10',
+                                    dragOverId === item.id && 'bg-primary/20 ring-2 ring-primary ring-inset'
+                                )}
+                                onClick={(e) => onSelect(item, e)}
+                                onDoubleClick={() => onOpen(item)}
+                                draggable
+                                onDragStart={(e) => handleDragStart(item, e)}
+                                onDragOver={(e) => handleDragOver(item, e)}
+                                onDragLeave={() => setDragOverId(null)}
+                                onDrop={(e) => handleDrop(item, e)}
+                            >
+                                <TableCell>
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50 group-hover:bg-primary/20 transition-colors">
+                                            <Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                        </div>
+                                        <span className="font-medium">{item.name}</span>
                                     </div>
-                                    <span className="font-medium">{item.name}</span>
-                                </div>
-                            </TableCell>
-                            <TableCell className="hidden text-muted-foreground md:table-cell">
-                                {isFileItem ? getFileCategory(item.mimeType) : 'Folder'}
-                            </TableCell>
-                            <TableCell className="hidden text-muted-foreground sm:table-cell">
-                                {isFileItem ? formatFileSize(item.size) : '—'}
-                            </TableCell>
-                            <TableCell className="hidden text-muted-foreground lg:table-cell">
-                                {isFileItem ? format(new Date(item.createdAt), 'MMM d, yyyy') : '—'}
-                            </TableCell>
-                        </TableRow>
+                                </TableCell>
+                                <TableCell className="hidden text-muted-foreground md:table-cell">
+                                    {isFileItem ? getFileCategory(item.mimeType) : 'Folder'}
+                                </TableCell>
+                                <TableCell className="hidden text-muted-foreground sm:table-cell">
+                                    {isFileItem ? formatFileSize(item.size) : '—'}
+                                </TableCell>
+                                <TableCell className="hidden text-muted-foreground lg:table-cell">
+                                    {isFileItem ? format(new Date(item.createdAt), 'MMM d, yyyy') : '—'}
+                                </TableCell>
+                            </TableRow>
+                        </FileContextMenu>
                     )
                 })}
             </TableBody>

@@ -6,23 +6,39 @@ export interface FileItemProps {
   onSelect?: (item: File | Folder, event: React.MouseEvent) => void
   onDoubleClick?: (item: File | Folder) => void
   onContextMenu?: (item: File | Folder, event: React.MouseEvent) => void
+  onDragStart?: (item: File | Folder, event: React.DragEvent) => void
+  onDrop?: (target: Folder, event: React.DragEvent) => void
 }
 
 export interface FileGridProps {
   items: Array<File | Folder>
-  selectedIds: Set<number>
+  selectedIds: Set<string>
   onSelect: (item: File | Folder, event: React.MouseEvent) => void
   onOpen: (item: File | Folder) => void
   onContextMenu: (item: File | Folder, event: React.MouseEvent) => void
+  onMove: (item: { id: number; type: 'file' | 'folder' }, targetId: number | null) => void
+  onRename?: (item: File | Folder) => void
+  onDelete?: (item: File | Folder) => void
+  onShare?: (item: File | Folder) => void
+  onDownload?: (item: File | Folder) => void
+  onCopyLink?: (item: File | Folder) => void
+  onAddToAlbum?: (item: File) => void
   isLoading?: boolean
 }
 
 export interface FileListProps {
   items: Array<File | Folder>
-  selectedIds: Set<number>
+  selectedIds: Set<string>
   onSelect: (item: File | Folder, event: React.MouseEvent) => void
   onOpen: (item: File | Folder) => void
   onContextMenu: (item: File | Folder, event: React.MouseEvent) => void
+  onMove: (item: { id: number; type: 'file' | 'folder' }, targetId: number | null) => void
+  onRename?: (item: File | Folder) => void
+  onDelete?: (item: File | Folder) => void
+  onShare?: (item: File | Folder) => void
+  onDownload?: (item: File | Folder) => void
+  onCopyLink?: (item: File | Folder) => void
+  onAddToAlbum?: (item: File) => void
   sortBy: SortField
   sortOrder: 'asc' | 'desc'
   onSort: (field: SortField) => void
@@ -37,7 +53,7 @@ export interface FileBrowserState {
   viewMode: ViewMode
   sortBy: SortField
   sortOrder: 'asc' | 'desc'
-  selectedIds: Set<number>
+  selectedIds: Set<string>
   searchQuery: string
 }
 

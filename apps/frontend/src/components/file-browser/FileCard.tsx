@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { isFile } from '@/hooks'
+import { isFile, isFolder } from '@/hooks'
 import { api } from '@/lib/api'
+import type { Folder } from '@petrel/shared'
 import { getFileIcon, getFolderIcon, formatFileSize } from './utils'
 import type { FileItemProps } from './types'
 
@@ -13,24 +15,64 @@ export function FileCard({
     onSelect,
     onDoubleClick,
     onContextMenu,
-}: FileItemProps) {
+    onDragStart,
+    onDrop,
+    ...props
+}: FileItemProps & React.HTMLAttributes<HTMLDivElement>) {
+    const [isDragOver, setIsDragOver] = useState(false)
     const isFileItem = isFile(item)
+    const isFolderItem = isFolder(item)
     const Icon = isFileItem ? getFileIcon(item.mimeType) : getFolderIcon()
     const showThumbnail = isFileItem && item.mimeType.startsWith('image/')
 
+    const handleDragOver = (e: React.DragEvent) => {
+        if (!isFolderItem) return
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragOver(true)
+    }
+
+    const handleDragLeave = () => {
+        setIsDragOver(false)
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        if (!isFolderItem) return
+        e.preventDefault()
+        e.stopPropagation()
+        setIsDragOver(false)
+        onDrop?.(item as Folder, e)
+    }
+
+    const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (onContextMenu) {
+            e.preventDefault()
+            onContextMenu(item, e)
+        }
+        // Also call the prop passed from ContextMenuTrigger if it exists
+        if (props.onContextMenu) {
+            props.onContextMenu(e)
+        }
+    }
+
     return (
         <div
+            {...props}
+            draggable
+            onDragStart={(e) => onDragStart?.(item, e)}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             className={cn(
                 'group relative flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-transparent p-3 transition-colors',
                 'hover:bg-secondary/50',
-                isSelected && 'border-primary bg-primary/10'
+                isSelected && 'border-primary bg-primary/10',
+                isDragOver && 'bg-primary/20 scale-105 border-primary duration-75',
+                props.className
             )}
             onClick={(e) => onSelect?.(item, e)}
             onDoubleClick={() => onDoubleClick?.(item)}
-            onContextMenu={(e) => {
-                e.preventDefault()
-                onContextMenu?.(item, e)
-            }}
+            onContextMenu={handleContextMenu}
         >
             {/* Thumbnail or icon */}
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-secondary/30">

@@ -98,9 +98,10 @@ function parseNumberField(
 }
 
 async function resolveFolderPathById(
-  folderId: number,
+  folderId: number | null,
   set: { status?: number }
 ): Promise<string | null> {
+  if (folderId === null) return '';
   const folder = await folderService.getById(folderId);
   if (!folder) {
     set.status = 404;
@@ -337,6 +338,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
         data: {
           files: fileResult.files,
           folders,
+          currentFolder: parentFolder,
           pagination: {
             limit,
             offset,
@@ -737,9 +739,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
           let nextPath: string | null = file.path;
           if (body.folderId !== undefined) {
             const folderId = parseNumberField(body.folderId, set, 'folderId');
-            if (folderId === null) {
-              return { data: null, error: 'Invalid folder id' };
-            }
+            // Allow folderId to be null (root)
             nextPath = await resolveFolderPathById(folderId, set);
           } else if (body.path) {
             nextPath = normalizePathSafe(body.path, set);
@@ -832,6 +832,54 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
             description: 'Creates a folder and storage path',
             tags: ['Folders'],
           },
+        }
+      )
+      .patch(
+        '/folders/:id',
+        async ({ params, body, set }): Promise<ApiResponse<{ id: number }>> => {
+          const folder = await folderService.getById(params.id);
+          if (!folder) {
+            set.status = 404;
+            return { data: null, error: 'Folder not found' };
+          }
+          let nextParentId = folder.parentId;
+          if (body.parentId !== undefined) {
+             if (body.parentId === null || body.parentId === 'null' || body.parentId === '') {
+               nextParentId = null;
+             } else {
+               const parsedId = parseNumberField(body.parentId, set, 'parentId');
+               if (parsedId === null) return { data: null, error: 'Invalid parent' };
+               nextParentId = parsedId;
+             }
+          }
+          const nextName = body.name ? normalizeNameSafe(body.name, set) : folder.name;
+          if (!nextName) return { data: null, error: 'Invalid name' };
+          const updated = await folderService.updateFolder(params.id, {
+            name: nextName,
+            parentId: nextParentId,
+          });
+          if (!updated) {
+            set.status = 500;
+            return { data: null, error: 'Failed' };
+          }
+          if (updated.path !== folder.path) {
+            const currentDiskPath = resolveStoragePath(folder.path);
+            const nextDiskPath = resolveStoragePath(updated.path);
+            const pathParts = updated.path.split('/');
+            if (pathParts.length > 1) {
+              const relativeParentDir = pathParts.slice(0, -1).join('/');
+              await ensureDirectory(relativeParentDir);
+            }
+            await moveFileOnDisk(currentDiskPath, nextDiskPath);
+          }
+          return { data: { id: updated.id }, error: null };
+        },
+        {
+          params: t.Object({ id: t.Number() }),
+          body: t.Object({
+            name: t.Optional(t.String()),
+            parentId: t.Optional(t.Union([t.Number(), t.String(), t.Null()])),
+          }),
         }
       )
   );

@@ -1,16 +1,18 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import type { File, Folder } from '@petrel/shared'
-import { useFiles, useDeleteFile, useUpdateFile, useCreateFolder, useUploadFile, isFile, isFolder } from '@/hooks'
+import { useFiles, useDeleteFile, useUpdateFile, useCreateFolder, useUpdateFolder, useUploadFile, isFile, isFolder } from '@/hooks'
 import { FolderBreadcrumb, buildBreadcrumbSegments } from '@/components/navigation'
 import { FileGrid } from './FileGrid'
 import { FileList } from './FileList'
 import { ViewToggle } from './ViewToggle'
 import { SortDropdown } from './SortDropdown'
 import { SearchBar } from './SearchBar'
-import { UploadZone, UploadProgressList } from './UploadZone'
+import { UploadZone, UploadBar, UploadProgressList } from './UploadZone'
 import { CreateFolderDialog, RenameDialog, DeleteConfirmDialog } from './FileDialogs'
+import { CreateShareModal } from '@/components/sharing'
+import { AddToAlbumModal } from '@/components/albums'
 import type { ViewMode, SortField, UploadProgress } from './types'
 
 interface FileBrowserProps {
@@ -29,14 +31,21 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
     const [sortBy, setSortBy] = useState<SortField>('name')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
     const [searchQuery, setSearchQuery] = useState('')
-    const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
     // Dialog state
     const [renameItem, setRenameItem] = useState<File | Folder | null>(null)
     const [deleteItem, setDeleteItem] = useState<File | Folder | null>(null)
+    const [shareItem, setShareItem] = useState<File | Folder | null>(null)
+    const [moveItem, setMoveItem] = useState<File | Folder | null>(null)
+    const [albumItem, setAlbumItem] = useState<File | null>(null)
 
     // Upload state
     const [uploads, setUploads] = useState<UploadProgress[]>([])
+
+    // Helper to get selection key
+    const getSelectionKey = (item: File | Folder) =>
+        `${isFolder(item) ? 'folder' : 'file'}-${item.id}`
 
     // Queries
     const { data, isLoading } = useFiles({
@@ -46,9 +55,13 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
         search: searchQuery || undefined,
     })
 
-    // Mutations
+    // Clear selection when folder changes
+    useEffect(() => {
+        setSelectedIds(new Set())
+    }, [folderId])
     const deleteMutation = useDeleteFile()
     const updateMutation = useUpdateFile()
+    const updateFolderMutation = useUpdateFolder()
     const createFolderMutation = useCreateFolder()
     const uploadMutation = useUploadFile()
 
@@ -62,24 +75,25 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 
     // Breadcrumb segments
     const breadcrumbSegments = useMemo(
-        () => buildBreadcrumbSegments(folderPath ?? ''),
-        [folderPath]
+        () => buildBreadcrumbSegments(folderPath ?? data?.currentFolder?.path ?? ''),
+        [folderPath, data?.currentFolder]
     )
 
     // Handlers
     const handleSelect = useCallback((item: File | Folder, event: React.MouseEvent) => {
+        const key = getSelectionKey(item)
         if (event.shiftKey || event.ctrlKey || event.metaKey) {
             setSelectedIds((prev) => {
                 const next = new Set(prev)
-                if (next.has(item.id)) {
-                    next.delete(item.id)
+                if (next.has(key)) {
+                    next.delete(key)
                 } else {
-                    next.add(item.id)
+                    next.add(key)
                 }
                 return next
             })
         } else {
-            setSelectedIds(new Set([item.id]))
+            setSelectedIds(new Set([key]))
         }
     }, [])
 
@@ -93,6 +107,22 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
         },
         [navigate]
     )
+
+    const handleDownload = useCallback((item: File | Folder) => {
+        if (isFolder(item)) {
+            // Folders cannot be downloaded directly currently
+            toast.error('Folder download is not supported yet')
+            return
+        }
+        const url = `/api/files/download/${item.id}?token=${localStorage.getItem('token')}`
+        window.open(url, '_blank')
+    }, [])
+
+    const handleCopyLink = useCallback((item: File | Folder) => {
+        const url = `${window.location.origin}/files/${isFolder(item) ? item.id : `preview/${item.id}`}`
+        navigator.clipboard.writeText(url)
+        toast.success('Link copied to clipboard')
+    }, [])
 
     const handleContextMenu = useCallback((_item: File | Folder, _event: React.MouseEvent) => {
         // Context menu is handled by the ContextMenu component
@@ -130,6 +160,28 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
         [updateMutation, renameItem]
     )
 
+    const handleMove = useCallback(
+        async (item: { id: number; type: 'file' | 'folder' }, targetFolderId: number | null) => {
+            try {
+                if (item.type === 'folder') {
+                    await updateFolderMutation.mutateAsync({
+                        id: item.id,
+                        data: { parentId: targetFolderId }
+                    })
+                } else {
+                    await updateMutation.mutateAsync({
+                        id: item.id,
+                        data: { folderId: targetFolderId }
+                    })
+                }
+                toast.success('Item moved successfully')
+            } catch (error) {
+                toast.error('Failed to move item')
+            }
+        },
+        [updateMutation, updateFolderMutation]
+    )
+
     const handleDelete = useCallback(async () => {
         if (!deleteItem) return
         await deleteMutation.mutateAsync(deleteItem.id)
@@ -137,7 +189,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
         setDeleteItem(null)
         setSelectedIds((prev) => {
             const next = new Set(prev)
-            next.delete(deleteItem.id)
+            next.delete(getSelectionKey(deleteItem))
             return next
         })
     }, [deleteMutation, deleteItem])
@@ -195,9 +247,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
     return (
         <div className="space-y-4">
             {/* Breadcrumb */}
-            {breadcrumbSegments.length > 0 && (
-                <FolderBreadcrumb segments={breadcrumbSegments} />
-            )}
+            <FolderBreadcrumb segments={breadcrumbSegments} onMove={handleMove} />
 
             {/* Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -218,10 +268,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                 </div>
             </div>
 
-            {/* Upload zone (shown when empty or dragging) */}
-            {sortedItems.length === 0 && !isLoading && (
-                <UploadZone onUpload={handleUpload} />
-            )}
+            {/* Upload bar (persistent) */}
+            <UploadBar onUpload={handleUpload} />
 
             {/* File list/grid */}
             {viewMode === 'grid' ? (
@@ -231,6 +279,13 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                     onSelect={handleSelect}
                     onOpen={handleOpen}
                     onContextMenu={handleContextMenu}
+                    onMove={handleMove}
+                    onRename={setRenameItem}
+                    onDelete={setDeleteItem}
+                    onShare={setShareItem}
+                    onDownload={handleDownload}
+                    onCopyLink={handleCopyLink}
+                    onAddToAlbum={(file) => setAlbumItem(file)}
                     isLoading={isLoading}
                 />
             ) : (
@@ -240,6 +295,13 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                     onSelect={handleSelect}
                     onOpen={handleOpen}
                     onContextMenu={handleContextMenu}
+                    onMove={handleMove}
+                    onRename={setRenameItem}
+                    onDelete={setDeleteItem}
+                    onShare={setShareItem}
+                    onDownload={handleDownload}
+                    onCopyLink={handleCopyLink}
+                    onAddToAlbum={(file) => setAlbumItem(file)}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
@@ -267,6 +329,24 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
                 onConfirm={handleDelete}
                 isDeleting={deleteMutation.isPending}
             />
+
+            {shareItem && (
+                <CreateShareModal
+                    type={isFolder(shareItem) ? 'folder' : 'file'}
+                    targetId={shareItem.id}
+                    targetName={shareItem.name}
+                    isOpen={!!shareItem}
+                    onClose={() => setShareItem(null)}
+                />
+            )}
+
+            {albumItem && (
+                <AddToAlbumModal
+                    fileIds={[albumItem.id]}
+                    isOpen={!!albumItem}
+                    onClose={() => setAlbumItem(null)}
+                />
+            )}
         </div>
     )
 }

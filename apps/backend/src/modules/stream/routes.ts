@@ -113,7 +113,7 @@ export const streamRoutes = new Elysia({ prefix: '/api/stream' })
   )
   .get(
     '/:fileId/master.m3u8',
-    async ({ params, set, user }) => {
+    async ({ params, query, set, user }) => {
       if (!canRead(user)) {
         set.status = 401;
         return '#EXTM3U\n# Unauthorized';
@@ -152,11 +152,22 @@ export const streamRoutes = new Elysia({ prefix: '/api/stream' })
       set.headers['Content-Type'] = 'application/vnd.apple.mpegurl';
       set.headers['Cache-Control'] = 'no-cache';
 
+      const token = query.token;
+      const tokenQuery = token ? `?token=${token}` : '';
+
+      let content = '';
       if (playlist.qualities.length > 0) {
-        return streamService.generateMasterPlaylistContent(fileId, playlist.qualities.map((q) => q.name));
+        content = streamService.generateMasterPlaylistContent(fileId, playlist.qualities.map((q) => q.name));
+      } else {
+        content = playlist.content;
       }
 
-      return playlist.content;
+      if (tokenQuery) {
+        // Append token to all .m3u8 lines in the master playlist
+        return content.replace(/\.m3u8/g, `.m3u8${tokenQuery}`);
+      }
+
+      return content;
     },
     {
       params: t.Object({
@@ -166,7 +177,7 @@ export const streamRoutes = new Elysia({ prefix: '/api/stream' })
   )
   .get(
     '/:fileId/:playlist',
-    async ({ params, set, user }) => {
+    async ({ params, query, set, user }) => {
       if (!canRead(user)) {
         set.status = 401;
         return '#EXTM3U\n# Unauthorized';
@@ -179,6 +190,8 @@ export const streamRoutes = new Elysia({ prefix: '/api/stream' })
       }
 
       const playlistName = params.playlist;
+      const token = query.token;
+      const tokenQuery = token ? `?token=${token}` : '';
 
       if (playlistName.endsWith('.m3u8')) {
         const quality = playlistName.replace('.m3u8', '');
@@ -193,7 +206,7 @@ export const streamRoutes = new Elysia({ prefix: '/api/stream' })
         set.headers['Cache-Control'] = 'no-cache';
 
         const content = await Bun.file(playlistPath).text();
-        return content.replace(/segment_/g, `/api/stream/${fileId}/segment_`);
+        return content.replace(/segment_/g, `/api/stream/${fileId}/segment_`).replace(/\.ts/g, `.ts${tokenQuery}`);
       }
 
       if (playlistName.endsWith('.ts')) {

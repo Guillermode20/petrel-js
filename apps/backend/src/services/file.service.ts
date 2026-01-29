@@ -127,6 +127,19 @@ export class FileService {
     return updatedRow ? this.mapFileRow(updatedRow) : null;
   }
 
+  async updateFilesPathInFolder(oldFolderPath: string, newFolderPath: string): Promise<void> {
+    const normalizedOld = normalizeRelativePath(oldFolderPath);
+    const normalizedNew = normalizeRelativePath(newFolderPath);
+
+    // Use string concatenation to safely replace only the prefix
+    await db
+      .update(files)
+      .set({
+        path: sql`${normalizedNew} || substr(path, length(${normalizedOld}) + 1)`,
+      })
+      .where(sql`path = ${normalizedOld} OR path LIKE ${normalizedOld + '/%'}`);
+  }
+
   async deleteFile(id: number): Promise<File | null> {
     const current = await this.getById(id);
     if (!current) return null;

@@ -9,6 +9,7 @@ export interface PaginationInfo {
 export interface FileListData {
   files: File[];
   folders: Folder[];
+  currentFolder: Folder | null;
   pagination: PaginationInfo;
 }
 

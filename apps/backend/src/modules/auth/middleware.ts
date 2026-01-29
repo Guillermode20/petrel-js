@@ -16,14 +16,19 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
       name: 'jwt',
     })
   )
-  .derive({ as: 'scoped' }, async ({ jwt, headers }): Promise<{ user: JWTPayload | null }> => {
+  .derive({ as: 'scoped' }, async ({ jwt, headers, query }): Promise<{ user: JWTPayload | null }> => {
+    let token = '';
     const authHeader = headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { user: null };
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else if (query.token) {
+      token = query.token as string;
     }
 
-    const token = authHeader.slice(7);
+    if (!token) {
+      return { user: null };
+    }
 
     try {
       const payload = await jwt.verify(token);

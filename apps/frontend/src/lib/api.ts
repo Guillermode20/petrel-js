@@ -175,7 +175,14 @@ class ApiClient {
     sort?: 'name' | 'date' | 'size' | 'type'
     order?: 'asc' | 'desc'
     search?: string
-  }): Promise<{ items: Array<File | Folder>; total: number; page: number; limit: number; hasMore: boolean }> {
+  }): Promise<{
+    items: Array<File | Folder>
+    currentFolder: Folder | null
+    total: number
+    page: number
+    limit: number
+    hasMore: boolean
+  }> {
     const searchParams = new URLSearchParams()
     if (params?.folderId) searchParams.set('folderId', String(params.folderId))
 
@@ -186,9 +193,12 @@ class ApiClient {
     searchParams.set('offset', String(offset))
 
     const query = searchParams.toString()
-    const result = await this.request<{ files: File[]; folders: Folder[]; pagination: { limit: number; offset: number; total: number } }>(
-      `/files${query ? `?${query}` : ''}`
-    )
+    const result = await this.request<{
+      files: File[]
+      folders: Folder[]
+      currentFolder: Folder | null
+      pagination: { limit: number; offset: number; total: number }
+    }>(`/files${query ? `?${query}` : ''}`)
 
     const items = [...(result.folders ?? []), ...(result.files ?? [])]
     const total = result.pagination?.total ?? items.length
@@ -199,6 +209,7 @@ class ApiClient {
 
     return {
       items,
+      currentFolder: result.currentFolder,
       total,
       page: resolvedPage,
       limit: resolvedLimit,
@@ -266,7 +277,7 @@ class ApiClient {
     return this.request(`/files/${id}`, { method: 'DELETE' })
   }
 
-  async updateFile(id: number, data: { name?: string; folderId?: number }): Promise<File> {
+  async updateFile(id: number, data: { name?: string; folderId?: number | null }): Promise<File> {
     return this.request(`/files/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -280,16 +291,31 @@ class ApiClient {
     })
   }
 
+  async updateFolder(id: number, data: { name?: string; parentId?: number | null }): Promise<{ id: number }> {
+    return this.request(`/folders/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
   getDownloadUrl(id: number): string {
-    return `${API_BASE}/files/${id}/download`
+    const token = this.accessToken ? `?token=${this.accessToken}` : ''
+    return `${API_BASE}/files/${id}/download${token}`
   }
 
   getThumbnailUrl(id: number, size: 'small' | 'medium' | 'large' = 'medium'): string {
-    return `${API_BASE}/files/${id}/thumbnail?size=${size}`
+    const token = this.accessToken ? `&token=${this.accessToken}` : ''
+    return `${API_BASE}/files/${id}/thumbnail?size=${size}${token}`
   }
 
   getSpriteUrl(id: number): string {
-    return `${API_BASE}/files/${id}/sprite`
+    const token = this.accessToken ? `?token=${this.accessToken}` : ''
+    return `${API_BASE}/files/${id}/sprite${token}`
+  }
+
+  getMasterPlaylistUrl(id: number): string {
+    const token = this.accessToken ? `?token=${this.accessToken}` : ''
+    return `${API_BASE}/stream/${id}/master.m3u8${token}`
   }
 
   // Shares endpoints
@@ -393,10 +419,6 @@ class ApiClient {
 
   async prepareStream(fileId: number): Promise<{ jobId?: number; ready: boolean }> {
     return this.request(`/stream/${fileId}/prepare`, { method: 'POST' })
-  }
-
-  getMasterPlaylistUrl(fileId: number): string {
-    return `${API_BASE}/stream/${fileId}/master.m3u8`
   }
 }
 
