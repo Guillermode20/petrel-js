@@ -334,6 +334,7 @@
   - Text/Code → `CodeViewer`
   - Other → `DownloadPrompt`
 - [x] Keyboard navigation (arrow keys for next/prev in folder)
+- [x] Navigation context preservation — returns to originating folder when closing preview
 
 ### Sharing UI
 - [x] "Create share" button in UI

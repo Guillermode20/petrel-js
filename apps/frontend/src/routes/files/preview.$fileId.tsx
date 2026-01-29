@@ -7,11 +7,15 @@ import type { File } from '@petrel/shared'
 
 export const Route = createFileRoute('/files/preview/$fileId')({
     component: FilePreviewPage,
+    validateSearch: (search: Record<string, unknown>) => ({
+        fromFolder: typeof search.fromFolder === 'string' ? search.fromFolder : undefined,
+    }),
 })
 
 function FilePreviewPage() {
     const { fileId } = Route.useParams()
     const navigate = useNavigate()
+    const search = Route.useSearch()
     const numericFileId = parseInt(fileId, 10)
 
     const { data: file, isLoading: fileLoading, error: fileError } = useFile(numericFileId)
@@ -36,20 +40,24 @@ function FilePreviewPage() {
             navigate({
                 to: '/files/preview/$fileId',
                 params: { fileId: String(newFile.id) },
+                search: { fromFolder: search.fromFolder },
             })
         }
-    }, [siblingFiles, numericFileId, navigate])
+    }, [siblingFiles, numericFileId, navigate, search.fromFolder])
 
     const handleClose = useCallback(() => {
-        if (file?.parentId) {
+        // Use fromFolder search param if available, otherwise fall back to file's parentId
+        const targetFolderId = search.fromFolder ? parseInt(search.fromFolder, 10) : (file?.parentId ?? null)
+        
+        if (targetFolderId) {
             navigate({
                 to: '/files/$folderId',
-                params: { folderId: String(file.parentId) },
+                params: { folderId: String(targetFolderId) },
             })
         } else {
             navigate({ to: '/files' })
         }
-    }, [file?.parentId, navigate])
+    }, [search.fromFolder, file?.parentId, navigate])
 
     // Keyboard shortcuts
     useEffect(() => {

@@ -100,10 +100,14 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
             if (isFolder(item)) {
                 navigate({ to: '/files/$folderId', params: { folderId: String(item.id) } })
             } else {
-                navigate({ to: '/files/preview/$fileId', params: { fileId: String(item.id) } })
+                navigate({ 
+                    to: '/files/preview/$fileId', 
+                    params: { fileId: String(item.id) },
+                    search: { fromFolder: folderId ? String(folderId) : undefined }
+                })
             }
         },
-        [navigate]
+        [navigate, folderId]
     )
 
     const handleDownload = useCallback((item: File | Folder) => {
