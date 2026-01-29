@@ -66,7 +66,7 @@ function getThumbnailSizePx(size: ThumbnailSize): number {
   return 512;
 }
 
-function normalizePathSafe(value: string | undefined, set: { status?: number }): string | null {
+function normalizePathSafe(value: string | undefined, set: { status?: number | string }): string | null {
   try {
     return normalizeRelativePath(value ?? '');
   } catch {
@@ -75,7 +75,7 @@ function normalizePathSafe(value: string | undefined, set: { status?: number }):
   }
 }
 
-function normalizeNameSafe(value: string, set: { status?: number }): string | null {
+function normalizeNameSafe(value: string, set: { status?: number | string }): string | null {
   try {
     return normalizeFileName(value);
   } catch {
@@ -86,7 +86,7 @@ function normalizeNameSafe(value: string, set: { status?: number }): string | nu
 
 function parseNumberField(
   value: number | string,
-  set: { status?: number },
+  set: { status?: number | string },
   field: string
 ): number | null {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -99,7 +99,7 @@ function parseNumberField(
 
 async function resolveFolderPathById(
   folderId: number | null,
-  set: { status?: number }
+  set: { status?: number | string }
 ): Promise<string | null> {
   if (folderId === null) return '';
   const folder = await folderService.getById(folderId);
@@ -155,6 +155,11 @@ async function assembleChunks(uploadId: string, totalChunks: number, finalPath: 
 }
 
 async function moveFileOnDisk(sourcePath: string, targetPath: string): Promise<void> {
+  if (sourcePath === targetPath) return;
+
+  const sourceExists = await stat(sourcePath).then(() => true).catch(() => false);
+  if (!sourceExists) return;
+
   await rename(sourcePath, targetPath).catch(async () => {
     await Bun.write(targetPath, Bun.file(sourcePath));
     await unlink(sourcePath).catch(() => null);
@@ -277,6 +282,7 @@ async function handleChunkUpload(
   const allChunksPresent = await areAllChunksPresent(body.uploadId, body.totalChunks);
 
   if (!allChunksPresent) {
+    set.status = 202;
     return { data: null, error: null };
   }
 
@@ -738,9 +744,15 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
 
           let nextPath: string | null = file.path;
           if (body.folderId !== undefined) {
-            const folderId = parseNumberField(body.folderId, set, 'folderId');
-            // Allow folderId to be null (root)
-            nextPath = await resolveFolderPathById(folderId, set);
+            if (body.folderId === null || body.folderId === 'null' || body.folderId === '') {
+              nextPath = '';
+            } else {
+              const folderId = parseNumberField(body.folderId, set, 'folderId');
+              if (folderId === null) {
+                return { data: null, error: 'Invalid folder id' };
+              }
+              nextPath = await resolveFolderPathById(folderId, set);
+            }
           } else if (body.path) {
             nextPath = normalizePathSafe(body.path, set);
           }
@@ -771,7 +783,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
           body: t.Object({
             name: t.Optional(t.String()),
             path: t.Optional(t.String()),
-            folderId: t.Optional(t.Union([t.Number(), t.String()])),
+            folderId: t.Optional(t.Union([t.Number(), t.String(), t.Null()])),
           }),
           detail: {
             summary: 'Rename or move a file',

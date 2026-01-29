@@ -59,8 +59,8 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
     if (!user) {
       set.status = 401;
       return {
-        success: false as const,
-        message: 'Unauthorized - Authentication required',
+        data: null,
+        error: 'Unauthorized - Authentication required',
       };
     }
   });
@@ -75,16 +75,16 @@ export const requireAdmin = new Elysia({ name: 'require-admin' })
     if (!user) {
       set.status = 401;
       return {
-        success: false as const,
-        message: 'Unauthorized - Authentication required',
+        data: null,
+        error: 'Unauthorized - Authentication required',
       };
     }
 
     if (user.role !== 'admin') {
       set.status = 403;
       return {
-        success: false as const,
-        message: 'Forbidden - Admin access required',
+        data: null,
+        error: 'Forbidden - Admin access required',
       };
     }
   });

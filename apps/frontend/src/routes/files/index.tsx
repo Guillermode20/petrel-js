@@ -7,9 +7,6 @@ export const Route = createFileRoute('/files/')({
 
 function FilesPage() {
     return (
-        <div>
-            <h1 className="mb-6 text-2xl font-semibold">Files</h1>
-            <FileBrowser />
-        </div>
+        <FileBrowser />
     )
 }

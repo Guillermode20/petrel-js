@@ -15,7 +15,8 @@ export interface FileListData {
 
 export type ApiResponse<T> =
   | { data: T; error: null }
-  | { data: null; error: string };
+  | { data: null; error: string }
+  | { data: null; error: null }; // In-progress (upload pending)
 
 export interface UploadChunkRequest {
   uploadId: string;

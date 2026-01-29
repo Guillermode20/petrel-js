@@ -23,14 +23,14 @@ export function FileGrid({
     isLoading,
 }: FileGridProps) {
     const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
-        e.dataTransfer.setData('text/plain', JSON.stringify({ id: item.id, type: isFile(item) ? 'file' : 'folder' }))
-        e.dataTransfer.effectAllowed = 'move'
+        e.dataTransfer?.setData('text/plain', JSON.stringify({ id: item.id, type: isFile(item) ? 'file' : 'folder' }))
+        e.dataTransfer && (e.dataTransfer.effectAllowed = 'move')
     }
 
     const handleDrop = (target: Folder, e: React.DragEvent) => {
-        e.preventDefault()
+        e.preventDefault?.()
         try {
-            const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+            const data = JSON.parse(e.dataTransfer?.getData('text/plain') || '{}')
             if (data.id === target.id && data.type === 'folder') return
             onMove(data, target.id)
         } catch (err) {
@@ -87,7 +87,11 @@ export function FileGrid({
                             onSelect={onSelect}
                             onDoubleClick={onOpen}
                             onDragStart={handleDragStart}
-                            onDrop={handleDrop}
+                            onDrop={(target, e) => {
+                                if (isFolder(target)) {
+                                    handleDrop(target, e)
+                                }
+                            }}
                         />
                     </FileContextMenu>
                 )

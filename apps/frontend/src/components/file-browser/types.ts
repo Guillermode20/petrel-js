@@ -4,10 +4,10 @@ export interface FileItemProps {
   item: File | Folder
   isSelected?: boolean
   onSelect?: (item: File | Folder, event: React.MouseEvent) => void
-  onDoubleClick?: (item: File | Folder) => void
+  onDoubleClick?: (item: File | Folder, event?: React.MouseEvent) => void
   onContextMenu?: (item: File | Folder, event: React.MouseEvent) => void
   onDragStart?: (item: File | Folder, event: React.DragEvent) => void
-  onDrop?: (target: Folder, event: React.DragEvent) => void
+  onDrop?: (target: File | Folder, event: React.DragEvent) => void
 }
 
 export interface FileGridProps {

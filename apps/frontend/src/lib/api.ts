@@ -58,10 +58,36 @@ class ApiClient {
       ;(headers as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    let response = await fetch(`${API_BASE}${endpoint}`, {
       ...options,
       headers,
     })
+
+    // Handle initial 401 - try refresh once
+    if (response.status === 401) {
+      const refreshToken = localStorage.getItem('petrel_refresh_token')
+      if (refreshToken) {
+        try {
+          const data = await this.refreshToken(refreshToken)
+          localStorage.setItem('petrel_access_token', data.accessToken)
+          localStorage.setItem('petrel_refresh_token', data.refreshToken)
+          this.setAccessToken(data.accessToken)
+
+          // Retry request with new token
+          ;(headers as Record<string, string>)['Authorization'] = `Bearer ${data.accessToken}`
+          response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
+          })
+        } catch (err) {
+          // Refresh failed, clear tokens
+          localStorage.removeItem('petrel_access_token')
+          localStorage.removeItem('petrel_refresh_token')
+          this.setAccessToken(null)
+          throw new Error('Unauthorized')
+        }
+      }
+    }
 
     const result = await response.json()
 
@@ -102,17 +128,18 @@ class ApiClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(this.accessToken && { Authorization: `Bearer ${this.accessToken}` }),
+        Authorization: `Bearer ${refreshToken}`,
       },
-      body: JSON.stringify({ refreshToken }),
     })
   }
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${refreshToken}`,
+      },
     })
 
     // Handle non-JSON responses (e.g., rate limit)
@@ -133,38 +160,18 @@ class ApiClient {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const response = await fetch(`${API_BASE}/auth/me`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(this.accessToken && { Authorization: `Bearer ${this.accessToken}` }),
-      },
-    })
+    const token = localStorage.getItem('petrel_access_token')
+    if (!token) return null
 
-    if (response.status === 401) {
-      return null
+    try {
+      // Use standard request which handles refresh
+      return await this.request('/auth/me')
+    } catch (err) {
+      if ((err as Error).message.includes('Unauthorized')) {
+        return null
+      }
+      throw err
     }
-
-    const contentType = response.headers.get('content-type')
-    if (!contentType?.includes('application/json')) {
-      const text = await response.text()
-      throw new Error(text || `HTTP ${response.status}`)
-    }
-
-    const result = await response.json()
-
-    if (result?.success === false) {
-      return null
-    }
-
-    if (result?.data) {
-      return result.data as User
-    }
-
-    if (result?.id && result?.username) {
-      return result as User
-    }
-
-    return null
   }
 
   // Files endpoints

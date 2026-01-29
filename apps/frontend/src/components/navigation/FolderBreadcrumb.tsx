@@ -52,6 +52,7 @@ export function FolderBreadcrumb({ segments, className, onMove }: FolderBreadcru
         <Breadcrumb className={className}>
             <BreadcrumbList>
                 <BreadcrumbItem
+                    key="root"
                     onDragOver={(e) => handleDragOver(e, 'root')}
                     onDragLeave={() => setDragOverId(null)}
                     onDrop={(e) => handleDrop(e, 'root')}
@@ -70,12 +71,11 @@ export function FolderBreadcrumb({ segments, className, onMove }: FolderBreadcru
                 {segments.map((segment, index) => {
                     const isLast = index === segments.length - 1
                     const segmentId = segment.id ?? (segment.href?.split('/').pop() ? Number(segment.href.split('/').pop()) : undefined)
+                    const key = segment.href ? `segment-${segment.href}` : `segment-idx-${index}`
 
                     return (
-                        <Fragment key={segment.href ?? segment.label}>
-                            <BreadcrumbSeparator>
-                                <ChevronRight className="h-4 w-4" />
-                            </BreadcrumbSeparator>
+                        <Fragment key={key}>
+                            <BreadcrumbSeparator />
                             <BreadcrumbItem
                                 onDragOver={(e) => segmentId !== undefined && handleDragOver(e, segmentId)}
                                 onDragLeave={() => setDragOverId(null)}

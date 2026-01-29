@@ -10,7 +10,7 @@ import { tokenService } from '../../services/token.service';
 import { authMiddleware, requireAuth } from './middleware';
 import { hashPassword, verifyPassword } from './utils';
 import type { UserRole } from '@petrel/shared';
-import type { JWTPayload, RefreshPayload, TokenResponse, MeResponse } from './types';
+import type { JWTPayload, RefreshPayload, TokenResponse, MeResponse, ApiResponse } from './types';
 
 /**
  * Auth routes module with login, logout, refresh, and me endpoints
@@ -306,12 +306,12 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   .use(requireAuth)
   .get(
     '/me',
-    async ({ user, set }): Promise<MeResponse | { success: false; message: string }> => {
+    async ({ user, set }): Promise<ApiResponse<MeResponse>> => {
       if (!user) {
         set.status = 401;
         return {
-          success: false,
-          message: 'Unauthorized - Authentication required',
+          data: null,
+          error: 'Unauthorized - Authentication required',
         };
       }
 
@@ -322,16 +322,19 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       if (!userData) {
         set.status = 401;
         return {
-          success: false,
-          message: 'Unauthorized - User not found',
+          data: null,
+          error: 'Unauthorized - User not found',
         };
       }
 
       return {
-        id: userData.id,
-        username: userData.username,
-        role: userData.role,
-        createdAt: userData.createdAt,
+        data: {
+          id: userData.id,
+          username: userData.username,
+          role: userData.role,
+          createdAt: userData.createdAt,
+        },
+        error: null,
       };
     },
     {

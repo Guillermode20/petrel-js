@@ -17,6 +17,7 @@ export function FileCard({
     onContextMenu,
     onDragStart,
     onDrop,
+    className,
     ...props
 }: FileItemProps & React.HTMLAttributes<HTMLDivElement>) {
     const [isDragOver, setIsDragOver] = useState(false)
@@ -36,22 +37,18 @@ export function FileCard({
         setIsDragOver(false)
     }
 
-    const handleDrop = (e: React.DragEvent) => {
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         if (!isFolderItem) return
         e.preventDefault()
         e.stopPropagation()
         setIsDragOver(false)
-        onDrop?.(item as Folder, e)
+        onDrop?.(item, e)
     }
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
         if (onContextMenu) {
             e.preventDefault()
             onContextMenu(item, e)
-        }
-        // Also call the prop passed from ContextMenuTrigger if it exists
-        if (props.onContextMenu) {
-            props.onContextMenu(e)
         }
     }
 
@@ -68,7 +65,7 @@ export function FileCard({
                 'hover:bg-secondary/50',
                 isSelected && 'border-primary bg-primary/10',
                 isDragOver && 'bg-primary/20 scale-105 border-primary duration-75',
-                props.className
+                className
             )}
             onClick={(e) => onSelect?.(item, e)}
             onDoubleClick={() => onDoubleClick?.(item)}

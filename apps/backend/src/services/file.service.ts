@@ -111,7 +111,7 @@ export class FileService {
     const current = await this.getById(id);
     if (!current) return null;
 
-    const nextPath = input.path ? normalizeRelativePath(input.path) : current.path;
+    const nextPath = input.path !== undefined ? normalizeRelativePath(input.path) : current.path;
     const nextName = input.name ?? current.name;
 
     const updated = await db
