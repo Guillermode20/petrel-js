@@ -11,6 +11,14 @@ export interface CreateFolderInput {
 }
 
 export class FolderService {
+  async getById(id: number): Promise<Folder | null> {
+    const folder = await db.query.folders.findFirst({
+      where: eq(folders.id, id),
+    });
+
+    return folder ?? null;
+  }
+
   async getFolderByPath(path: string): Promise<Folder | null> {
     const normalizedPath = normalizeRelativePath(path);
     const folder = await db.query.folders.findFirst({

@@ -25,20 +25,46 @@ const app = new Elysia()
     };
   })
   .onAfterHandle(({ request, set, correlationId, log }) => {
-    log.info({
-      method: request.method,
-      url: request.url,
-      status: set.status ?? 200,
-    }, 'Request completed');
-  })
-  .onError(({ error, request, log }) => {
-    if (log) {
-      log.error({
+    const status = set.status ?? 200;
+    // Only log non-auth errors and successful requests
+    if (status < 400 || status === 401) {
+      log.debug({
         method: request.method,
         url: request.url,
-        error: error instanceof Error ? error.message : String(error),
-      }, 'Request error');
+        status,
+      }, status === 401 ? 'Unauthorized request' : 'Request completed');
+    } else {
+      log.info({
+        method: request.method,
+        url: request.url,
+        status,
+      }, 'Request completed');
     }
+  })
+  .onError(({ error, request, log, set }) => {
+    if (!log) return;
+
+    const isUnauthorized =
+      error instanceof Error &&
+      (error.message === 'Unauthorized' || error.message.includes('Unauthorized'));
+    const status = set.status ?? (isUnauthorized ? 401 : 500);
+    set.status = status;
+
+    // Don't log 401 Unauthorized responses as errors - they're expected for unauthenticated requests
+    if (status === 401) {
+      log.debug({
+        method: request.method,
+        url: request.url,
+        status: 401,
+      }, 'Unauthorized request');
+      return;
+    }
+
+    log.error({
+      method: request.method,
+      url: request.url,
+      error: error instanceof Error ? error.message : String(error),
+    }, 'Request error');
   })
   .use(
     swagger({

@@ -37,8 +37,14 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
     rateLimit({
       duration: 15 * 60 * 1000, // 15 minutes
       max: 5,
+      generator: (request) => {
+        // Use IP-based limiting
+        const forwarded = request.headers.get('x-forwarded-for');
+        const ip = forwarded?.split(',')[0]?.trim() ?? 'unknown';
+        return `auth-login:${ip}`;
+      },
       skip: (request) => {
-        // Skip rate limiting for non-auth endpoints
+        // Skip rate limiting for non-login endpoints
         const url = new URL(request.url);
         return !url.pathname.includes('/api/auth/login');
       },
@@ -300,14 +306,25 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   .use(requireAuth)
   .get(
     '/me',
-    async ({ user }): Promise<MeResponse> => {
-      // Get full user info from database
+    async ({ user, set }): Promise<MeResponse | { success: false; message: string }> => {
+      if (!user) {
+        set.status = 401;
+        return {
+          success: false,
+          message: 'Unauthorized - Authentication required',
+        };
+      }
+
       const userData = await db.query.users.findFirst({
-        where: eq(users.id, user!.userId),
+        where: eq(users.id, user.userId),
       });
 
       if (!userData) {
-        throw new Error('User not found');
+        set.status = 401;
+        return {
+          success: false,
+          message: 'Unauthorized - User not found',
+        };
       }
 
       return {

@@ -132,8 +132,39 @@ class ApiClient {
     return result
   }
 
-  async getCurrentUser(): Promise<User> {
-    return this.request('/auth/me')
+  async getCurrentUser(): Promise<User | null> {
+    const response = await fetch(`${API_BASE}/auth/me`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.accessToken && { Authorization: `Bearer ${this.accessToken}` }),
+      },
+    })
+
+    if (response.status === 401) {
+      return null
+    }
+
+    const contentType = response.headers.get('content-type')
+    if (!contentType?.includes('application/json')) {
+      const text = await response.text()
+      throw new Error(text || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (result?.success === false) {
+      return null
+    }
+
+    if (result?.data) {
+      return result.data as User
+    }
+
+    if (result?.id && result?.username) {
+      return result as User
+    }
+
+    return null
   }
 
   // Files endpoints
@@ -147,14 +178,32 @@ class ApiClient {
   }): Promise<{ items: Array<File | Folder>; total: number; page: number; limit: number; hasMore: boolean }> {
     const searchParams = new URLSearchParams()
     if (params?.folderId) searchParams.set('folderId', String(params.folderId))
-    if (params?.page) searchParams.set('page', String(params.page))
-    if (params?.limit) searchParams.set('limit', String(params.limit))
-    if (params?.sort) searchParams.set('sort', params.sort)
-    if (params?.order) searchParams.set('order', params.order)
-    if (params?.search) searchParams.set('search', params.search)
+
+    const limit = params?.limit ?? 20
+    const page = params?.page ?? 1
+    const offset = Math.max(page - 1, 0) * limit
+    searchParams.set('limit', String(limit))
+    searchParams.set('offset', String(offset))
 
     const query = searchParams.toString()
-    return this.request(`/files${query ? `?${query}` : ''}`)
+    const result = await this.request<{ files: File[]; folders: Folder[]; pagination: { limit: number; offset: number; total: number } }>(
+      `/files${query ? `?${query}` : ''}`
+    )
+
+    const items = [...(result.folders ?? []), ...(result.files ?? [])]
+    const total = result.pagination?.total ?? items.length
+    const resolvedLimit = result.pagination?.limit ?? limit
+    const resolvedOffset = result.pagination?.offset ?? offset
+    const resolvedPage = Math.floor(resolvedOffset / resolvedLimit) + 1
+    const hasMore = resolvedOffset + resolvedLimit < total
+
+    return {
+      items,
+      total,
+      page: resolvedPage,
+      limit: resolvedLimit,
+      hasMore,
+    }
   }
 
   async getFile(id: number): Promise<File> {
@@ -178,7 +227,7 @@ class ApiClient {
     formData.append('mimeType', file.type)
     formData.append('size', String(file.size))
     formData.append('chunk', file)
-    if (folderId) formData.append('path', String(folderId))
+    if (folderId) formData.append('folderId', String(folderId))
 
     // Use XHR for progress tracking
     return new Promise((resolve, reject) => {

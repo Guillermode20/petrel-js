@@ -84,6 +84,31 @@ function normalizeNameSafe(value: string, set: { status?: number }): string | nu
   }
 }
 
+function parseNumberField(
+  value: number | string,
+  set: { status?: number },
+  field: string
+): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) {
+    set.status = 400;
+    return null;
+  }
+  return parsed;
+}
+
+async function resolveFolderPathById(
+  folderId: number,
+  set: { status?: number }
+): Promise<string | null> {
+  const folder = await folderService.getById(folderId);
+  if (!folder) {
+    set.status = 404;
+    return null;
+  }
+  return folder.path;
+}
+
 async function calculateFileHash(filePath: string): Promise<string> {
   const fileBuffer = await Bun.file(filePath).arrayBuffer();
   const hasher = new Bun.CryptoHasher('sha256');
@@ -276,7 +301,19 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
         return { data: null, error: 'Unauthorized' };
       }
 
-      const folderPath = normalizePathSafe(query.path, set);
+      let folderPath: string | null = null;
+      if (query.folderId !== undefined) {
+        const folderId = parseNumberField(query.folderId, set, 'folderId');
+        if (folderId === null) {
+          return { data: null, error: 'Invalid folder id' };
+        }
+        folderPath = await resolveFolderPathById(folderId, set);
+        if (folderPath === null) {
+          return { data: null, error: 'Folder not found' };
+        }
+      } else {
+        folderPath = normalizePathSafe(query.path, set);
+      }
       if (folderPath === null) {
         return { data: null, error: 'Invalid path' };
       }
@@ -312,6 +349,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
     {
       query: t.Object({
         path: t.Optional(t.String()),
+        folderId: t.Optional(t.Union([t.Number(), t.String()])),
         limit: t.Optional(t.Number()),
         offset: t.Optional(t.Number()),
       }),
@@ -600,13 +638,36 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
       .post(
         '/upload',
         async ({ body, set, user }): Promise<ApiResponse<SharedFile>> => {
+          const chunkIndex = parseNumberField(body.chunkIndex, set, 'chunkIndex');
+          if (chunkIndex === null) {
+            return { data: null, error: 'Invalid chunk index' };
+          }
+
+          const totalChunks = parseNumberField(body.totalChunks, set, 'totalChunks');
+          if (totalChunks === null) {
+            return { data: null, error: 'Invalid total chunks' };
+          }
+
+          let folderPath: string | undefined;
+          if (body.folderId !== undefined) {
+            const folderId = parseNumberField(body.folderId, set, 'folderId');
+            if (folderId === null) {
+              return { data: null, error: 'Invalid folder id' };
+            }
+            const resolvedPath = await resolveFolderPathById(folderId, set);
+            if (resolvedPath === null) {
+              return { data: null, error: 'Folder not found' };
+            }
+            folderPath = resolvedPath;
+          }
+
           return await handleChunkUpload(
             {
               uploadId: body.uploadId,
-              chunkIndex: body.chunkIndex,
-              totalChunks: body.totalChunks,
+              chunkIndex,
+              totalChunks,
               fileName: body.fileName,
-              path: body.path,
+              path: folderPath ?? body.path,
               mimeType: body.mimeType,
               chunk: body.chunk,
             },
@@ -617,12 +678,13 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
         {
           body: t.Object({
             uploadId: t.String({ minLength: 1 }),
-            chunkIndex: t.Number({ minimum: 0 }),
-            totalChunks: t.Number({ minimum: 1 }),
+            chunkIndex: t.Union([t.Number({ minimum: 0 }), t.String()]),
+            totalChunks: t.Union([t.Number({ minimum: 1 }), t.String()]),
             fileName: t.String({ minLength: 1 }),
             path: t.Optional(t.String()),
+            folderId: t.Optional(t.Union([t.Number(), t.String()])),
             mimeType: t.Optional(t.String()),
-            size: t.Optional(t.Number()),
+            size: t.Optional(t.Union([t.Number(), t.String()])),
             chunk: t.File(),
           }),
           detail: {
@@ -672,7 +734,16 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
             return { data: null, error: 'Invalid file name' };
           }
 
-          const nextPath = body.path ? normalizePathSafe(body.path, set) : file.path;
+          let nextPath: string | null = file.path;
+          if (body.folderId !== undefined) {
+            const folderId = parseNumberField(body.folderId, set, 'folderId');
+            if (folderId === null) {
+              return { data: null, error: 'Invalid folder id' };
+            }
+            nextPath = await resolveFolderPathById(folderId, set);
+          } else if (body.path) {
+            nextPath = normalizePathSafe(body.path, set);
+          }
           if (nextPath === null) {
             return { data: null, error: 'Invalid path' };
           }
@@ -700,6 +771,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
           body: t.Object({
             name: t.Optional(t.String()),
             path: t.Optional(t.String()),
+            folderId: t.Optional(t.Union([t.Number(), t.String()])),
           }),
           detail: {
             summary: 'Rename or move a file',
@@ -715,9 +787,22 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
       .post(
         '/folders',
         async ({ body, set, user }): Promise<ApiResponse<{ id: number }>> => {
-          const normalizedParent = body.parentPath ? normalizePathSafe(body.parentPath, set) : null;
-          if (normalizedParent === null && body.parentPath) {
-            return { data: null, error: 'Invalid path' };
+          let normalizedParent: string | null = null;
+          if (body.parentId !== undefined) {
+            const parentId = parseNumberField(body.parentId, set, 'parentId');
+            if (parentId === null) {
+              return { data: null, error: 'Invalid parent id' };
+            }
+            const resolvedParent = await resolveFolderPathById(parentId, set);
+            if (resolvedParent === null) {
+              return { data: null, error: 'Parent folder not found' };
+            }
+            normalizedParent = resolvedParent;
+          } else if (body.parentPath) {
+            normalizedParent = normalizePathSafe(body.parentPath, set);
+            if (normalizedParent === null) {
+              return { data: null, error: 'Invalid path' };
+            }
           }
 
           const folderName = normalizeNameSafe(body.name, set);
@@ -740,6 +825,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
           body: t.Object({
             name: t.String({ minLength: 1 }),
             parentPath: t.Optional(t.String()),
+            parentId: t.Optional(t.Union([t.Number(), t.String()])),
           }),
           detail: {
             summary: 'Create folder',
