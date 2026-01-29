@@ -9,38 +9,127 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SharesRouteImport } from './routes/shares'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FilesIndexRouteImport } from './routes/files/index'
+import { Route as AlbumsIndexRouteImport } from './routes/albums/index'
+import { Route as FilesFolderIdRouteImport } from './routes/files/$folderId'
+import { Route as AlbumsAlbumIdRouteImport } from './routes/albums/$albumId'
+import { Route as FilesPreviewFileIdRouteImport } from './routes/files/preview.$fileId'
 
+const SharesRoute = SharesRouteImport.update({
+  id: '/shares',
+  path: '/shares',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FilesIndexRoute = FilesIndexRouteImport.update({
+  id: '/files/',
+  path: '/files/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlbumsIndexRoute = AlbumsIndexRouteImport.update({
+  id: '/albums/',
+  path: '/albums/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FilesFolderIdRoute = FilesFolderIdRouteImport.update({
+  id: '/files/$folderId',
+  path: '/files/$folderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlbumsAlbumIdRoute = AlbumsAlbumIdRouteImport.update({
+  id: '/albums/$albumId',
+  path: '/albums/$albumId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FilesPreviewFileIdRoute = FilesPreviewFileIdRouteImport.update({
+  id: '/files/preview/$fileId',
+  path: '/files/preview/$fileId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/shares': typeof SharesRoute
+  '/albums/$albumId': typeof AlbumsAlbumIdRoute
+  '/files/$folderId': typeof FilesFolderIdRoute
+  '/albums/': typeof AlbumsIndexRoute
+  '/files/': typeof FilesIndexRoute
+  '/files/preview/$fileId': typeof FilesPreviewFileIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/shares': typeof SharesRoute
+  '/albums/$albumId': typeof AlbumsAlbumIdRoute
+  '/files/$folderId': typeof FilesFolderIdRoute
+  '/albums': typeof AlbumsIndexRoute
+  '/files': typeof FilesIndexRoute
+  '/files/preview/$fileId': typeof FilesPreviewFileIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/shares': typeof SharesRoute
+  '/albums/$albumId': typeof AlbumsAlbumIdRoute
+  '/files/$folderId': typeof FilesFolderIdRoute
+  '/albums/': typeof AlbumsIndexRoute
+  '/files/': typeof FilesIndexRoute
+  '/files/preview/$fileId': typeof FilesPreviewFileIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/shares'
+    | '/albums/$albumId'
+    | '/files/$folderId'
+    | '/albums/'
+    | '/files/'
+    | '/files/preview/$fileId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/shares'
+    | '/albums/$albumId'
+    | '/files/$folderId'
+    | '/albums'
+    | '/files'
+    | '/files/preview/$fileId'
+  id:
+    | '__root__'
+    | '/'
+    | '/shares'
+    | '/albums/$albumId'
+    | '/files/$folderId'
+    | '/albums/'
+    | '/files/'
+    | '/files/preview/$fileId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SharesRoute: typeof SharesRoute
+  AlbumsAlbumIdRoute: typeof AlbumsAlbumIdRoute
+  FilesFolderIdRoute: typeof FilesFolderIdRoute
+  AlbumsIndexRoute: typeof AlbumsIndexRoute
+  FilesIndexRoute: typeof FilesIndexRoute
+  FilesPreviewFileIdRoute: typeof FilesPreviewFileIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shares': {
+      id: '/shares'
+      path: '/shares'
+      fullPath: '/shares'
+      preLoaderRoute: typeof SharesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +137,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/files/': {
+      id: '/files/'
+      path: '/files'
+      fullPath: '/files/'
+      preLoaderRoute: typeof FilesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/albums/': {
+      id: '/albums/'
+      path: '/albums'
+      fullPath: '/albums/'
+      preLoaderRoute: typeof AlbumsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/files/$folderId': {
+      id: '/files/$folderId'
+      path: '/files/$folderId'
+      fullPath: '/files/$folderId'
+      preLoaderRoute: typeof FilesFolderIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/albums/$albumId': {
+      id: '/albums/$albumId'
+      path: '/albums/$albumId'
+      fullPath: '/albums/$albumId'
+      preLoaderRoute: typeof AlbumsAlbumIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/files/preview/$fileId': {
+      id: '/files/preview/$fileId'
+      path: '/files/preview/$fileId'
+      fullPath: '/files/preview/$fileId'
+      preLoaderRoute: typeof FilesPreviewFileIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SharesRoute: SharesRoute,
+  AlbumsAlbumIdRoute: AlbumsAlbumIdRoute,
+  FilesFolderIdRoute: FilesFolderIdRoute,
+  AlbumsIndexRoute: AlbumsIndexRoute,
+  FilesIndexRoute: FilesIndexRoute,
+  FilesPreviewFileIdRoute: FilesPreviewFileIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

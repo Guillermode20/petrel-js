@@ -15,6 +15,8 @@ export interface File {
   mimeType: string
   hash: string
   uploadedBy: number | null
+  parentId: number | null
+  thumbnailPath: string | null
   createdAt: Date
   metadata?: VideoMetadata | AudioMetadata | ImageMetadata
 }
@@ -27,6 +29,11 @@ export interface Folder {
   ownerId: number | null
 }
 
+/**
+ * Union type for file browser items
+ */
+export type FileItem = File | Folder
+
 export type ShareType = 'file' | 'folder' | 'album'
 
 export interface Share {
@@ -38,6 +45,7 @@ export interface Share {
   passwordHash: string | null
   downloadCount: number
   viewCount: number
+  createdAt: Date
 }
 
 export interface ShareSettings {
@@ -54,6 +62,8 @@ export interface Album {
   coverFileId: number | null
   ownerId: number | null
   createdAt: Date
+  fileCount?: number
+  files?: File[]
 }
 
 export interface AlbumFile {
