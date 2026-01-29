@@ -151,11 +151,15 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
     const handleRename = useCallback(
         async (newName: string) => {
             if (!renameItem) return
-            await updateMutation.mutateAsync({ id: renameItem.id, data: { name: newName } })
+            if (isFolder(renameItem)) {
+                await updateFolderMutation.mutateAsync({ id: renameItem.id, data: { name: newName } })
+            } else {
+                await updateMutation.mutateAsync({ id: renameItem.id, data: { name: newName } })
+            }
             toast.success(`Renamed to "${newName}"`)
             setRenameItem(null)
         },
-        [updateMutation, renameItem]
+        [updateMutation, updateFolderMutation, renameItem]
     )
 
     const handleMove = useCallback(

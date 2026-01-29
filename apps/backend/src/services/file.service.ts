@@ -16,6 +16,7 @@ export interface CreateFileInput {
   mimeType: string;
   hash: string;
   uploadedBy: number | null;
+  parentId: number | null;
   metadata: File['metadata'] | null;
 }
 
@@ -42,6 +43,8 @@ export class FileService {
       mimeType: row.mimeType,
       hash: row.hash,
       uploadedBy: row.uploadedBy,
+      parentId: row.parentId,
+      thumbnailPath: row.thumbnailPath,
       createdAt: row.createdAt,
       metadata: metadataValue ?? undefined,
     };
@@ -95,6 +98,7 @@ export class FileService {
         mimeType: input.mimeType,
         hash: input.hash,
         uploadedBy: input.uploadedBy,
+        parentId: input.parentId,
         metadata: input.metadata,
       })
       .returning();

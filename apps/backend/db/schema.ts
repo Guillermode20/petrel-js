@@ -39,6 +39,8 @@ export const files = sqliteTable("files", {
 	mimeType: text("mime_type").notNull(),
 	hash: text("hash").notNull(),
 	uploadedBy: integer("uploaded_by").references(() => users.id),
+	parentId: integer("parent_id").references(() => folders.id),
+	thumbnailPath: text("thumbnail_path"),
 	metadata: text("metadata", { mode: "json" }),
 	createdAt: integer("created_at", { mode: "timestamp" })
 		.notNull()

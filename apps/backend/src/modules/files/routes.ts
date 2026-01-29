@@ -181,6 +181,10 @@ async function finalizeUpload(params: {
 
   const fileHash = await calculateFileHash(finalPath);
   const size = Bun.file(finalPath).size;
+
+  const folder = await folderService.getFolderByPath(params.folderPath);
+  const parentId = folder?.id ?? null;
+
   const created = await fileService.createFile({
     name: params.fileName,
     path: params.folderPath,
@@ -188,6 +192,7 @@ async function finalizeUpload(params: {
     mimeType: params.mimeType,
     hash: fileHash,
     uploadedBy: params.userId,
+    parentId,
     metadata: null,
   });
 
