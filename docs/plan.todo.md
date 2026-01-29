@@ -245,20 +245,20 @@
 ### Layout & Navigation
 - [x] Root layout with monospace typography
 - [x] Header component with navigation
-- [ ] Sidebar navigation (Files, Albums, Shares, Settings)
-- [ ] Breadcrumb navigation for folder hierarchy
-- [ ] Mobile-responsive drawer navigation
+- [x] Sidebar navigation (Files, Albums, Shares, Settings)
+- [x] Breadcrumb navigation for folder hierarchy
+- [x] Mobile-responsive drawer navigation
 - [x] Dark mode by default (terminal aesthetic)
 
 ### File Browser
-- [ ] Grid view (thumbnails) and list view toggle
-- [ ] File/folder icons with mime-type awareness
+- [x] Grid view (thumbnails) and list view toggle
+- [x] File/folder icons with mime-type awareness
 - [ ] Context menu (right-click actions)
-- [ ] Multi-select with shift/ctrl+click
-- [ ] Drag-and-drop upload zone
+- [x] Multi-select with shift/ctrl+click
+- [x] Drag-and-drop upload zone
 - [ ] Upload progress indicator with cancel option
-- [ ] Search/filter bar
-- [ ] Sort by name/date/size/type
+- [x] Search/filter bar
+- [x] Sort by name/date/size/type
 
 ### Video Player — Custom build on hls.js
 **Why hls.js directly (not Video.js/Plyr):**
@@ -266,8 +266,8 @@
 - No fighting external CSS
 - Custom features styled your way
 
-- [ ] `VideoPlayer` component with hidden native controls
-- [ ] `useVideoPlayer` hook for state management:
+- [x] `VideoPlayer` component with hidden native controls
+- [x] `useVideoPlayer` hook for state management:
   - Play/pause state
   - Current time / duration
   - Volume control
@@ -283,13 +283,13 @@
   - Subtitle dropdown (WebVTT tracks)
   - Quality selector (auto, 1080p, 720p, 480p)
   - Fullscreen button
-- [ ] Keyboard shortcuts:
+- [x] Keyboard shortcuts:
   - Space: play/pause
   - Arrow keys: seek +/- 5s
   - F: fullscreen
   - M: mute
-- [ ] Loading/buffering states
-- [ ] Transcode progress overlay (if processing)
+- [x] Loading/buffering states
+- [x] Transcode progress overlay (if processing)
 
 ### Photo Gallery — Custom lightbox
 **Why custom (not off-the-shelf):** No gallery fits monospace aesthetic
@@ -314,13 +314,13 @@
 ### Audio Player — Howler.js based
 **Why Howler.js (not native audio):** Gapless playback, Web Audio abstraction, consistent API
 
-- [ ] `AudioPlayer` component:
+- [x] `AudioPlayer` component:
   - Album art display
   - Track info (title, artist, album)
   - Play/pause, prev/next controls
   - Seek slider with current time / duration
   - Volume control
-- [ ] `Playlist` component:
+- [x] `Playlist` component:
   - Track list with current indicator
   - Shuffle/repeat toggles
   - Track selection
@@ -329,21 +329,21 @@
 - [ ] Media Session API for lock screen controls
 
 ### Document Viewer
-- [ ] **PDF viewer** — pdf.js integration
+- [x] **PDF viewer** — pdf.js integration
   - Page navigation
   - Zoom controls
-- [ ] **Text/Code viewer** — shiki syntax highlighting
-- [ ] **Markdown viewer** — rendered preview
+- [x] **Text/Code viewer** — shiki syntax highlighting
+- [x] **Markdown viewer** — rendered preview
 
 ### File Preview (Unified)
-- [ ] `FilePreview` router component — detects mime type and renders:
+- [x] `FilePreview` router component — detects mime type and renders:
   - Video → `VideoPlayer`
   - Audio → `AudioPlayer`
   - Image → `ImageViewer` (single)
   - PDF → `PDFViewer`
   - Text/Code → `CodeViewer`
   - Other → `DownloadPrompt`
-- [ ] Keyboard navigation (arrow keys for next/prev in folder)
+- [x] Keyboard navigation (arrow keys for next/prev in folder)
 
 ### Sharing UI
 - [x] "Create share" button in UI
@@ -354,15 +354,15 @@
   - Allow download toggle
   - Quality options (if transcoded)
 - [ ] Copy link button with toast confirmation
-- [ ] QR code generation for share links
+- [x] QR code generation for share links
 - [ ] `ShareManagement` table (active shares):
   - Link, expiry countdown, view/download counts
   - Revoke action
 
 ### Albums UI
 - [x] Album UI with sample data
-- [ ] `AlbumGrid` view with cover images
-- [ ] `AlbumDetail` view (masonry/grid layout)
+- [x] `AlbumGrid` view with cover images
+- [x] `AlbumDetail` view (masonry/grid layout)
 - [ ] "Add to album" action from file browser
 - [ ] Album slideshow mode
 - [ ] Album share (entire album as one link)

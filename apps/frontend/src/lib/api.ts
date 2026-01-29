@@ -11,7 +11,7 @@ import type {
   Subtitle,
 } from '@petrel/shared'
 
-const API_BASE = '/api'
+const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 /**
  * Standard API response shape from Petrel backend
@@ -72,26 +72,64 @@ class ApiClient {
     return result.data
   }
 
-  // Auth endpoints
+  // Auth endpoints - these don't use the standard { data, error } wrapper
   async login(username: string, password: string): Promise<{ accessToken: string; refreshToken: string; user: User }> {
-    return this.request('/auth/login', {
+    const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     })
+
+    // Handle non-JSON responses (e.g., rate limit)
+    const contentType = response.headers.get('content-type')
+    if (!contentType?.includes('application/json')) {
+      const text = await response.text()
+      throw new Error(text || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    // Backend returns { success: false, message: '...' } on failure
+    if (!result?.accessToken || !result?.refreshToken || !result?.user) {
+      throw new Error(result?.message || 'Login failed')
+    }
+
+    return result
   }
 
   async logout(refreshToken: string): Promise<void> {
-    return this.request('/auth/logout', {
+    await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(this.accessToken && { Authorization: `Bearer ${this.accessToken}` }),
+      },
       body: JSON.stringify({ refreshToken }),
     })
   }
 
   async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
-    return this.request('/auth/refresh', {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
     })
+
+    // Handle non-JSON responses (e.g., rate limit)
+    const contentType = response.headers.get('content-type')
+    if (!contentType?.includes('application/json')) {
+      const text = await response.text()
+      throw new Error(text || `HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    // Backend returns { success: false, message: '...' } on failure
+    if (!result?.accessToken || !result?.refreshToken) {
+      throw new Error(result?.message || 'Token refresh failed')
+    }
+
+    return result
   }
 
   async getCurrentUser(): Promise<User> {
@@ -128,9 +166,19 @@ class ApiClient {
     folderId?: number,
     onProgress?: (progress: number) => void
   ): Promise<File> {
+    // Generate a unique upload ID
+    const uploadId = `${Date.now()}-${Math.random().toString(36).substring(7)}`
+    
+    // For now, send as single chunk (totalChunks = 1, chunkIndex = 0)
     const formData = new FormData()
-    formData.append('file', file)
-    if (folderId) formData.append('folderId', String(folderId))
+    formData.append('uploadId', uploadId)
+    formData.append('chunkIndex', '0')
+    formData.append('totalChunks', '1')
+    formData.append('fileName', file.name)
+    formData.append('mimeType', file.type)
+    formData.append('size', String(file.size))
+    formData.append('chunk', file)
+    if (folderId) formData.append('path', String(folderId))
 
     // Use XHR for progress tracking
     return new Promise((resolve, reject) => {
