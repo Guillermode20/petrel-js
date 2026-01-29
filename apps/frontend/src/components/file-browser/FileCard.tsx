@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { isFile, isFolder } from '@/hooks'
 import { api } from '@/lib/api'
-import type { Folder } from '@petrel/shared'
+import type { File } from '@petrel/shared'
 import { getFileIcon, getFolderIcon, formatFileSize } from './utils'
 import type { FileItemProps } from './types'
 
@@ -18,13 +18,12 @@ export function FileCard({
     onDragStart,
     onDrop,
     className,
-    ...props
-}: FileItemProps & React.HTMLAttributes<HTMLDivElement>) {
+}: FileItemProps & { className?: string }) {
     const [isDragOver, setIsDragOver] = useState(false)
     const isFileItem = isFile(item)
     const isFolderItem = isFolder(item)
-    const Icon = isFileItem ? getFileIcon(item.mimeType) : getFolderIcon()
-    const showThumbnail = isFileItem && item.mimeType.startsWith('image/')
+    const Icon = isFileItem ? getFileIcon((item as File).mimeType) : getFolderIcon()
+    const showThumbnail = isFileItem && (item as File).mimeType.startsWith('image/')
 
     const handleDragOver = (e: React.DragEvent) => {
         if (!isFolderItem) return
@@ -37,12 +36,14 @@ export function FileCard({
         setIsDragOver(false)
     }
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    const handleDrop = (e: React.DragEvent) => {
         if (!isFolderItem) return
         e.preventDefault()
         e.stopPropagation()
         setIsDragOver(false)
-        onDrop?.(item, e)
+        if (onDrop) {
+            onDrop(item, e)
+        }
     }
 
     const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -54,7 +55,6 @@ export function FileCard({
 
     return (
         <div
-            {...props}
             draggable
             onDragStart={(e) => onDragStart?.(item, e)}
             onDragOver={handleDragOver}
@@ -75,7 +75,7 @@ export function FileCard({
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-secondary/30">
                 {showThumbnail ? (
                     <img
-                        src={api.getThumbnailUrl(item.id, 'small')}
+                        src={api.getThumbnailUrl((item as File).id, 'small')}
                         alt={item.name}
                         className="h-full w-full object-cover"
                         loading="lazy"
@@ -91,7 +91,7 @@ export function FileCard({
                     {item.name}
                 </p>
                 {isFileItem && (
-                    <p className="text-xs text-muted-foreground">{formatFileSize(item.size)}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize((item as File).size)}</p>
                 )}
             </div>
 
