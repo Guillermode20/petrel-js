@@ -132,6 +132,114 @@
 
 ---
 
+## Phase 2 Review Recommendations - Implementation Plans
+
+### High Priority
+
+#### JWT Secret Management
+- [ ] Audit codebase for all hardcoded secrets in auth middleware and routes
+- [ ] Create `.env.example` file documenting required environment variables
+- [ ] Install and configure `dotenv` package if not present
+- [ ] Update `apps/backend/src/modules/auth/utils.ts` to read JWT_SECRET from env
+- [ ] Update `apps/backend/src/modules/auth/middleware.ts` to use env-based secret
+- [ ] Add validation that JWT_SECRET is set at application startup
+- [ ] Update deployment documentation with environment variable requirements
+
+#### Refresh Token Persistence
+- [ ] Add `refresh_tokens` table to database schema with fields: id, user_id, token_hash, expires_at, created_at, revoked_at
+- [ ] Create migration file for the new table
+- [ ] Create `apps/backend/src/services/token.service.ts` with methods: storeRefreshToken, validateRefreshToken, revokeRefreshToken, cleanupExpiredTokens
+- [ ] Update auth routes to use database storage instead of memory for token blacklist
+- [ ] Add scheduled job to cleanup expired refresh tokens periodically
+- [ ] Update logout endpoint to properly revoke tokens in database
+
+#### Structured Logging
+- [ ] Evaluate and install Pino as logging library (lightweight, Bun-compatible)
+- [ ] Create `apps/backend/src/lib/logger.ts` with configured logger instance
+- [ ] Define log levels: error, warn, info, debug with appropriate use cases
+- [ ] Replace all console.log/console.error with structured logger calls
+- [ ] Add request logging middleware for HTTP requests
+- [ ] Configure log output format for development vs production
+- [ ] Add correlation IDs for tracing requests across services
+
+#### Test Coverage
+- [ ] Install test dependencies: vitest, @elysiajs/testing, supertest
+- [ ] Create `apps/backend/tests/` directory structure: unit/, integration/, fixtures/
+- [ ] Set up test database configuration using SQLite in-memory
+- [ ] Write unit tests for auth.service.ts (register, login, token validation)
+- [ ] Write unit tests for file.service.ts (CRUD operations)
+- [ ] Write integration tests for auth routes
+- [ ] Write integration tests for file routes
+- [ ] Add test script to package.json
+- [ ] Configure CI to run tests on pull requests
+
+### Medium Priority
+
+#### Concurrency Control
+- [ ] Analyze current transcode service for sequential bottlenecks
+- [ ] Install `p-map` or `p-limit` for controlled parallel processing
+- [ ] Add MAX_CONCURRENT_TRANSCODES environment variable (default: 2)
+- [ ] Refactor transcode queue to use worker pool pattern
+- [ ] Implement progress tracking for parallel transcoding jobs
+- [ ] Add queue priority system (new uploads vs background processing)
+- [ ] Test parallel transcoding with different file sizes and formats
+
+#### Caching Layer
+- [ ] Install Redis client library: ioredis
+- [ ] Create `apps/backend/src/lib/redis.ts` with connection management
+- [ ] Add REDIS_URL environment variable support
+- [ ] Implement cache middleware for frequently accessed endpoints
+- [ ] Cache file metadata queries for 5 minutes
+- [ ] Cache stream manifests for 1 minute
+- [ ] Add cache invalidation on file upload/update/delete
+- [ ] Implement fallback to database if Redis is unavailable
+
+#### Documentation
+- [ ] Add JSDoc to all service methods explaining parameters and return values
+- [ ] Document complex algorithms in transcode.service.ts
+- [ ] Add inline comments for non-obvious code sections
+- [ ] Create API endpoint documentation in docs/api.md
+- [ ] Document configuration options in docs/configuration.md
+- [ ] Add architecture diagram showing service relationships
+
+#### Extended Rate Limiting
+- [ ] Install `@elysiajs/rate-limit` package
+- [ ] Create rate limiting configuration file
+- [ ] Apply rate limiting to file upload endpoints (10 uploads per minute per user)
+- [ ] Apply rate limiting to stream endpoints (100 requests per minute per IP)
+- [ ] Apply rate limiting to share token validation (30 requests per minute)
+- [ ] Configure rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining)
+- [ ] Add rate limit bypass for admin users
+
+### Low Priority
+
+#### Code Refactoring
+- [ ] Identify all functions exceeding 50 lines using static analysis
+- [ ] Refactor `transcode.service.ts` large functions into smaller helpers
+- [ ] Refactor `file.service.ts` complex methods into focused sub-functions
+- [ ] Extract validation logic into reusable validators
+- [ ] Extract database query builders into separate functions
+- [ ] Run linter and type checker after each refactoring
+
+#### Configuration Validation
+- [ ] Install Zod or Valibot for schema validation
+- [ ] Create `apps/backend/src/config/schema.ts` with environment variable schemas
+- [ ] Define validation for: PORT, DATABASE_URL, JWT_SECRET, REDIS_URL, etc.
+- [ ] Create `apps/backend/src/config/index.ts` to load and validate config at startup
+- [ ] Add helpful error messages for missing/invalid configuration
+- [ ] Add type-safe config object exported for use across application
+
+#### API Documentation
+- [ ] Install `@elysiajs/swagger` package
+- [ ] Configure Swagger UI at `/docs` endpoint
+- [ ] Add Elysia schema definitions to all routes
+- [ ] Document request/response types for all endpoints
+- [ ] Add example values for complex request bodies
+- [ ] Group endpoints by resource (auth, files, shares, albums, stream)
+- [ ] Add authentication documentation to Swagger
+
+---
+
 ## Phase 3: Core Frontend (TanStack Start)
 
 ### Layout & Navigation
