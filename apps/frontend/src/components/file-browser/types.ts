@@ -5,7 +5,6 @@ export interface FileItemProps {
   isSelected?: boolean
   onSelect?: (item: File | Folder, event: React.MouseEvent) => void
   onDoubleClick?: (item: File | Folder, event?: React.MouseEvent) => void
-  onContextMenu?: (item: File | Folder, event: React.MouseEvent) => void
   onDragStart?: (item: File | Folder, event: React.DragEvent) => void
   onDrop?: (target: File | Folder, event: React.DragEvent) => void
 }

@@ -1,11 +1,25 @@
 import { Elysia, t } from 'elysia';
 import { authMiddleware, requireAuth } from '../auth';
 import { albumService } from '../../services/album.service';
-import type { ApiResponse, AlbumWithFiles } from './types';
+import type { ApiResponse, AlbumWithFiles, Album } from './types';
 
 export const albumRoutes = new Elysia({ prefix: '/api' })
   .use(authMiddleware)
   .use(requireAuth)
+  .get(
+    '/albums',
+    async ({ user }): Promise<ApiResponse<Album[]>> => {
+      const albums = await albumService.getUserAlbums(user.userId);
+      return { data: albums, error: null };
+    },
+    {
+      detail: {
+        summary: 'List albums',
+        description: 'Returns all albums for the current user',
+        tags: ['Albums'],
+      },
+    }
+  )
   .post(
     '/albums',
     async ({ body, set, user }): Promise<ApiResponse<AlbumWithFiles['album']>> => {

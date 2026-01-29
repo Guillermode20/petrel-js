@@ -43,6 +43,8 @@ export class AlbumService {
       mimeType: row.mimeType,
       hash: row.hash,
       uploadedBy: row.uploadedBy,
+      parentId: null,
+      thumbnailPath: null,
       createdAt: row.createdAt,
       metadata: metadataValue ?? undefined,
     };
@@ -70,6 +72,14 @@ export class AlbumService {
   async getAlbumById(id: number): Promise<Album | null> {
     const album = await db.query.albums.findFirst({ where: eq(albums.id, id) });
     return album ? this.mapAlbum(album) : null;
+  }
+
+  async getUserAlbums(userId: number): Promise<Album[]> {
+    const userAlbums = await db.query.albums.findMany({
+      where: eq(albums.ownerId, userId),
+      orderBy: (albums, { desc }) => [desc(albums.createdAt)],
+    });
+    return userAlbums.map((row) => this.mapAlbum(row));
   }
 
   async getAlbumWithFiles(id: number): Promise<AlbumWithFiles | null> {

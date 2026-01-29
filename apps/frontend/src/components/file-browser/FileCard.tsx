@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 import { isFile, isFolder } from '@/hooks'
 import { api } from '@/lib/api'
@@ -9,16 +9,17 @@ import type { FileItemProps } from './types'
 /**
  * File card component for grid view
  */
-export function FileCard({
-    item,
-    isSelected,
-    onSelect,
-    onDoubleClick,
-    onContextMenu,
-    onDragStart,
-    onDrop,
-    className,
-}: FileItemProps & { className?: string }) {
+export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?: string }>(
+    function FileCard({
+        item,
+        isSelected,
+        onSelect,
+        onDoubleClick,
+        onDragStart,
+        onDrop,
+        className,
+        ...props
+    }, ref) {
     const [isDragOver, setIsDragOver] = useState(false)
     const isFileItem = isFile(item)
     const isFolderItem = isFolder(item)
@@ -46,15 +47,9 @@ export function FileCard({
         }
     }
 
-    const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (onContextMenu) {
-            e.preventDefault()
-            onContextMenu(item, e)
-        }
-    }
-
     return (
         <div
+            ref={ref}
             draggable
             onDragStart={(e) => onDragStart?.(item, e)}
             onDragOver={handleDragOver}
@@ -69,7 +64,7 @@ export function FileCard({
             )}
             onClick={(e) => onSelect?.(item, e)}
             onDoubleClick={() => onDoubleClick?.(item)}
-            onContextMenu={handleContextMenu}
+            {...props}
         >
             {/* Thumbnail or icon */}
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-secondary/30">
@@ -101,4 +96,4 @@ export function FileCard({
             )}
         </div>
     )
-}
+})
