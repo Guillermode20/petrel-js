@@ -2,6 +2,9 @@ import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
 import { swagger } from '@elysiajs/swagger';
 
+import { config } from './src/config';
+import { logger, generateCorrelationId, createChildLogger } from './src/lib/logger';
+import { initRedis, closeRedis } from './src/lib/redis';
 import { db } from './db';
 import { authRoutes } from './src/modules/auth';
 import { fileRoutes } from './src/modules/files';
@@ -9,11 +12,55 @@ import { shareRoutes } from './src/modules/shares';
 import { albumRoutes } from './src/modules/albums';
 import { streamRoutes } from './src/modules/stream';
 
+// Initialize Redis (optional caching layer)
+initRedis();
+
 const app = new Elysia()
-  .use(swagger())
+  // Request logging middleware with correlation IDs
+  .derive(({ headers }) => {
+    const correlationId = (headers['x-correlation-id'] as string) ?? generateCorrelationId();
+    return {
+      correlationId,
+      log: createChildLogger({ correlationId }),
+    };
+  })
+  .onAfterHandle(({ request, set, correlationId, log }) => {
+    log.info({
+      method: request.method,
+      url: request.url,
+      status: set.status ?? 200,
+    }, 'Request completed');
+  })
+  .onError(({ error, request, log }) => {
+    if (log) {
+      log.error({
+        method: request.method,
+        url: request.url,
+        error: error instanceof Error ? error.message : String(error),
+      }, 'Request error');
+    }
+  })
+  .use(
+    swagger({
+      documentation: {
+        info: {
+          title: 'Petrel API',
+          version: '1.0.0',
+          description: 'A fileserver built for simplicity with a focus on effortless sharing of videos and photo albums.',
+        },
+        tags: [
+          { name: 'Authentication', description: 'Auth endpoints' },
+          { name: 'Files', description: 'File management endpoints' },
+          { name: 'Shares', description: 'Share link management' },
+          { name: 'Albums', description: 'Photo album management' },
+          { name: 'Stream', description: 'Media streaming endpoints' },
+        ],
+      },
+    })
+  )
   .use(
     cors({
-      origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+      origin: config.FRONTEND_URL,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
       credentials: true,
     })
@@ -36,11 +83,26 @@ const app = new Elysia()
   .use(shareRoutes)
   // Album routes
   .use(albumRoutes)
-  .listen(4000);
+  .listen(config.PORT);
 
-console.log(
-  `🦊 Elysia is running at http://${app.server?.hostname}:${app.server?.port}`
+logger.info(
+  { port: app.server?.port, hostname: app.server?.hostname },
+  '🦊 Elysia server started'
 );
-console.log(
-  `📚 Swagger documentation at http://${app.server?.hostname}:${app.server?.port}/swagger`
+logger.info(
+  { url: `http://${app.server?.hostname}:${app.server?.port}/swagger` },
+  '📚 Swagger documentation available'
 );
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  logger.info('Shutting down gracefully...');
+  await closeRedis();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  logger.info('Shutting down gracefully...');
+  await closeRedis();
+  process.exit(0);
+});

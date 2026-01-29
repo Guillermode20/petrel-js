@@ -1,5 +1,7 @@
 import { Elysia, t } from 'elysia';
 import { authMiddleware, requireAuth } from '../auth';
+import { logger } from '../../lib/logger';
+import { shareRateLimit } from '../../lib/rate-limit';
 import { shareService } from '../../services/share.service';
 import type { ApiResponse, ShareData } from './types';
 
@@ -21,6 +23,7 @@ function isExpired(expiresAt: Date | null): boolean {
 
 export const shareRoutes = new Elysia({ prefix: '/api' })
   .use(authMiddleware)
+  .use(shareRateLimit)
   .post(
     '/shares',
     requireAuth,

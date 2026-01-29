@@ -1,5 +1,8 @@
 import { Elysia, t } from 'elysia';
 import { authMiddleware } from '../auth';
+import { config } from '../../config';
+import { logger } from '../../lib/logger';
+import { streamRateLimit } from '../../lib/rate-limit';
 import { fileService } from '../../services/file.service';
 import { streamService } from '../../services/stream.service';
 import { transcodeQueue } from '../../services/transcode.service';
@@ -7,7 +10,7 @@ import { videoService } from '../../services/video.service';
 import { resolveStoragePath } from '../../lib/storage';
 import type { ApiResponse, StreamInfoResponse } from './types';
 
-const GUEST_ACCESS_ENABLED = process.env.PETREL_GUEST_ACCESS === 'true';
+const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
 
 function canRead(user: unknown): boolean {
   return Boolean(user) || GUEST_ACCESS_ENABLED;
@@ -15,6 +18,7 @@ function canRead(user: unknown): boolean {
 
 export const streamRoutes = new Elysia({ prefix: '/api/stream' })
   .use(authMiddleware)
+  .use(streamRateLimit)
   .get(
     '/:fileId/info',
     async ({ params, set, user }): Promise<ApiResponse<StreamInfoResponse>> => {

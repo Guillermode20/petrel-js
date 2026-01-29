@@ -1,8 +1,8 @@
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
+import type { UserRole } from '@petrel/shared';
+import { config } from '../../config';
 import type { JWTPayload } from './types';
-
-const JWT_SECRET = process.env.JWT_SECRET ?? 'your-secret-key-change-in-production';
 
 /**
  * JWT middleware that validates access tokens and adds user to context
@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'your-secret-key-change-in-producti
 export const authMiddleware = new Elysia({ name: 'auth-middleware' })
   .use(
     jwt({
-      secret: JWT_SECRET,
+      secret: config.JWT_SECRET,
       exp: '15m',
       name: 'jwt',
     })
@@ -35,7 +35,7 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
       const userPayload: JWTPayload = {
         userId: payload.userId as number,
         username: payload.username as string,
-        role: payload.role as string,
+        role: payload.role as UserRole,
       };
 
       return { user: userPayload };

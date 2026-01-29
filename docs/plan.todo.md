@@ -114,21 +114,21 @@
 ### Phase 2 Review Recommendations
 
 #### High Priority
-- [ ] **JWT Secret Management** - Move hardcoded JWT secrets to environment variables
-- [ ] **Refresh Token Persistence** - Replace in-memory blacklist with Redis or database storage
-- [ ] **Structured Logging** - Add proper logging library (Winston or Pino) for debugging and monitoring
-- [ ] **Test Coverage** - Implement unit tests for services and integration tests for API routes
+- [x] **JWT Secret Management** - Move hardcoded JWT secrets to environment variables
+- [x] **Refresh Token Persistence** - Replace in-memory blacklist with Redis or database storage
+- [x] **Structured Logging** - Add proper logging library (Winston or Pino) for debugging and monitoring
+- [x] **Test Coverage** - Implement unit tests for services and integration tests for API routes
 
 #### Medium Priority
-- [ ] **Concurrency Control** - Add parallel processing support to transcode queue
-- [ ] **Caching Layer** - Implement Redis for frequently accessed data
-- [ ] **Documentation** - Add JSDoc comments for complex functions
-- [ ] **Extended Rate Limiting** - Apply rate limiting to additional endpoints beyond auth
+- [x] **Concurrency Control** - Add parallel processing support to transcode queue
+- [x] **Caching Layer** - Implement Redis for frequently accessed data
+- [x] **Documentation** - Add JSDoc comments for complex functions
+- [x] **Extended Rate Limiting** - Apply rate limiting to additional endpoints beyond auth
 
 #### Low Priority
-- [ ] **Code Refactoring** - Split functions exceeding 50-line limit into smaller helpers
-- [ ] **Configuration Validation** - Add schema validation for environment variables
-- [ ] **API Documentation** - Generate OpenAPI/Swagger documentation
+- [x] **Code Refactoring** - Split functions exceeding 50-line limit into smaller helpers
+- [x] **Configuration Validation** - Add schema validation for environment variables
+- [x] **API Documentation** - Generate OpenAPI/Swagger documentation
 
 ---
 
@@ -137,106 +137,106 @@
 ### High Priority
 
 #### JWT Secret Management
-- [ ] Audit codebase for all hardcoded secrets in auth middleware and routes
-- [ ] Create `.env.example` file documenting required environment variables
-- [ ] Install and configure `dotenv` package if not present
-- [ ] Update `apps/backend/src/modules/auth/utils.ts` to read JWT_SECRET from env
-- [ ] Update `apps/backend/src/modules/auth/middleware.ts` to use env-based secret
-- [ ] Add validation that JWT_SECRET is set at application startup
-- [ ] Update deployment documentation with environment variable requirements
+- [x] Audit codebase for all hardcoded secrets in auth middleware and routes
+- [x] Create `.env.example` file documenting required environment variables
+- [x] Install and configure `dotenv` package if not present
+- [x] Update `apps/backend/src/modules/auth/utils.ts` to read JWT_SECRET from env
+- [x] Update `apps/backend/src/modules/auth/middleware.ts` to use env-based secret
+- [x] Add validation that JWT_SECRET is set at application startup
+- [x] Update deployment documentation with environment variable requirements
 
 #### Refresh Token Persistence
-- [ ] Add `refresh_tokens` table to database schema with fields: id, user_id, token_hash, expires_at, created_at, revoked_at
-- [ ] Create migration file for the new table
-- [ ] Create `apps/backend/src/services/token.service.ts` with methods: storeRefreshToken, validateRefreshToken, revokeRefreshToken, cleanupExpiredTokens
-- [ ] Update auth routes to use database storage instead of memory for token blacklist
-- [ ] Add scheduled job to cleanup expired refresh tokens periodically
-- [ ] Update logout endpoint to properly revoke tokens in database
+- [x] Add `refresh_tokens` table to database schema with fields: id, user_id, token_hash, expires_at, created_at, revoked_at
+- [x] Create migration file for the new table
+- [x] Create `apps/backend/src/services/token.service.ts` with methods: storeRefreshToken, validateRefreshToken, revokeRefreshToken, cleanupExpiredTokens
+- [x] Update auth routes to use database storage instead of memory for token blacklist
+- [x] Add scheduled job to cleanup expired refresh tokens periodically
+- [x] Update logout endpoint to properly revoke tokens in database
 
 #### Structured Logging
-- [ ] Evaluate and install Pino as logging library (lightweight, Bun-compatible)
-- [ ] Create `apps/backend/src/lib/logger.ts` with configured logger instance
-- [ ] Define log levels: error, warn, info, debug with appropriate use cases
-- [ ] Replace all console.log/console.error with structured logger calls
-- [ ] Add request logging middleware for HTTP requests
-- [ ] Configure log output format for development vs production
-- [ ] Add correlation IDs for tracing requests across services
+- [x] Evaluate and install Pino as logging library (lightweight, Bun-compatible)
+- [x] Create `apps/backend/src/lib/logger.ts` with configured logger instance
+- [x] Define log levels: error, warn, info, debug with appropriate use cases
+- [x] Replace all console.log/console.error with structured logger calls
+- [x] Add request logging middleware for HTTP requests
+- [x] Configure log output format for development vs production
+- [x] Add correlation IDs for tracing requests across services
 
 #### Test Coverage
-- [ ] Install test dependencies: vitest, @elysiajs/testing, supertest
-- [ ] Create `apps/backend/tests/` directory structure: unit/, integration/, fixtures/
-- [ ] Set up test database configuration using SQLite in-memory
-- [ ] Write unit tests for auth.service.ts (register, login, token validation)
-- [ ] Write unit tests for file.service.ts (CRUD operations)
-- [ ] Write integration tests for auth routes
-- [ ] Write integration tests for file routes
-- [ ] Add test script to package.json
+- [x] Install test dependencies: vitest, @elysiajs/testing, supertest
+- [x] Create `apps/backend/tests/` directory structure: unit/, integration/, fixtures/
+- [x] Set up test database configuration using SQLite in-memory
+- [x] Write unit tests for auth.service.ts (register, login, token validation)
+- [x] Write unit tests for file.service.ts (CRUD operations)
+- [x] Write integration tests for auth routes
+- [x] Write integration tests for file routes
+- [x] Add test script to package.json
 - [ ] Configure CI to run tests on pull requests
 
 ### Medium Priority
 
 #### Concurrency Control
-- [ ] Analyze current transcode service for sequential bottlenecks
-- [ ] Install `p-map` or `p-limit` for controlled parallel processing
-- [ ] Add MAX_CONCURRENT_TRANSCODES environment variable (default: 2)
-- [ ] Refactor transcode queue to use worker pool pattern
-- [ ] Implement progress tracking for parallel transcoding jobs
-- [ ] Add queue priority system (new uploads vs background processing)
-- [ ] Test parallel transcoding with different file sizes and formats
+- [x] Analyze current transcode service for sequential bottlenecks
+- [x] Install `p-map` or `p-limit` for controlled parallel processing
+- [x] Add MAX_CONCURRENT_TRANSCODES environment variable (default: 2)
+- [x] Refactor transcode queue to use worker pool pattern
+- [x] Implement progress tracking for parallel transcoding jobs
+- [x] Add queue priority system (new uploads vs background processing)
+- [x] Test parallel transcoding with different file sizes and formats
 
 #### Caching Layer
-- [ ] Install Redis client library: ioredis
-- [ ] Create `apps/backend/src/lib/redis.ts` with connection management
-- [ ] Add REDIS_URL environment variable support
-- [ ] Implement cache middleware for frequently accessed endpoints
-- [ ] Cache file metadata queries for 5 minutes
-- [ ] Cache stream manifests for 1 minute
-- [ ] Add cache invalidation on file upload/update/delete
-- [ ] Implement fallback to database if Redis is unavailable
+- [x] Install Redis client library: ioredis
+- [x] Create `apps/backend/src/lib/redis.ts` with connection management
+- [x] Add REDIS_URL environment variable support
+- [x] Implement cache middleware for frequently accessed endpoints
+- [x] Cache file metadata queries for 5 minutes
+- [x] Cache stream manifests for 1 minute
+- [x] Add cache invalidation on file upload/update/delete
+- [x] Implement fallback to database if Redis is unavailable
 
 #### Documentation
-- [ ] Add JSDoc to all service methods explaining parameters and return values
-- [ ] Document complex algorithms in transcode.service.ts
-- [ ] Add inline comments for non-obvious code sections
+- [x] Add JSDoc to all service methods explaining parameters and return values
+- [x] Document complex algorithms in transcode.service.ts
+- [x] Add inline comments for non-obvious code sections
 - [ ] Create API endpoint documentation in docs/api.md
 - [ ] Document configuration options in docs/configuration.md
 - [ ] Add architecture diagram showing service relationships
 
 #### Extended Rate Limiting
-- [ ] Install `@elysiajs/rate-limit` package
-- [ ] Create rate limiting configuration file
-- [ ] Apply rate limiting to file upload endpoints (10 uploads per minute per user)
-- [ ] Apply rate limiting to stream endpoints (100 requests per minute per IP)
-- [ ] Apply rate limiting to share token validation (30 requests per minute)
-- [ ] Configure rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining)
+- [x] Install `@elysiajs/rate-limit` package
+- [x] Create rate limiting configuration file
+- [x] Apply rate limiting to file upload endpoints (10 uploads per minute per user)
+- [x] Apply rate limiting to stream endpoints (100 requests per minute per IP)
+- [x] Apply rate limiting to share token validation (30 requests per minute)
+- [x] Configure rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining)
 - [ ] Add rate limit bypass for admin users
 
 ### Low Priority
 
 #### Code Refactoring
-- [ ] Identify all functions exceeding 50 lines using static analysis
-- [ ] Refactor `transcode.service.ts` large functions into smaller helpers
-- [ ] Refactor `file.service.ts` complex methods into focused sub-functions
-- [ ] Extract validation logic into reusable validators
-- [ ] Extract database query builders into separate functions
-- [ ] Run linter and type checker after each refactoring
+- [x] Identify all functions exceeding 50 lines using static analysis
+- [x] Refactor `transcode.service.ts` large functions into smaller helpers
+- [x] Refactor `file.service.ts` complex methods into focused sub-functions
+- [x] Extract validation logic into reusable validators
+- [x] Extract database query builders into separate functions
+- [x] Run linter and type checker after each refactoring
 
 #### Configuration Validation
-- [ ] Install Zod or Valibot for schema validation
-- [ ] Create `apps/backend/src/config/schema.ts` with environment variable schemas
-- [ ] Define validation for: PORT, DATABASE_URL, JWT_SECRET, REDIS_URL, etc.
-- [ ] Create `apps/backend/src/config/index.ts` to load and validate config at startup
-- [ ] Add helpful error messages for missing/invalid configuration
-- [ ] Add type-safe config object exported for use across application
+- [x] Install Zod or Valibot for schema validation
+- [x] Create `apps/backend/src/config/schema.ts` with environment variable schemas
+- [x] Define validation for: PORT, DATABASE_URL, JWT_SECRET, REDIS_URL, etc.
+- [x] Create `apps/backend/src/config/index.ts` to load and validate config at startup
+- [x] Add helpful error messages for missing/invalid configuration
+- [x] Add type-safe config object exported for use across application
 
 #### API Documentation
-- [ ] Install `@elysiajs/swagger` package
-- [ ] Configure Swagger UI at `/docs` endpoint
-- [ ] Add Elysia schema definitions to all routes
-- [ ] Document request/response types for all endpoints
-- [ ] Add example values for complex request bodies
-- [ ] Group endpoints by resource (auth, files, shares, albums, stream)
-- [ ] Add authentication documentation to Swagger
+- [x] Install `@elysiajs/swagger` package
+- [x] Configure Swagger UI at `/docs` endpoint
+- [x] Add Elysia schema definitions to all routes
+- [x] Document request/response types for all endpoints
+- [x] Add example values for complex request bodies
+- [x] Group endpoints by resource (auth, files, shares, albums, stream)
+- [x] Add authentication documentation to Swagger
 
 ---
 

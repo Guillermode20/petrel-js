@@ -3,6 +3,9 @@ import type { BunFile } from 'bun';
 import sharp from 'sharp';
 import { rename, unlink, readdir, rm, stat } from 'node:fs/promises';
 import type { File as SharedFile } from '@petrel/shared';
+import { config } from '../../config';
+import { logger } from '../../lib/logger';
+import { uploadRateLimit } from '../../lib/rate-limit';
 import { authMiddleware, requireAuth } from '../auth';
 import { fileService } from '../../services/file.service';
 import { folderService } from '../../services/folder.service';
@@ -35,7 +38,7 @@ import {
 } from '../../lib/storage';
 import type { ApiResponse, FileListData } from './types';
 
-const GUEST_ACCESS_ENABLED = process.env.PETREL_GUEST_ACCESS === 'true';
+const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
 
 function canRead(user: unknown): boolean {
   return Boolean(user) || GUEST_ACCESS_ENABLED;
@@ -593,6 +596,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
   .group('/files', (app) =>
     app
       .use(requireAuth)
+      .use(uploadRateLimit)
       .post(
         '/upload',
         async ({ body, set, user }): Promise<ApiResponse<SharedFile>> => {

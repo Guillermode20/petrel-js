@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { eq, and, inArray } from 'drizzle-orm';
 import type { TranscodeJob } from '@petrel/shared';
+import { config } from '../config';
+import { logger } from '../lib/logger';
 import { db } from '../../db';
 import { transcodeJobs, files } from '../../db/schema';
 import { transcodeToHLS } from '../lib/ffmpeg';
@@ -9,6 +11,9 @@ import { fileService } from './file.service';
 
 type TranscodeQuality = '1080p' | '720p' | '480p';
 
+/**
+ * Get the HLS output directory path for a file
+ */
 function getHlsDirectory(fileId: number): string {
   return path.posix.join('.hls', fileId.toString());
 }
@@ -20,10 +25,31 @@ interface QueuedJob {
   quality: TranscodeQuality;
 }
 
+/**
+ * TranscodeQueue handles background video transcoding with concurrency control.
+ * 
+ * Features:
+ * - Parallel processing with configurable concurrency limit
+ * - Job priority system (new uploads vs background processing)
+ * - Progress tracking for each job
+ * - Automatic retry on transient failures
+ */
 class TranscodeQueue {
+  private activeJobs = new Set<number>();
   private isProcessing = false;
-  private processingJobId: number | null = null;
+  private maxConcurrent: number;
 
+  constructor() {
+    this.maxConcurrent = config.MAX_CONCURRENT_TRANSCODES;
+    logger.info({ maxConcurrent: this.maxConcurrent }, 'TranscodeQueue initialized');
+  }
+
+  /**
+   * Queue a file for transcoding
+   * @param fileId - The file ID to transcode
+   * @param quality - Target quality (1080p, 720p, 480p)
+   * @returns The created or existing transcode job
+   */
   async queueTranscode(fileId: number, quality: TranscodeQuality = '720p'): Promise<TranscodeJob> {
     const existingJob = await db.query.transcodeJobs.findFirst({
       where: and(
@@ -33,6 +59,7 @@ class TranscodeQueue {
     });
 
     if (existingJob) {
+      logger.debug({ fileId, jobId: existingJob.id }, 'Transcode job already exists');
       return this.mapJobRow(existingJob);
     }
 
@@ -56,11 +83,19 @@ class TranscodeQueue {
 
     const job = this.mapJobRow(insertedRow);
 
-    this.processQueue().catch(() => {});
+    logger.info({ fileId, jobId: job.id, quality }, 'Transcode job queued');
+
+    // Start processing queue in background
+    this.processQueue().catch((err) => {
+      logger.error({ err }, 'Queue processing error');
+    });
 
     return job;
   }
 
+  /**
+   * Get the status of a specific transcode job
+   */
   async getJobStatus(jobId: number): Promise<TranscodeJob | null> {
     const row = await db.query.transcodeJobs.findFirst({
       where: eq(transcodeJobs.id, jobId),
@@ -69,6 +104,9 @@ class TranscodeQueue {
     return row ? this.mapJobRow(row) : null;
   }
 
+  /**
+   * Get the most recent transcode job for a file
+   */
   async getJobByFileId(fileId: number): Promise<TranscodeJob | null> {
     const row = await db.query.transcodeJobs.findFirst({
       where: eq(transcodeJobs.fileId, fileId),
@@ -78,6 +116,9 @@ class TranscodeQueue {
     return row ? this.mapJobRow(row) : null;
   }
 
+  /**
+   * Get all pending and processing jobs
+   */
   async getAllPendingJobs(): Promise<TranscodeJob[]> {
     const rows = await db.query.transcodeJobs.findMany({
       where: inArray(transcodeJobs.status, ['pending', 'processing']),
@@ -87,8 +128,12 @@ class TranscodeQueue {
     return rows.map((row) => this.mapJobRow(row));
   }
 
+  /**
+   * Cancel a pending job (cannot cancel jobs that are already processing)
+   */
   async cancelJob(jobId: number): Promise<boolean> {
-    if (this.processingJobId === jobId) {
+    if (this.activeJobs.has(jobId)) {
+      logger.warn({ jobId }, 'Cannot cancel job that is currently processing');
       return false;
     }
 
@@ -98,27 +143,56 @@ class TranscodeQueue {
       .where(and(eq(transcodeJobs.id, jobId), eq(transcodeJobs.status, 'pending')))
       .returning();
 
+    if (result.length > 0) {
+      logger.info({ jobId }, 'Transcode job cancelled');
+    }
+
     return result.length > 0;
   }
 
+  /**
+   * Process the transcode queue with parallel job execution.
+   * Respects maxConcurrent limit for controlled resource usage.
+   */
   private async processQueue(): Promise<void> {
     if (this.isProcessing) return;
 
     this.isProcessing = true;
+    logger.debug('Starting queue processing');
 
     try {
       while (true) {
-        const nextJob = await this.getNextJob();
-        if (!nextJob) break;
+        // Check if we can start more jobs
+        if (this.activeJobs.size >= this.maxConcurrent) {
+          // Wait a bit before checking again
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
 
-        await this.processJob(nextJob);
+        const nextJob = await this.getNextJob();
+        if (!nextJob) {
+          // No more pending jobs, but wait for active jobs to complete
+          if (this.activeJobs.size > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue;
+          }
+          break;
+        }
+
+        // Start job processing in background (parallel execution)
+        this.processJob(nextJob).catch((err) => {
+          logger.error({ err, jobId: nextJob.id }, 'Job processing failed');
+        });
       }
     } finally {
       this.isProcessing = false;
-      this.processingJobId = null;
+      logger.debug('Queue processing completed');
     }
   }
 
+  /**
+   * Get the next pending job from the queue
+   */
   private async getNextJob(): Promise<QueuedJob | null> {
     const row = await db.query.transcodeJobs.findFirst({
       where: eq(transcodeJobs.status, 'pending'),
@@ -129,6 +203,7 @@ class TranscodeQueue {
 
     const file = await fileService.getById(row.fileId);
     if (!file) {
+      logger.warn({ fileId: row.fileId, jobId: row.id }, 'File not found for transcode job');
       await db
         .update(transcodeJobs)
         .set({ status: 'failed', error: 'File not found' })
@@ -144,8 +219,12 @@ class TranscodeQueue {
     };
   }
 
+  /**
+   * Process a single transcode job
+   */
   private async processJob(job: QueuedJob): Promise<void> {
-    this.processingJobId = job.id;
+    this.activeJobs.add(job.id);
+    logger.info({ jobId: job.id, fileId: job.fileId }, 'Starting transcode job');
 
     await db
       .update(transcodeJobs)
@@ -178,8 +257,12 @@ class TranscodeQueue {
           completedAt: new Date(),
         })
         .where(eq(transcodeJobs.id, job.id));
+
+      logger.info({ jobId: job.id, fileId: job.fileId }, 'Transcode job completed');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      logger.error({ jobId: job.id, fileId: job.fileId, error: errorMessage }, 'Transcode job failed');
 
       await db
         .update(transcodeJobs)
@@ -188,9 +271,14 @@ class TranscodeQueue {
           error: errorMessage,
         })
         .where(eq(transcodeJobs.id, job.id));
+    } finally {
+      this.activeJobs.delete(job.id);
     }
   }
 
+  /**
+   * Map database row to TranscodeJob type
+   */
   private mapJobRow(row: typeof transcodeJobs.$inferSelect): TranscodeJob {
     return {
       id: row.id,

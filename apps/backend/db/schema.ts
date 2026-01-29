@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm"
-import { sqliteTable, integer, text, primaryKey } from "drizzle-orm/sqlite-core"
+import { sqliteTable, integer, text, primaryKey, index } from "drizzle-orm/sqlite-core"
 
 export const users = sqliteTable("users", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
@@ -10,6 +10,26 @@ export const users = sqliteTable("users", {
 		.notNull()
 		.default(sql`(unixepoch())`),
 })
+
+export const refreshTokens = sqliteTable(
+	"refresh_tokens",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		userId: integer("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		tokenHash: text("token_hash").notNull().unique(),
+		expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+		createdAt: integer("created_at", { mode: "timestamp" })
+			.notNull()
+			.default(sql`(unixepoch())`),
+		revokedAt: integer("revoked_at", { mode: "timestamp" }),
+	},
+	(table) => ({
+		userIdIdx: index("refresh_tokens_user_id_idx").on(table.userId),
+		tokenHashIdx: index("refresh_tokens_token_hash_idx").on(table.tokenHash),
+	})
+)
 
 export const files = sqliteTable("files", {
 	id: integer("id").primaryKey({ autoIncrement: true }),

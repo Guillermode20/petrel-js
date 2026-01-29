@@ -4,15 +4,13 @@ import { rateLimit } from 'elysia-rate-limit';
 import { eq } from 'drizzle-orm';
 import { db } from '../../../db';
 import { users } from '../../../db/schema';
+import { config } from '../../config';
+import { logger } from '../../lib/logger';
+import { tokenService } from '../../services/token.service';
 import { authMiddleware, requireAuth } from './middleware';
 import { hashPassword, verifyPassword } from './utils';
+import type { UserRole } from '@petrel/shared';
 import type { JWTPayload, RefreshPayload, TokenResponse, MeResponse } from './types';
-
-const JWT_SECRET = process.env.JWT_SECRET ?? 'your-secret-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? 'your-refresh-secret-change-in-production';
-
-// In-memory refresh token blacklist (in production, use Redis or database)
-const tokenBlacklist = new Set<string>();
 
 /**
  * Auth routes module with login, logout, refresh, and me endpoints
@@ -22,14 +20,14 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   // JWT plugins for access and refresh tokens
   .use(
     jwt({
-      secret: JWT_SECRET,
+      secret: config.JWT_SECRET,
       exp: '15m',
       name: 'jwt',
     })
   )
   .use(
     jwt({
-      secret: JWT_REFRESH_SECRET,
+      secret: config.JWT_REFRESH_SECRET,
       exp: '7d',
       name: 'jwtRefresh',
     })
@@ -58,6 +56,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       });
 
       if (!user) {
+        logger.warn({ username }, 'Login attempt for non-existent user');
         set.status = 401;
         return {
           success: false,
@@ -69,6 +68,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       const isValidPassword = await verifyPassword(password, user.passwordHash);
 
       if (!isValidPassword) {
+        logger.warn({ username }, 'Login attempt with invalid password');
         set.status = 401;
         return {
           success: false,
@@ -80,7 +80,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       const payload: JWTPayload = {
         userId: user.id,
         username: user.username,
-        role: user.role,
+        role: user.role as UserRole,
       };
 
       const refreshPayload: RefreshPayload = {
@@ -91,6 +91,17 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       // Generate tokens
       const accessToken = await jwt.sign(payload);
       const refreshToken = await jwtRefresh.sign(refreshPayload);
+
+      // Store refresh token hash in database
+      const tokenHash = tokenService.hashToken(refreshToken);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      await tokenService.storeRefreshToken({
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      });
+
+      logger.info({ userId: user.id, username }, 'User logged in successfully');
 
       return {
         accessToken,
@@ -142,7 +153,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       const refreshToken = authHeader.slice(7);
 
       try {
-        // Verify the refresh token before blacklisting
+        // Verify the refresh token before revoking
         const payload = await jwtRefresh.verify(refreshToken);
 
         if (!payload || typeof payload !== 'object' || payload.type !== 'refresh') {
@@ -153,14 +164,18 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
           };
         }
 
-        // Add token to blacklist
-        tokenBlacklist.add(refreshToken);
+        // Revoke token in database
+        const tokenHash = tokenService.hashToken(refreshToken);
+        await tokenService.revokeRefreshToken(tokenHash);
+
+        logger.info({ userId: payload.userId }, 'User logged out');
 
         return {
           success: true,
           message: 'Logged out successfully',
         };
       } catch (error) {
+        logger.warn('Logout attempt with invalid token');
         set.status = 400;
         return {
           success: false,
@@ -200,8 +215,11 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
 
       const refreshToken = authHeader.slice(7);
 
-      // Check if token is blacklisted
-      if (tokenBlacklist.has(refreshToken)) {
+      // Check if token is revoked in database
+      const tokenHash = tokenService.hashToken(refreshToken);
+      const tokenValidation = await tokenService.validateRefreshToken(tokenHash);
+
+      if (!tokenValidation.valid) {
         set.status = 401;
         return {
           success: false,
@@ -237,10 +255,12 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         const accessPayload: JWTPayload = {
           userId: user.id,
           username: user.username,
-          role: user.role,
+          role: user.role as UserRole,
         };
 
         const accessToken = await jwt.sign(accessPayload);
+
+        logger.debug({ userId: user.id }, 'Access token refreshed');
 
         return {
           accessToken,
