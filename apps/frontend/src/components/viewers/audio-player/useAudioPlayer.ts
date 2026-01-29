@@ -175,6 +175,86 @@ export function useAudioPlayer({
     }
   }, [state.currentTime, seek, onPrevious])
 
+  // Media Session API for lock screen controls
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+
+    const updateMediaSession = () => {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: metadata?.title ?? file.name,
+        artist: metadata?.artist ?? 'Unknown',
+        album: metadata?.album ?? undefined,
+        artwork: metadata?.albumArt ? [{ src: api.getThumbnailUrl(file.id, 'medium'), sizes: '300x300', type: 'image/jpeg' }] : undefined,
+      })
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        howlRef.current?.play()
+      })
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        howlRef.current?.pause()
+      })
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        onPrevious?.()
+      })
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        onNext?.()
+      })
+
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (details.seekTime !== undefined && details.seekTime >= 0) {
+          howlRef.current?.seek(details.seekTime)
+          setState((prev) => ({ ...prev, currentTime: details.seekTime ?? 0 }))
+        }
+      })
+    }
+
+    updateMediaSession()
+  }, [file, metadata, onPrevious, onNext])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if not typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'k':
+          e.preventDefault()
+          togglePlay()
+          break
+        case 'n':
+          e.preventDefault()
+          onNext?.()
+          break
+        case 'p':
+          e.preventDefault()
+          onPrevious?.()
+          break
+        case 'arrowleft':
+          e.preventDefault()
+          seek(state.currentTime - 5)
+          break
+        case 'arrowright':
+          e.preventDefault()
+          seek(state.currentTime + 5)
+          break
+        case 'm':
+          e.preventDefault()
+          toggleMute()
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [state.currentTime, togglePlay, onNext, onPrevious, seek, toggleMute])
+
   const controls: AudioControls = {
     play,
     pause,

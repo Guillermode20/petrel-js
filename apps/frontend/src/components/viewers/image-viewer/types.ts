@@ -10,7 +10,7 @@ export interface LightboxProps {
   initialIndex?: number
   open: boolean
   onOpenChange: (open: boolean) => void
-  onDownload?: (file: File) => void
+  onDownload?: (file: File | File[]) => void
 }
 
 export interface ExifDisplayProps {

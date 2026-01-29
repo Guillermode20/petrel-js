@@ -314,9 +314,8 @@
   - Track list with current indicator
   - Shuffle/repeat toggles
   - Track selection
-- [ ] Waveform visualization (optional toggle)
-- [ ] Keyboard shortcuts (space, n, p, arrows)
-- [ ] Media Session API for lock screen controls
+- [x] Keyboard shortcuts (space, n, p, arrows)
+- [x] Media Session API for lock screen controls
 
 ### Document Viewer
 - [x] **PDF viewer** — pdf.js integration

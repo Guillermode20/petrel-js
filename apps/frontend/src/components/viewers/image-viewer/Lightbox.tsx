@@ -1,9 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { X, ChevronLeft, ChevronRight, Download, Info, ZoomIn, ZoomOut, RotateCw, Play, Pause } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Download, Info, ZoomIn, ZoomOut, RotateCw, Play, Pause, Package, Timer } from 'lucide-react'
 import { format } from 'date-fns'
 import type { ImageMetadata } from '@petrel/shared'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { api } from '@/lib/api'
 import type { LightboxProps } from './types'
@@ -22,7 +28,9 @@ export function Lightbox({
     const [zoom, setZoom] = useState(1)
     const [showInfo, setShowInfo] = useState(false)
     const [isSlideshow, setIsSlideshow] = useState(false)
+    const [slideshowInterval, setSlideshowInterval] = useState(4)
     const slideshowRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const touchStartRef = useRef<{ x: number; y: number; distance: number } | null>(null)
 
     const currentImage = images[currentIndex]
     const metadata = currentImage?.metadata as ImageMetadata | undefined
@@ -40,14 +48,14 @@ export function Lightbox({
         if (isSlideshow) {
             slideshowRef.current = setInterval(() => {
                 setCurrentIndex((prev) => (prev + 1) % images.length)
-            }, 4000)
+            }, slideshowInterval * 1000)
         }
         return () => {
             if (slideshowRef.current) {
                 clearInterval(slideshowRef.current)
             }
         }
-    }, [isSlideshow, images.length])
+    }, [isSlideshow, images.length, slideshowInterval])
 
     const goToNext = useCallback(() => {
         setCurrentIndex((prev) => (prev + 1) % images.length)
@@ -69,10 +77,6 @@ export function Lightbox({
 
     const handleResetZoom = useCallback(() => {
         setZoom(1)
-    }, [])
-
-    const toggleSlideshow = useCallback(() => {
-        setIsSlideshow((prev) => !prev)
     }, [])
 
     // Keyboard navigation
@@ -113,6 +117,32 @@ export function Lightbox({
         return () => document.removeEventListener('keydown', handleKeyDown)
     }, [open, goToNext, goToPrevious, onOpenChange, handleZoomIn, handleZoomOut])
 
+    // Pinch-to-zoom for mobile
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX
+            const dy = e.touches[0].clientY - e.touches[1].clientY
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance }
+        }
+    }, [])
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length === 2 && touchStartRef.current) {
+            e.preventDefault()
+            const dx = e.touches[0].clientX - e.touches[1].clientX
+            const dy = e.touches[0].clientY - e.touches[1].clientY
+            const distance = Math.sqrt(dx * dx + dy * dy)
+            const scaleFactor = distance / touchStartRef.current.distance
+            const newZoom = Math.max(0.5, Math.min(4, zoom * scaleFactor))
+            setZoom(newZoom)
+        }
+    }, [zoom])
+
+    const handleTouchEnd = useCallback(() => {
+        touchStartRef.current = null
+    }, [])
+
     if (!currentImage) return null
 
     return (
@@ -124,14 +154,33 @@ export function Lightbox({
                         {currentIndex + 1} / {images.length}
                     </div>
                     <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-white hover:bg-white/20"
-                            onClick={toggleSlideshow}
-                        >
-                            {isSlideshow ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className={cn('h-8 w-8 text-white hover:bg-white/20', isSlideshow && 'bg-white/20')}
+                                    onClick={() => setIsSlideshow((prev) => !prev)}
+                                >
+                                    {isSlideshow ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                                <div className="px-3 py-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Timer className="h-4 w-4" />
+                                        <span className="text-sm">Interval: {slideshowInterval}s</span>
+                                    </div>
+                                    <Slider
+                                        value={[slideshowInterval]}
+                                        min={1}
+                                        max={10}
+                                        step={1}
+                                        onValueChange={([value]) => setSlideshowInterval(value)}
+                                    />
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                             variant="ghost"
                             size="icon"
@@ -165,14 +214,25 @@ export function Lightbox({
                             <Info className="h-4 w-4" />
                         </Button>
                         {onDownload && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-white hover:bg-white/20"
-                                onClick={() => onDownload(currentImage)}
-                            >
-                                <Download className="h-4 w-4" />
-                            </Button>
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-white hover:bg-white/20"
+                                    onClick={() => onDownload(currentImage)}
+                                >
+                                    <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-white hover:bg-white/20"
+                                    onClick={() => onDownload(images)}
+                                    title="Download all as ZIP"
+                                >
+                                    <Package className="h-4 w-4" />
+                                </Button>
+                            </>
                         )}
                         <Button
                             variant="ghost"
@@ -193,6 +253,9 @@ export function Lightbox({
                         className="max-h-full max-w-full object-contain transition-transform duration-200"
                         style={{ transform: `scale(${zoom})` }}
                         draggable={false}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
                     />
                 </div>
 
