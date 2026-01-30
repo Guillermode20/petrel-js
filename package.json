@@ -8,9 +8,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"bun run --filter backend dev\" \"bun run --filter frontend dev\" --names backend,frontend --prefix-colors cyan,green"
+    "dev": "concurrently \"bun run --filter backend dev\" \"bun run --filter frontend dev\" --names backend,frontend --prefix-colors cyan,green",
+    "format": "bunx biome format",
+    "lint": "bunx biome lint",
+    "check": "bunx biome check"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.2.4",
     "@types/bun": "latest",
     "concurrently": "^9.0.0"
   },

@@ -10,9 +10,9 @@ import type { File } from '@petrel/shared';
 
 type RouteSet = { status?: number; headers?: Record<string, string> };
 
-const protectedRoutes = new Elysia()
+const protectedRoutes = new Elysia({ prefix: '/shares' })
   .use(requireAuth)
-  .get('', async ({ user, set }: { user: { userId: number }; set: RouteSet }): Promise<ApiResponse<ShareContentData[]>> => {
+  .get('', async ({ user, set }): Promise<ApiResponse<ShareContentData[]>> => {
     const list = await shareService.listByUser(user.userId);
     const enriched = await Promise.all(
       list.map(async (item) => ({
@@ -30,25 +30,7 @@ const protectedRoutes = new Elysia()
       tags: ['Shares'],
     },
   })
-  .post('', async (
-    {
-      user,
-      set,
-      body,
-    }: {
-      user: { userId: number };
-      set: RouteSet;
-      body: {
-        type: 'file' | 'folder';
-        targetId: number;
-        expiresAt?: string | null;
-        password?: string | null;
-        allowDownload?: boolean;
-        allowZip?: boolean;
-        showMetadata?: boolean;
-      };
-    }
-  ): Promise<ApiResponse<ShareData>> => {
+  .post('', async ({ user, set, body }): Promise<ApiResponse<ShareData>> => {
     const expiresAtInput = body.expiresAt ?? null;
     const parsedExpiry = parseExpiry(expiresAtInput, set);
 
@@ -84,7 +66,7 @@ const protectedRoutes = new Elysia()
       tags: ['Shares'],
     },
   })
-  .delete('/:id', async ({ params, set }: { params: { id: number }; set: RouteSet }): Promise<ApiResponse<{ id: number }>> => {
+  .delete('/:id', async ({ params, set }): Promise<ApiResponse<{ id: number }>> => {
     await shareService.deleteShare(params.id);
     return { data: { id: params.id }, error: null };
   }, {
@@ -95,17 +77,7 @@ const protectedRoutes = new Elysia()
       tags: ['Shares'],
     },
   })
-  .patch('/:id', async ({ params, body, set }: {
-    params: { id: number };
-    body: {
-      expiresAt?: string | null;
-      password?: string | null;
-      allowDownload?: boolean;
-      allowZip?: boolean;
-      showMetadata?: boolean;
-    };
-    set: RouteSet;
-  }): Promise<ApiResponse<ShareData>> => {
+  .patch('/:id', async ({ params, body, set }): Promise<ApiResponse<ShareData>> => {
     let expiresAtValue: Date | null | undefined = undefined;
     if (body.expiresAt !== undefined) {
       const parsed = parseExpiry(body.expiresAt, set);
@@ -145,9 +117,31 @@ const protectedRoutes = new Elysia()
     },
   });
 
-const publicRoutes = new Elysia()
+function parseExpiry(value: string | null, set: RouteSet): Date | null | undefined {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+    set.status = 400;
+    return undefined;
+  }
+
+  return parsed;
+}
+
+function isExpired(value: Date | null): boolean {
+  if (!value) {
+    return false;
+  }
+  return value.getTime() <= Date.now();
+}
+
+const publicRoutes = new Elysia({ prefix: '/shares' })
+  .use(shareRateLimit)
   .get(
-    '/shares/:token/download',
+    '/:token/download',
     async ({ params, query, set }) => {
       const share = await shareService.getShareByToken(params.token);
       if (!share) {
@@ -206,7 +200,7 @@ const publicRoutes = new Elysia()
     }
   )
   .get(
-    '/shares/:token',
+    '/:token',
     async ({ params, query, set }): Promise<ApiResponse<ShareContentData>> => {
       const share = await shareService.getShareByToken(params.token);
       if (!share) {
@@ -266,64 +260,9 @@ const publicRoutes = new Elysia()
         tags: ['Shares'],
       },
     }
-  )
-  .delete(
-    '/shares/:id',
-    requireAuth,
-    async ({ params, set }): Promise<ApiResponse<{ id: number }>> => {
-      await shareService.deleteShare(params.id);
-      return { data: { id: params.id }, error: null };
-    },
-    {
-      params: t.Object({ id: t.Number({ minimum: 1 }) }),
-      detail: {
-        summary: 'Revoke share link',
-        description: 'Deletes a share',
-        tags: ['Shares'],
-      },
-    }
-  )
-  .patch(
-    '/shares/:id',
-    requireAuth,
-    async ({ params, body, set }): Promise<ApiResponse<ShareData>> => {
-      let expiresAtValue: Date | null | undefined = undefined;
-      if (body.expiresAt !== undefined) {
-        const parsed = parseExpiry(body.expiresAt, set);
-        if (parsed === undefined && body.expiresAt !== null) {
-          return { data: null, error: 'Invalid expiry' };
-        }
-        expiresAtValue = parsed ?? null;
-      }
-
-      const updated = await shareService.updateShare(params.id, {
-        expiresAt: expiresAtValue,
-        password: body.password,
-        allowDownload: body.allowDownload,
-        allowZip: body.allowZip,
-        showMetadata: body.showMetadata,
-      });
-
-      if (!updated) {
-        set.status = 404;
-        return { data: null, error: 'Share not found' };
-      }
-
-      return { data: { share: updated.share, settings: updated.settings }, error: null };
-    },
-    {
-      params: t.Object({ id: t.Number({ minimum: 1 }) }),
-      body: t.Object({
-        expiresAt: t.Optional(t.Union([t.String(), t.Null()])),
-        password: t.Optional(t.Union([t.String(), t.Null()])),
-        allowDownload: t.Optional(t.Boolean()),
-        allowZip: t.Optional(t.Boolean()),
-        showMetadata: t.Optional(t.Boolean()),
-      }),
-      detail: {
-        summary: 'Update share link',
-        description: 'Updates expiry or password for a share',
-        tags: ['Shares'],
-      },
-    }
   );
+
+export const shareRoutes = new Elysia({ prefix: '/api' })
+  .use(publicRoutes)
+  .use(authMiddleware)
+  .use(protectedRoutes);
