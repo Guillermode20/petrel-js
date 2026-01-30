@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, stat } from 'node:fs/promises';
 import { config } from '../config';
 
 export function getStorageRoot(): string {
@@ -54,6 +54,15 @@ export async function ensureDirectory(relativePath: string): Promise<void> {
   await mkdir(absolutePath, { recursive: true });
 }
 
+export async function pathExists(absolutePath: string): Promise<boolean> {
+  try {
+    await stat(absolutePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getChunkRelativePath(uploadId: string, chunkIndex: number): string {
   const safeUploadId = normalizeFileName(uploadId);
   const chunkFileName = chunkIndex.toString().padStart(6, '0');
@@ -73,4 +82,13 @@ export function getThumbnailDirectoryRelativePath(fileId: number): string {
 
 export function getThumbnailRelativePath(fileId: number, size: ThumbnailSize): string {
   return path.posix.join(getThumbnailDirectoryRelativePath(fileId), `${size}.webp`);
+}
+
+export function getAudioVariantDirectoryRelativePath(fileId: number): string {
+  return path.posix.join('.audio', fileId.toString());
+}
+
+export function getAudioVariantRelativePath(fileId: number, variant: 'opus'): string {
+  const directory = getAudioVariantDirectoryRelativePath(fileId);
+  return path.posix.join(directory, `${variant}.opus`);
 }

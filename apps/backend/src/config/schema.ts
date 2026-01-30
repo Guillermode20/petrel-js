@@ -42,6 +42,15 @@ export const envSchema = z.object({
     .transform((val) => parseInt(val, 10))
     .pipe(z.number().int().positive().max(10))
     .default('2'),
+  AUDIO_TRANSCODE_FLAC: z
+    .string()
+    .transform((val) => val === 'true')
+    .default('false'),
+  AUDIO_OPUS_BITRATE_KBPS: z
+    .string()
+    .transform((val) => parseInt(val, 10))
+    .pipe(z.number().int().min(64).max(512))
+    .default('160'),
 
   // Guest Access
   PETREL_GUEST_ACCESS: z

@@ -24,6 +24,9 @@ export function useAudioPlayer({
 }: UseAudioPlayerOptions): UseAudioPlayerReturn {
   const howlRef = useRef<Howl | null>(null)
   const animationRef = useRef<number | null>(null)
+  const scrubbingSupportedRef = useRef(true)
+
+  const [streamUrl, setStreamUrl] = useState<string | null>(null)
 
   const [state, setState] = useState<AudioPlayerState>({
     isPlaying: false,
@@ -34,20 +37,92 @@ export function useAudioPlayer({
     isMuted: false,
     isLooped: false,
     isShuffled: false,
+    supportsScrubbing: true,
+    scrubbingMessage: null,
   })
+
+  const volumeRef = useRef(state.volume)
+  const loopRef = useRef(state.isLooped)
 
   const metadata = file.metadata as AudioMetadata | undefined
 
+  useEffect(() => {
+    volumeRef.current = state.volume
+  }, [state.volume])
+
   // Initialize Howl instance
   useEffect(() => {
-    const src = api.getDownloadUrl(file.id)
+    let isMounted = true
+    const url = api.getAudioStreamUrl(file.id)
+
+    setStreamUrl(null)
+    setState((prev) => ({
+      ...prev,
+      isLoading: true,
+      currentTime: 0,
+      duration: 0,
+      supportsScrubbing: true,
+      scrubbingMessage: null,
+    }))
+
+    const probeRangeSupport = async (): Promise<void> => {
+      try {
+        const response = await fetch(url, { method: 'HEAD' })
+        if (!isMounted) {
+          return
+        }
+        const acceptRanges = response.headers.get('accept-ranges')?.toLowerCase() ?? ''
+        const supportsRange = response.ok && acceptRanges.includes('bytes')
+        setState((prev) => ({
+          ...prev,
+          supportsScrubbing: supportsRange,
+          scrubbingMessage: supportsRange
+            ? null
+            : 'Scrubbing unavailable: server did not advertise byte-range support.',
+        }))
+      } catch (error) {
+        if (!isMounted) {
+          return
+        }
+        setState((prev) => ({
+          ...prev,
+          supportsScrubbing: false,
+          scrubbingMessage: 'Scrubbing unavailable right now. Download for precise seeking.',
+        }))
+      } finally {
+        if (isMounted) {
+          setStreamUrl(url)
+        }
+      }
+    }
+
+    void probeRangeSupport()
+
+    return () => {
+      isMounted = false
+    }
+  }, [file.id])
+
+  useEffect(() => {
+    scrubbingSupportedRef.current = state.supportsScrubbing
+  }, [state.supportsScrubbing])
+
+  useEffect(() => {
+    loopRef.current = state.isLooped
+    howlRef.current?.loop(state.isLooped)
+  }, [state.isLooped])
+
+  useEffect(() => {
+    if (!streamUrl) {
+      return
+    }
 
     const howl = new Howl({
-      src: [src],
+      src: [streamUrl],
       html5: true, // Streaming for large files
       autoplay: autoPlay,
-      volume: state.volume,
-      loop: state.isLooped,
+      volume: volumeRef.current,
+      loop: loopRef.current,
       onload: () => {
         setState((prev) => ({
           ...prev,
@@ -92,12 +167,7 @@ export function useAudioPlayer({
       howl.unload()
       howlRef.current = null
     }
-  }, [file.id, autoPlay])
-
-  // Update loop state when it changes
-  useEffect(() => {
-    howlRef.current?.loop(state.isLooped)
-  }, [state.isLooped])
+  }, [streamUrl, autoPlay])
 
   // Progress update animation
   const updateProgress = useCallback(() => {
@@ -132,7 +202,14 @@ export function useAudioPlayer({
   }, [])
 
   const seek = useCallback((time: number) => {
-    howlRef.current?.seek(time)
+    const howl = howlRef.current
+    if (!howl) {
+      return
+    }
+    if (!scrubbingSupportedRef.current && time !== 0) {
+      return
+    }
+    howl.seek(time)
     setState((prev) => ({ ...prev, currentTime: time }))
   }, [])
 
@@ -205,6 +282,9 @@ export function useAudioPlayer({
 
       navigator.mediaSession.setActionHandler('seekto', (details) => {
         if (details.seekTime !== undefined && details.seekTime >= 0) {
+          if (!scrubbingSupportedRef.current) {
+            return
+          }
           howlRef.current?.seek(details.seekTime)
           setState((prev) => ({ ...prev, currentTime: details.seekTime ?? 0 }))
         }

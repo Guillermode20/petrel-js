@@ -10,6 +10,7 @@ import { authRoutes } from './src/modules/auth';
 import { fileRoutes } from './src/modules/files';
 import { shareRoutes } from './src/modules/shares';
 import { streamRoutes } from './src/modules/stream';
+import { audioRoutes } from './src/modules/audio';
 
 // Initialize Redis (optional caching layer)
 initRedis();
@@ -24,7 +25,7 @@ const app = new Elysia()
     };
   })
   .onAfterHandle(({ request, set, correlationId, log }) => {
-    const status = set.status ?? 200;
+    const status = typeof set.status === 'number' ? set.status : 200;
     // Only log non-auth errors and successful requests
     if (status < 400 || status === 401) {
       log.debug({
@@ -46,7 +47,8 @@ const app = new Elysia()
     const isUnauthorized =
       error instanceof Error &&
       (error.message === 'Unauthorized' || error.message.includes('Unauthorized'));
-    const status = set.status ?? (isUnauthorized ? 401 : 500);
+    const currentStatus = typeof set.status === 'number' ? set.status : undefined;
+    const status = currentStatus ?? (isUnauthorized ? 401 : 500);
     set.status = status;
 
     // Don't log 401 Unauthorized responses as errors - they're expected for unauthenticated requests
@@ -85,7 +87,7 @@ const app = new Elysia()
   .use(
     cors({
       origin: config.FRONTEND_URL,
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'],
       credentials: true,
     })
   )
@@ -103,6 +105,8 @@ const app = new Elysia()
   .use(fileRoutes)
   // Stream routes
   .use(streamRoutes)
+  // Audio routes
+  .use(audioRoutes)
   // Share routes
   .use(shareRoutes)
   .listen(config.PORT);

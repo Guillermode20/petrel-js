@@ -305,6 +305,25 @@ class ApiClient {
     return `${API_BASE}/files/${id}/download${token}`
   }
 
+  getAudioStreamUrl(
+    id: number,
+    options?: { shareToken?: string; password?: string }
+  ): string {
+    const params = new URLSearchParams()
+    if (this.accessToken) {
+      params.set('token', this.accessToken)
+    }
+    if (options?.shareToken) {
+      params.set('shareToken', options.shareToken)
+    }
+    if (options?.password) {
+      params.set('password', options.password)
+    }
+
+    const query = params.toString()
+    return `${API_BASE}/audio/${id}/stream${query ? `?${query}` : ''}`
+  }
+
   getThumbnailUrl(id: number, size: 'small' | 'medium' | 'large' = 'medium'): string {
     const tokenParam = this.accessToken ? `&token=${this.accessToken}` : ''
     return `${API_BASE}/files/${id}/thumbnail?size=${size}${tokenParam}`

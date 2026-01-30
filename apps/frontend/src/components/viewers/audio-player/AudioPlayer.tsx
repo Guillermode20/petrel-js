@@ -41,6 +41,8 @@ export function AudioPlayer({
         volume,
         isMuted,
         isLooped,
+        supportsScrubbing,
+        scrubbingMessage,
     } = state
 
     const hasAlbumArt = metadata?.albumArt
@@ -83,15 +85,24 @@ export function AudioPlayer({
                 <Slider
                     value={[currentTime]}
                     min={0}
-                    max={duration || 100}
+                    max={duration > 0 ? duration : 100}
                     step={0.1}
-                    onValueChange={([value]) => controls.seek(value)}
-                    disabled={isLoading}
+                    onValueChange={([value]) => {
+                        if (typeof value === 'number') {
+                            controls.seek(value)
+                        }
+                    }}
+                    disabled={isLoading || !supportsScrubbing}
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{formatDuration(currentTime)}</span>
                     <span>{formatDuration(duration)}</span>
                 </div>
+                {!supportsScrubbing && scrubbingMessage && (
+                    <p className="text-xs text-amber-500">
+                        {scrubbingMessage}
+                    </p>
+                )}
             </div>
 
             {/* Main controls */}
@@ -162,7 +173,11 @@ export function AudioPlayer({
                     min={0}
                     max={100}
                     step={1}
-                    onValueChange={([value]) => controls.setVolume(value / 100)}
+                    onValueChange={([value]) => {
+                        if (typeof value === 'number') {
+                            controls.setVolume(value / 100)
+                        }
+                    }}
                     className="flex-1"
                 />
             </div>

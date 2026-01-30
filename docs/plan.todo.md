@@ -78,6 +78,17 @@
   - Album art extraction
   - Duration calculation
 - [x] Waveform data generation (optional)
+- [ ] **Range-aware audio streaming**
+  - Add `/api/audio/:id/stream` endpoint that honors `Range` headers
+  - Ensure authenticated + share-token flows get `206 Partial Content` with `Content-Range`
+  - Cache-friendly `Accept-Ranges: bytes` + rate limiting like video stream routes
+- [ ] **Frontend scrubbing support**
+  - Audio player should request the streaming endpoint instead of `/files/:id/download`
+  - Detect range support (HEAD) and provide fallback messaging if unavailable
+- [ ] **Optional FLAC → Opus transcoding**
+  - Config toggle + queue integration to create `libopus` variants for large FLAC uploads
+  - Store variant metadata so shares can prefer Opus while keeping originals download-only
+  - Surface status in UI (e.g., “Opus variant ready”) for share quality selection
 
 ### Image Pipeline (Backend)
 - [x] **Thumbnail generation** — sharp for:

@@ -24,6 +24,8 @@ export interface AudioPlayerState {
   isMuted: boolean
   isLooped: boolean
   isShuffled: boolean
+  supportsScrubbing: boolean
+  scrubbingMessage: string | null
 }
 
 export interface AudioControls {
