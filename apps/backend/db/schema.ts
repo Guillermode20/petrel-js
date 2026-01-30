@@ -51,7 +51,7 @@ export const folders = sqliteTable("folders", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	name: text("name").notNull(),
 	path: text("path").notNull(),
-	parentId: integer("parent_id").references((): any => folders.id),
+	parentId: integer("parent_id").references(() => folders.id),
 	ownerId: integer("owner_id").references(() => users.id),
 })
 
@@ -60,10 +60,14 @@ export const shares = sqliteTable("shares", {
 	type: text("type").notNull(),
 	targetId: integer("target_id").notNull(),
 	token: text("token").notNull().unique(),
+	createdBy: integer("created_by").references(() => users.id),
 	expiresAt: integer("expires_at", { mode: "timestamp" }),
 	passwordHash: text("password_hash"),
 	downloadCount: integer("download_count").notNull().default(0),
 	viewCount: integer("view_count").notNull().default(0),
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.default(sql`(unixepoch())`),
 })
 
 export const shareSettings = sqliteTable("share_settings", {

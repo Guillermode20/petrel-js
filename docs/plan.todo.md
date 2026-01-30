@@ -243,12 +243,16 @@
 ### File Browser
 - [x] Grid view (thumbnails) and list view toggle
 - [x] File/folder icons with mime-type awareness
-- [ ] Context menu (right-click actions)
+- [x] Context menu (right-click actions)
 - [x] Multi-select with shift/ctrl+click
 - [x] Drag-and-drop upload zone
 - [ ] Upload progress indicator with cancel option
 - [x] Search/filter bar
 - [x] Sort by name/date/size/type
+
+### Current Worklog
+- **2026-01-29:** Frontend TLC pass – fixed Header export policy, aligned file download auth with backend, and refreshed Phase 3 checklist to reflect implemented sharing components and context menu.
+- **2026-01-30:** Backend share routes refactor in progress – schema + shared types now track `createdBy`/`hasPassword`; new `/api/shares` list + public download/content endpoints being wired up (needs finishing touches + migration run).
 
 ### Video Player — Custom build on hls.js
 **Why hls.js directly (not Video.js/Plyr):**
@@ -338,14 +342,14 @@
 ### Sharing UI
 - [x] "Create share" button in UI
 - [x] Share management UI with sample data
-- [ ] `CreateShareModal` component:
+- [x] `CreateShareModal` component:
   - Expiry dropdown (1h, 24h, 7d, 30d, never)
   - Password protection toggle + input
   - Allow download toggle
   - Quality options (if transcoded)
-- [ ] Copy link button with toast confirmation
+- [x] Copy link button with toast confirmation
 - [x] QR code generation for share links
-- [ ] `ShareManagement` table (active shares):
+- [x] `ShareManagement` table (active shares):
   - Link, expiry countdown, view/download counts
   - Revoke action
 

@@ -1,6 +1,6 @@
 import { Outlet, createRootRoute } from '@tanstack/react-router'
 
-import Header from '../components/Header'
+import { Header } from '../components/Header'
 import { Sidebar } from '../components/navigation/Sidebar'
 import { LoginForm } from '../components/auth/LoginForm'
 import { useAuth } from '../hooks/useAuth'

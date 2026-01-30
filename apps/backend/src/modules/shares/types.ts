@@ -1,8 +1,14 @@
-import type { Share, ShareSettings, ShareType } from '@petrel/shared';
+import type { File, Folder, Share, ShareSettings, ShareType } from '@petrel/shared';
 
 export interface ShareData {
   share: Share;
   settings: ShareSettings;
+}
+
+export interface ShareContentData extends ShareData {
+  content: File | Folder | null;
+  files?: File[];
+  folders?: Folder[];
 }
 
 export type ApiResponse<T> =

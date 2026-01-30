@@ -43,8 +43,10 @@ export interface Share {
   token: string
   expiresAt: Date | null
   passwordHash: string | null
+  hasPassword: boolean
   downloadCount: number
   viewCount: number
+  createdBy: number | null
   createdAt: Date
 }
 

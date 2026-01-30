@@ -1,8 +1,10 @@
 import { eq, sql } from 'drizzle-orm';
-import type { Share, ShareSettings, ShareType } from '@petrel/shared';
+import type { File, Folder, Share, ShareSettings, ShareType } from '@petrel/shared';
 import { db } from '../../db';
 import { shareSettings, shares } from '../../db/schema';
 import { generateSecureToken, hashPassword, verifyPassword } from '../modules/auth/utils';
+import { fileService } from './file.service';
+import { folderService } from './folder.service';
 
 export interface CreateShareInput {
   type: ShareType;
@@ -12,11 +14,16 @@ export interface CreateShareInput {
   allowDownload: boolean;
   allowZip: boolean;
   showMetadata: boolean;
+  createdBy: number | null;
 }
 
 export interface ShareWithSettings {
   share: Share;
   settings: ShareSettings;
+}
+
+export interface ShareWithContent extends ShareWithSettings {
+  content: File | Folder | null;
 }
 
 export interface UpdateShareInput {
@@ -36,8 +43,11 @@ export class ShareService {
       token: row.token,
       expiresAt: row.expiresAt,
       passwordHash: row.passwordHash,
+      hasPassword: Boolean(row.passwordHash),
       downloadCount: row.downloadCount,
       viewCount: row.viewCount,
+      createdBy: row.createdBy ?? null,
+      createdAt: row.createdAt ?? null,
     };
   }
 
@@ -74,6 +84,7 @@ export class ShareService {
         token,
         expiresAt: input.expiresAt,
         passwordHash,
+        createdBy: input.createdBy ?? null,
       })
       .returning();
 
@@ -126,6 +137,40 @@ export class ShareService {
       .update(shares)
       .set({ viewCount: sql`${shares.viewCount} + 1` })
       .where(eq(shares.id, shareId));
+  }
+
+  async listByUser(userId: number): Promise<ShareWithSettings[]> {
+    const rows = await db.query.shares.findMany({ where: eq(shares.createdBy, userId) });
+    if (rows.length === 0) return [];
+
+    const settingsMap = new Map<number, ShareSettings>();
+    const settingsRows = await db.query.shareSettings.findMany({
+      where: sql`${shareSettings.shareId} IN (${rows.map((r) => r.id).join(',') || 0})`,
+    }).catch(() => [] as typeof shareSettings.$inferSelect[]);
+
+    settingsRows.forEach((row) => settingsMap.set(row.shareId, this.mapSettings(row)));
+
+    return rows.map((row) => ({
+      share: this.mapShare(row),
+      settings: settingsMap.get(row.id) ?? {
+        shareId: row.id,
+        allowDownload: true,
+        allowZip: false,
+        showMetadata: true,
+      },
+    }));
+  }
+
+  async getShareContent(share: Share): Promise<File | Folder | null> {
+    if (share.type === 'file') {
+      return await fileService.getById(share.targetId);
+    }
+
+    if (share.type === 'folder') {
+      return await folderService.getById(share.targetId);
+    }
+
+    return null;
   }
 
   async deleteShare(shareId: number): Promise<void> {

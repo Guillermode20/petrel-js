@@ -3,13 +3,14 @@ import { useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import type { File, Folder } from '@petrel/shared'
 import { useFiles, useDeleteFile, useUpdateFile, useCreateFolder, useUpdateFolder, useUploadFile, isFile, isFolder } from '@/hooks'
+import { api } from '@/lib/api'
 import { FolderBreadcrumb, buildBreadcrumbSegments } from '@/components/navigation'
 import { FileGrid } from './FileGrid'
 import { FileList } from './FileList'
 import { ViewToggle } from './ViewToggle'
 import { SortDropdown } from './SortDropdown'
 import { SearchBar } from './SearchBar'
-import { UploadZone, UploadBar, UploadProgressList } from './UploadZone'
+import { UploadBar, UploadProgressList } from './UploadZone'
 import { CreateFolderDialog, RenameDialog, DeleteConfirmDialog } from './FileDialogs'
 import { CreateShareModal } from '@/components/sharing'
 import type { ViewMode, SortField, UploadProgress } from './types'
@@ -36,7 +37,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
     const [renameItem, setRenameItem] = useState<File | Folder | null>(null)
     const [deleteItem, setDeleteItem] = useState<File | Folder | null>(null)
     const [shareItem, setShareItem] = useState<File | Folder | null>(null)
-    const [moveItem, setMoveItem] = useState<File | Folder | null>(null)
 
     // Upload state
     const [uploads, setUploads] = useState<UploadProgress[]>([])
@@ -116,8 +116,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
             toast.error('Folder download is not supported yet')
             return
         }
-        const url = `/api/files/download/${item.id}?token=${localStorage.getItem('token')}`
-        window.open(url, '_blank')
+        window.open(api.getDownloadUrl(item.id), '_blank')
     }, [])
 
     const handleCopyLink = useCallback((item: File | Folder) => {
@@ -250,6 +249,20 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
         setUploads((prev) => prev.filter((u) => u.file !== file))
     }, [])
 
+    const handleCancelUpload = useCallback((file: globalThis.File) => {
+        setUploads((prev) => {
+            const upload = prev.find((u) => u.file === file)
+            if (!upload) return prev
+
+            if (upload.status === 'uploading') {
+                toast.error('Upload cancel is not supported yet')
+                return prev
+            }
+
+            return prev.filter((u) => u.file !== file)
+        })
+    }, [])
+
     return (
         <div className="space-y-4">
             {/* Breadcrumb */}
@@ -314,7 +327,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
             )}
 
             {/* Upload progress */}
-            <UploadProgressList uploads={uploads} onDismiss={handleDismissUpload} />
+            <UploadProgressList uploads={uploads} onCancel={handleCancelUpload} onDismiss={handleDismissUpload} />
 
             {/* Dialogs */}
             <RenameDialog
