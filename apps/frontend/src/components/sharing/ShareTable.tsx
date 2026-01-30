@@ -16,7 +16,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { CopyLinkButton, getShareUrl } from './CopyLinkButton'
 import type { ShareTableProps } from './types'
@@ -26,13 +25,7 @@ import type { ShareTableProps } from './types'
  */
 export function ShareTable({ shares, isLoading, onDelete, className }: ShareTableProps) {
     if (isLoading) {
-        return (
-            <div className={cn('space-y-2', className)}>
-                {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 w-full" />
-                ))}
-            </div>
-        )
+        return null
     }
 
     if (shares.length === 0) {

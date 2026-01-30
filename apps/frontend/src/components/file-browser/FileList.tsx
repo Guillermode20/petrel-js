@@ -11,7 +11,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table'
-import { Skeleton } from '@/components/ui/skeleton'
 import { FileContextMenu } from './FileContextMenu'
 import { getFileIcon, getFolderIcon, formatFileSize, getFileCategory } from './utils'
 import type { FileListProps, SortField } from './types'
@@ -72,43 +71,7 @@ export function FileList({
         </button>
     )
 
-    if (isLoading) {
-        return (
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[50%]">Name</TableHead>
-                        <TableHead className="hidden md:table-cell">Type</TableHead>
-                        <TableHead className="hidden sm:table-cell">Size</TableHead>
-                        <TableHead className="hidden lg:table-cell">Modified</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {Array.from({ length: 10 }).map((_, i) => (
-                        <TableRow key={i}>
-                            <TableCell>
-                                <div className="flex items-center gap-3">
-                                    <Skeleton className="h-8 w-8 rounded" />
-                                    <Skeleton className="h-4 w-48" />
-                                </div>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                                <Skeleton className="h-4 w-16" />
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell">
-                                <Skeleton className="h-4 w-12" />
-                            </TableCell>
-                            <TableCell className="hidden lg:table-cell">
-                                <Skeleton className="h-4 w-24" />
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        )
-    }
-
-    if (items.length === 0) {
+    if (!isLoading && items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-lg font-medium text-muted-foreground">No files yet</p>

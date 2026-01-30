@@ -1,7 +1,6 @@
 import { isFolder, isFile } from '@/hooks'
 import { FileCard } from './FileCard'
 import { FileContextMenu } from './FileContextMenu'
-import { Skeleton } from '@/components/ui/skeleton'
 import type { FileGridProps } from './types'
 import type { File, Folder } from '@petrel/shared'
 
@@ -40,21 +39,7 @@ export function FileGrid({
         }
     }
 
-    if (isLoading) {
-        return (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="flex flex-col items-center gap-2 p-3">
-                        <Skeleton className="h-20 w-20 rounded-md" />
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-3 w-12" />
-                    </div>
-                ))}
-            </div>
-        )
-    }
-
-    if (items.length === 0) {
+    if (!isLoading && items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
                 <p className="text-lg font-medium text-muted-foreground">No files yet</p>
