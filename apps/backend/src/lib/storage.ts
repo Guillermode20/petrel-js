@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { mkdir } from 'node:fs/promises';
 
-const DEFAULT_STORAGE_ROOT = 'storage';
+const DEFAULT_STORAGE_ROOT = '../../storage';
 
 export function getStorageRoot(): string {
   return process.env.PETREL_STORAGE_PATH ?? DEFAULT_STORAGE_ROOT;

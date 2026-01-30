@@ -4,6 +4,7 @@
     "": {
       "name": "petrel-js",
       "devDependencies": {
+        "@biomejs/biome": "2.2.4",
         "@types/bun": "latest",
         "concurrently": "^9.0.0",
       },

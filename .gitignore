@@ -88,3 +88,6 @@ out/
 *.spec.ts
 *.spec.tsx
 __tests__/
+
+# ========== Storage ==========
+storage/
