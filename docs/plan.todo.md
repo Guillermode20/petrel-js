@@ -199,7 +199,7 @@
 - [x] Apply rate limiting to stream endpoints (100 requests per minute per IP)
 - [x] Apply rate limiting to share token validation (30 requests per minute)
 - [x] Configure rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining)
-- [ ] Add rate limit bypass for admin users
+- [x] Add rate limit bypass for admin users
 
 ### Low Priority
 

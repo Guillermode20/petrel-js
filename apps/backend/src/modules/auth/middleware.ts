@@ -2,6 +2,7 @@ import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import type { UserRole } from '@petrel/shared';
 import { config } from '../../config';
+import { setRateLimitBypass } from '../../lib/rate-limit-context';
 import type { JWTPayload } from './types';
 
 /**
@@ -16,7 +17,7 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
       name: 'jwt',
     })
   )
-  .derive({ as: 'scoped' }, async ({ jwt, headers, query }): Promise<{ user: JWTPayload | null }> => {
+  .derive({ as: 'scoped' }, async ({ jwt, headers, query, request }): Promise<{ user: JWTPayload | null }> => {
     let token = '';
     const authHeader = headers.authorization;
 
@@ -42,6 +43,8 @@ export const authMiddleware = new Elysia({ name: 'auth-middleware' })
         username: payload.username as string,
         role: payload.role as UserRole,
       };
+
+      setRateLimitBypass(request, userPayload.role === 'admin');
 
       return { user: userPayload };
     } catch (error) {

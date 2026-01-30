@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia';
 import { rateLimit } from 'elysia-rate-limit';
-import { logger } from './logger';
+import { shouldBypassRateLimit } from './rate-limit-context';
 
 /**
  * Rate limiting configurations for different endpoint types.
@@ -22,6 +22,7 @@ export const uploadRateLimit = new Elysia({ name: 'upload-rate-limit' }).use(
       return `upload:${ip}`;
     },
     headers: true, // Include X-RateLimit-* headers
+    skip: (request) => shouldBypassRateLimit(request),
   })
 );
 
@@ -39,6 +40,7 @@ export const streamRateLimit = new Elysia({ name: 'stream-rate-limit' }).use(
       return `stream:${ip}`;
     },
     headers: true,
+    skip: (request) => shouldBypassRateLimit(request),
   })
 );
 
@@ -56,6 +58,7 @@ export const shareRateLimit = new Elysia({ name: 'share-rate-limit' }).use(
       return `share:${ip}`;
     },
     headers: true,
+    skip: (request) => shouldBypassRateLimit(request),
   })
 );
 
@@ -73,6 +76,7 @@ export const generalRateLimit = new Elysia({ name: 'general-rate-limit' }).use(
       return `general:${ip}`;
     },
     headers: true,
+    skip: (request) => shouldBypassRateLimit(request),
   })
 );
 
