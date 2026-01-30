@@ -7,7 +7,12 @@ import { api } from '@/lib/api'
 export const streamKeys = {
   all: ['stream'] as const,
   info: (fileId: number) => [...streamKeys.all, 'info', fileId] as const,
+  subtitles: (fileId: number) => [...streamKeys.all, 'subtitles', fileId] as const,
+  tracks: (fileId: number) => [...streamKeys.all, 'tracks', fileId] as const,
 }
+
+type StreamSubtitles = Awaited<ReturnType<typeof api.getStreamSubtitles>>
+type StreamTracks = Awaited<ReturnType<typeof api.getStreamTracks>>
 
 /**
  * Hook for fetching stream info for a video file
@@ -25,6 +30,22 @@ export function useStreamInfo(fileId: number) {
       }
       return false
     },
+  })
+}
+
+export function useStreamSubtitles(fileId: number) {
+  return useQuery({
+    queryKey: streamKeys.subtitles(fileId),
+    queryFn: (): Promise<StreamSubtitles> => api.getStreamSubtitles(fileId),
+    enabled: fileId > 0,
+  })
+}
+
+export function useStreamTracks(fileId: number) {
+  return useQuery({
+    queryKey: streamKeys.tracks(fileId),
+    queryFn: (): Promise<StreamTracks> => api.getStreamTracks(fileId),
+    enabled: fileId > 0,
   })
 }
 

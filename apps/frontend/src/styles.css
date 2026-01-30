@@ -63,8 +63,8 @@ code {
   --font-sans: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
   --font-serif: serif;
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
-  /* Modern rounded corners */
-  --radius: 0.75rem;
+  /* Modern rounded corners - tightened */
+  --radius: 0.35rem;
   /* Shadows for dark theme */
   --shadow-x: 0px;
   --shadow-y: 1px;
@@ -81,7 +81,7 @@ code {
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5);
   --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
   --tracking-normal: 0rem;
-  --spacing: 0.25rem;
+  --spacing: 0.2rem;
   --shadow-offset-x: 0px;
   --shadow-offset-y: 1px;
   --letter-spacing: 0rem;
@@ -125,15 +125,15 @@ code {
   --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
   --font-serif: serif;
 
-  /* Modern rounded corners for darkmatter aesthetic */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.25rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 1.75rem;
-  --radius-4xl: 2rem;
-  --radius: 0.75rem;
+  /* Modern rounded corners for darkmatter aesthetic - tighter curves */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.35rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.65rem;
+  --radius-2xl: 0.8rem;
+  --radius-3xl: 1rem;
+  --radius-4xl: 1.2rem;
+  --radius: 0.35rem;
 
   --shadow-2xs: var(--shadow-2xs);
   --shadow-xs: var(--shadow-xs);

@@ -1,10 +1,11 @@
 import path from 'node:path';
 import { mkdir } from 'node:fs/promises';
-
-const DEFAULT_STORAGE_ROOT = '../../storage';
+import { config } from '../config';
 
 export function getStorageRoot(): string {
-  return process.env.PETREL_STORAGE_PATH ?? DEFAULT_STORAGE_ROOT;
+  const root = config.STORAGE_PATH ?? './storage';
+  const absolute = path.resolve(root);
+  return absolute;
 }
 
 export function normalizeRelativePath(inputPath: string | null | undefined): string {

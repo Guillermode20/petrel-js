@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useVideoPlayer } from './useVideoPlayer'
 import { VideoControlBar } from './VideoControls'
-import { useStreamInfo, getStreamUrl } from '@/hooks'
+import { useStreamInfo, useStreamSubtitles, useStreamTracks, getStreamUrl } from '@/hooks'
 import type { VideoPlayerProps } from './types'
 
 /**
@@ -27,17 +27,40 @@ export function VideoPlayer({
     const [showControls, setShowControls] = useState(true)
     const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    // Fetch stream info (qualities, tracks, transcode status)
+    // Fetch stream info (qualities, transcode status)
     const { data: streamInfo } = useStreamInfo(fileId)
+    const { data: subtitlesData } = useStreamSubtitles(fileId)
+    const { data: tracksData } = useStreamTracks(fileId)
 
     const src = getStreamUrl(fileId)
+
+    const audioTracks = tracksData
+        ?.filter((track) => track.type === 'audio')
+        .map((track) => ({
+            id: track.index,
+            fileId,
+            trackType: track.type as 'audio',
+            codec: track.codec,
+            language: track.language,
+            index: track.index,
+            title: track.title,
+        }))
+
+    const subtitles = subtitlesData?.map((subtitle) => ({
+        id: subtitle.id,
+        fileId,
+        language: subtitle.language,
+        path: `/api/stream/${fileId}/subtitles/${subtitle.id}`,
+        format: 'webvtt',
+        title: subtitle.title,
+    }))
 
     const { state, controls, videoRef } = useVideoPlayer({
         src,
         fileId,
-        audioTracks: streamInfo?.audioTracks,
-        subtitles: streamInfo?.subtitles,
-        transcodeJob: streamInfo?.transcodeJob,
+        audioTracks,
+        subtitles,
+        transcodeJob: streamInfo?.transcodeJob ?? undefined,
         autoPlay,
     })
 

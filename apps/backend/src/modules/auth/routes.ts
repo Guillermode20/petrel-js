@@ -12,6 +12,8 @@ import { hashPassword, verifyPassword } from './utils';
 import type { UserRole } from '@petrel/shared';
 import type { JWTPayload, RefreshPayload, TokenResponse, MeResponse, ApiResponse } from './types';
 
+const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * Auth routes module with login, logout, refresh, and me endpoints
  * Includes rate limiting for brute force protection
@@ -53,7 +55,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   // Login endpoint
   .post(
     '/login',
-    async ({ body, jwt, jwtRefresh, set }): Promise<TokenResponse | { success: false; message: string }> => {
+    async ({ body, jwt, jwtRefresh, set }): Promise<ApiResponse<TokenResponse>> => {
       const { username, password } = body;
 
       // Find user by username
@@ -65,8 +67,8 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         logger.warn({ username }, 'Login attempt for non-existent user');
         set.status = 401;
         return {
-          success: false,
-          message: 'Invalid credentials',
+          data: null,
+          error: 'Invalid credentials',
         };
       }
 
@@ -77,8 +79,8 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         logger.warn({ username }, 'Login attempt with invalid password');
         set.status = 401;
         return {
-          success: false,
-          message: 'Invalid credentials',
+          data: null,
+          error: 'Invalid credentials',
         };
       }
 
@@ -100,7 +102,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
 
       // Store refresh token hash in database
       const tokenHash = tokenService.hashToken(refreshToken);
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
       await tokenService.storeRefreshToken({
         userId: user.id,
         tokenHash,
@@ -110,13 +112,16 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
       logger.info({ userId: user.id, username }, 'User logged in successfully');
 
       return {
-        accessToken,
-        refreshToken,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
+        data: {
+          accessToken,
+          refreshToken,
+          user: {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+          },
         },
+        error: null,
       };
     },
     {
@@ -145,14 +150,14 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   // Logout endpoint
   .post(
     '/logout',
-    async ({ headers, jwtRefresh, set }): Promise<{ success: true; message: string } | { success: false; message: string }> => {
+    async ({ headers, jwtRefresh, set }): Promise<ApiResponse<{ message: string }>> => {
       const authHeader = headers.authorization;
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         set.status = 400;
         return {
-          success: false,
-          message: 'Refresh token required',
+          data: null,
+          error: 'Refresh token required',
         };
       }
 
@@ -165,8 +170,8 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         if (!payload || typeof payload !== 'object' || payload.type !== 'refresh') {
           set.status = 400;
           return {
-            success: false,
-            message: 'Invalid refresh token',
+            data: null,
+            error: 'Invalid refresh token',
           };
         }
 
@@ -177,15 +182,15 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         logger.info({ userId: payload.userId }, 'User logged out');
 
         return {
-          success: true,
-          message: 'Logged out successfully',
+          data: { message: 'Logged out successfully' },
+          error: null,
         };
       } catch (error) {
         logger.warn('Logout attempt with invalid token');
         set.status = 400;
         return {
-          success: false,
-          message: 'Invalid refresh token',
+          data: null,
+          error: 'Invalid refresh token',
         };
       }
     },
@@ -208,28 +213,28 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   // Refresh token endpoint
   .post(
     '/refresh',
-    async ({ headers, jwt, jwtRefresh, set }): Promise<TokenResponse | { success: false; message: string }> => {
+    async ({ headers, jwt, jwtRefresh, set }): Promise<ApiResponse<TokenResponse>> => {
       const authHeader = headers.authorization;
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         set.status = 401;
         return {
-          success: false,
-          message: 'Refresh token required',
+          data: null,
+          error: 'Refresh token required',
         };
       }
 
       const refreshToken = authHeader.slice(7);
 
-      // Check if token is revoked in database
+      // Check if token is revoked or expired in database
       const tokenHash = tokenService.hashToken(refreshToken);
       const tokenValidation = await tokenService.validateRefreshToken(tokenHash);
 
       if (!tokenValidation.valid) {
         set.status = 401;
         return {
-          success: false,
-          message: 'Token has been revoked',
+          data: null,
+          error: 'Token has been revoked or expired',
         };
       }
 
@@ -239,8 +244,8 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         if (!payload || typeof payload !== 'object' || payload.type !== 'refresh') {
           set.status = 401;
           return {
-            success: false,
-            message: 'Invalid refresh token',
+            data: null,
+            error: 'Invalid refresh token',
           };
         }
 
@@ -252,8 +257,8 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
         if (!user) {
           set.status = 401;
           return {
-            success: false,
-            message: 'User not found',
+            data: null,
+            error: 'User not found',
           };
         }
 
@@ -266,22 +271,40 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
 
         const accessToken = await jwt.sign(accessPayload);
 
+        // Rotate refresh token: revoke old hash, issue new token, store with TTL
+        const newRefreshPayload: RefreshPayload = {
+          userId: user.id,
+          type: 'refresh',
+        };
+        const newRefreshToken = await jwtRefresh.sign(newRefreshPayload);
+        const newRefreshHash = tokenService.hashToken(newRefreshToken);
+        await tokenService.storeRefreshToken({
+          userId: user.id,
+          tokenHash: newRefreshHash,
+          expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+        });
+
+        await tokenService.revokeRefreshToken(tokenHash);
+
         logger.debug({ userId: user.id }, 'Access token refreshed');
 
         return {
-          accessToken,
-          refreshToken, // Return same refresh token (or could generate new one)
-          user: {
-            id: user.id,
-            username: user.username,
-            role: user.role,
+          data: {
+            accessToken,
+            refreshToken: newRefreshToken,
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role,
+            },
           },
+          error: null,
         };
       } catch (error) {
         set.status = 401;
         return {
-          success: false,
-          message: 'Invalid refresh token',
+          data: null,
+          error: 'Invalid refresh token',
         };
       }
     },

@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, inArray } from 'drizzle-orm';
 import type { File, Folder, Share, ShareSettings, ShareType } from '@petrel/shared';
 import { db } from '../../db';
 import { shareSettings, shares } from '../../db/schema';
@@ -144,9 +144,12 @@ export class ShareService {
     if (rows.length === 0) return [];
 
     const settingsMap = new Map<number, ShareSettings>();
-    const settingsRows = await db.query.shareSettings.findMany({
-      where: sql`${shareSettings.shareId} IN (${rows.map((r) => r.id).join(',') || 0})`,
-    }).catch(() => [] as typeof shareSettings.$inferSelect[]);
+    const ids = rows.map((r) => r.id);
+    const settingsRows = await db.query.shareSettings
+      .findMany({
+        where: ids.length ? inArray(shareSettings.shareId, ids) : undefined,
+      })
+      .catch(() => [] as typeof shareSettings.$inferSelect[]);
 
     settingsRows.forEach((row) => settingsMap.set(row.shareId, this.mapSettings(row)));
 

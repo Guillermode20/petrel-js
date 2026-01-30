@@ -5,8 +5,6 @@ import type {
   ShareSettings,
   User,
   TranscodeJob,
-  VideoTrack,
-  Subtitle,
 } from '@petrel/shared'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
@@ -104,21 +102,19 @@ class ApiClient {
       body: JSON.stringify({ username, password }),
     })
 
-    // Handle non-JSON responses (e.g., rate limit)
     const contentType = response.headers.get('content-type')
     if (!contentType?.includes('application/json')) {
       const text = await response.text()
       throw new Error(text || `HTTP ${response.status}`)
     }
 
-    const result = await response.json()
+    const result: ApiResponse<{ accessToken: string; refreshToken: string; user: User }> = await response.json()
 
-    // Backend returns { success: false, message: '...' } on failure
-    if (!result?.accessToken || !result?.refreshToken || !result?.user) {
-      throw new Error(result?.message || 'Login failed')
+    if (result.error || !result.data) {
+      throw new Error(result.error || 'Login failed')
     }
 
-    return result
+    return result.data
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -131,7 +127,7 @@ class ApiClient {
     })
   }
 
-  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> {
+  async refreshToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; user: User }> {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
       headers: {
@@ -140,21 +136,19 @@ class ApiClient {
       },
     })
 
-    // Handle non-JSON responses (e.g., rate limit)
     const contentType = response.headers.get('content-type')
     if (!contentType?.includes('application/json')) {
       const text = await response.text()
       throw new Error(text || `HTTP ${response.status}`)
     }
 
-    const result = await response.json()
+    const result: ApiResponse<{ accessToken: string; refreshToken: string; user: User }> = await response.json()
 
-    // Backend returns { success: false, message: '...' } on failure
-    if (!result?.accessToken || !result?.refreshToken) {
-      throw new Error(result?.message || 'Token refresh failed')
+    if (result.error || !result.data) {
+      throw new Error(result.error || 'Token refresh failed')
     }
 
-    return result
+    return result.data
   }
 
   async getCurrentUser(): Promise<User | null> {
@@ -309,8 +303,8 @@ class ApiClient {
   }
 
   getThumbnailUrl(id: number, size: 'small' | 'medium' | 'large' = 'medium'): string {
-    const token = this.accessToken ? `&token=${this.accessToken}` : ''
-    return `${API_BASE}/files/${id}/thumbnail?size=${size}${token}`
+    const tokenParam = this.accessToken ? `&token=${this.accessToken}` : ''
+    return `${API_BASE}/files/${id}/thumbnail?size=${size}${tokenParam}`
   }
 
   getSpriteUrl(id: number): string {
@@ -368,13 +362,23 @@ class ApiClient {
 
   // Stream endpoints
   async getStreamInfo(fileId: number): Promise<{
-    ready: boolean
+    available: boolean
     qualities: string[]
-    audioTracks: VideoTrack[]
-    subtitles: Subtitle[]
-    transcodeJob?: TranscodeJob
+    isTransmux: boolean
+    needsTranscode: boolean
+    transcodeJob: TranscodeJob | null
   }> {
-    return this.request(`/stream/${fileId}`)
+    return this.request(`/stream/${fileId}/info`)
+  }
+
+  async getStreamSubtitles(fileId: number): Promise<Array<{ id: number; language: string; title: string | null }>> {
+    return this.request(`/stream/${fileId}/subtitles`)
+  }
+
+  async getStreamTracks(
+    fileId: number
+  ): Promise<Array<{ index: number; type: string; codec: string; language: string | null; title: string | null }>> {
+    return this.request(`/stream/${fileId}/tracks`)
   }
 
   async prepareStream(fileId: number): Promise<{ jobId?: number; ready: boolean }> {
