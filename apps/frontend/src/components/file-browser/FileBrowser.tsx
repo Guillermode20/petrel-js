@@ -73,8 +73,12 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 
     // Breadcrumb segments
     const breadcrumbSegments = useMemo(
-        () => buildBreadcrumbSegments(folderPath ?? data?.currentFolder?.path ?? ''),
-        [folderPath, data?.currentFolder]
+        () =>
+            buildBreadcrumbSegments({
+                chain: data?.parentChain,
+                path: folderPath ?? data?.currentFolder?.path ?? '',
+            }),
+        [folderPath, data?.currentFolder, data?.parentChain]
     )
 
     // Handlers

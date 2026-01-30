@@ -177,6 +177,7 @@ class ApiClient {
   }): Promise<{
     items: Array<File | Folder>
     currentFolder: Folder | null
+    parentChain: Folder[]
     total: number
     page: number
     limit: number
@@ -196,6 +197,7 @@ class ApiClient {
       files: File[]
       folders: Folder[]
       currentFolder: Folder | null
+      parentChain: Folder[]
       pagination: { limit: number; offset: number; total: number }
     }>(`/files${query ? `?${query}` : ''}`)
 
@@ -209,6 +211,7 @@ class ApiClient {
     return {
       items,
       currentFolder: result.currentFolder,
+      parentChain: result.parentChain ?? [],
       total,
       page: resolvedPage,
       limit: resolvedLimit,

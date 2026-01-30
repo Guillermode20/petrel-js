@@ -10,6 +10,7 @@ export interface FileListData {
   files: File[];
   folders: Folder[];
   currentFolder: Folder | null;
+  parentChain: Folder[];
   pagination: PaginationInfo;
 }
 

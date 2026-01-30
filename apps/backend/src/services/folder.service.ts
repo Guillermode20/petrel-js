@@ -74,6 +74,33 @@ export class FolderService {
     return created;
   }
 
+  async getParentChain(folderId: number | null): Promise<Folder[]> {
+    if (folderId === null) {
+      return [];
+    }
+
+    const visited = new Set<number>();
+    const chain: Folder[] = [];
+    let currentId: number | null = folderId;
+
+    while (currentId !== null) {
+      if (visited.has(currentId)) {
+        break;
+      }
+      visited.add(currentId);
+
+      const current = await this.getById(currentId);
+      if (!current) {
+        break;
+      }
+
+      chain.push(current);
+      currentId = current.parentId;
+    }
+
+    return chain.reverse();
+  }
+
   async updateFolder(id: number, input: { name?: string; parentId?: number | null }): Promise<Folder | null> {
     const current = await this.getById(id);
     if (!current) return null;

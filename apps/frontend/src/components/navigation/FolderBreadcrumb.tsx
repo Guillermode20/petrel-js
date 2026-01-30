@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { ChevronRight, Home } from 'lucide-react'
+import type { Folder } from '@petrel/shared'
+import { Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
     Breadcrumb,
@@ -10,7 +11,6 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { Fragment } from 'react'
 
 interface BreadcrumbSegment {
     label: string
@@ -85,12 +85,20 @@ export function FolderBreadcrumb({ segments, className, onMove }: FolderBreadcru
                                     segmentId !== undefined && dragOverId === segmentId && 'bg-primary/20 ring-2 ring-primary ring-inset'
                                 )}
                             >
-                                {isLast || !segment.href ? (
+                                {isLast ? (
                                     <BreadcrumbPage>{segment.label}</BreadcrumbPage>
-                                ) : (
+                                ) : segment.id ? (
+                                    <BreadcrumbLink asChild>
+                                        <Link to="/files/$folderId" params={{ folderId: String(segment.id) }}>
+                                            {segment.label}
+                                        </Link>
+                                    </BreadcrumbLink>
+                                ) : segment.href ? (
                                     <BreadcrumbLink asChild>
                                         <Link to={segment.href}>{segment.label}</Link>
                                     </BreadcrumbLink>
+                                ) : (
+                                    <BreadcrumbPage>{segment.label}</BreadcrumbPage>
                                 )}
                             </BreadcrumbItem>
                         </Fragment>
@@ -104,10 +112,20 @@ export function FolderBreadcrumb({ segments, className, onMove }: FolderBreadcru
 /**
  * Build breadcrumb segments from a folder path
  */
-export function buildBreadcrumbSegments(
-    path: string,
+interface BuildBreadcrumbOptions {
+    chain?: Folder[]
+    path?: string
     folderNames?: Map<string, string>
-): BreadcrumbSegment[] {
+}
+
+export function buildBreadcrumbSegments({ chain, path = '', folderNames }: BuildBreadcrumbOptions): BreadcrumbSegment[] {
+    if (chain && chain.length > 0) {
+        return chain.map((folder) => ({
+            id: folder.id,
+            label: folder.name,
+        }))
+    }
+
     if (!path || path === '/') {
         return []
     }

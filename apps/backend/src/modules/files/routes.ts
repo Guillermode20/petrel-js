@@ -339,17 +339,21 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
         folderPath ? folderService.getFolderByPath(folderPath) : Promise.resolve(null),
       ]);
 
-      const folders = parentFolder
-        ? await folderService.listByParentId(parentFolder.id)
-        : folderPath
-          ? []
-          : await folderService.listByParentId(null);
+      const [folders, parentChain] = await Promise.all([
+        parentFolder
+          ? folderService.listByParentId(parentFolder.id)
+          : folderPath
+            ? Promise.resolve([])
+            : folderService.listByParentId(null),
+        folderService.getParentChain(parentFolder?.id ?? null),
+      ]);
 
       return {
         data: {
           files: fileResult.files,
           folders,
           currentFolder: parentFolder,
+          parentChain,
           pagination: {
             limit,
             offset,
