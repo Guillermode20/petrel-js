@@ -1,11 +1,25 @@
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { LoginForm } from "../components/auth/LoginForm";
 import { Header } from "../components/Header";
 import { Sidebar } from "../components/navigation/Sidebar";
 import { useAuth } from "../hooks/useAuth";
 
+/**
+ * Check if current path is a public route that doesn't require auth
+ */
+function isPublicRoute(pathname: string): boolean {
+	return pathname.startsWith("/s/");
+}
+
 function RootComponent() {
 	const { isAuthenticated, isLoading } = useAuth();
+	const routerState = useRouterState();
+	const pathname = routerState.location.pathname;
+
+	// Public routes bypass auth check
+	if (isPublicRoute(pathname)) {
+		return <Outlet />;
+	}
 
 	if (isLoading) {
 		return (

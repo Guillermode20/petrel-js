@@ -193,7 +193,7 @@ function FileGridItem({ file, shareToken, password, onClick }: FileItemProps): R
 	return (
 		<button
 			onClick={onClick}
-			className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-secondary/50"
+			className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:bg-secondary/50"
 		>
 			{/* Thumbnail */}
 			<div className="relative aspect-square w-full bg-secondary">
@@ -206,14 +206,14 @@ function FileGridItem({ file, shareToken, password, onClick }: FileItemProps): R
 					/>
 				) : (
 					<div className="flex h-full w-full items-center justify-center">
-						<FileIcon className="h-12 w-12 text-muted-foreground" />
+						<FileIcon className="h-12 w-12 text-foreground/80 group-hover:text-foreground" />
 					</div>
 				)}
 			</div>
 
 			{/* File name */}
 			<div className="p-2">
-				<p className="truncate text-sm font-medium">{file.name}</p>
+				<p className="truncate text-sm font-medium text-foreground">{file.name}</p>
 				<p className="text-xs text-muted-foreground">{formatFileSize(file.size)}</p>
 			</div>
 		</button>
@@ -244,11 +244,11 @@ function FileListItem({
 	return (
 		<button
 			onClick={onClick}
-			className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-secondary/50"
+			className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-secondary/50"
 		>
-			<FileIcon className="h-5 w-5 text-muted-foreground" />
+			<FileIcon className="h-5 w-5 text-foreground/80 group-hover:text-foreground" />
 			<div className="flex flex-1 flex-col text-left">
-				<span className="font-medium">{file.name}</span>
+				<span className="font-medium text-foreground">{file.name}</span>
 				<span className="flex items-center gap-2 text-xs text-muted-foreground">
 					<HardDrive className="h-3 w-3" />
 					{formatFileSize(file.size)}

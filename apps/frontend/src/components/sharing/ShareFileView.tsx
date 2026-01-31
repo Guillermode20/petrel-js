@@ -80,9 +80,9 @@ interface FileInfoProps {
 function FileInfo({ file, showMetadata }: FileInfoProps): React.ReactNode {
 	return (
 		<div className="flex items-center gap-3">
-			<FileIcon className="h-5 w-5 text-muted-foreground" />
+			<FileIcon className="h-5 w-5 text-foreground/80" />
 			<div className="flex flex-col">
-				<span className="font-medium">{file.name}</span>
+				<span className="font-medium text-foreground">{file.name}</span>
 				{showMetadata && (
 					<div className="flex items-center gap-3 text-xs text-muted-foreground">
 						<span className="flex items-center gap-1">

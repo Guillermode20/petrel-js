@@ -81,8 +81,8 @@ export function ShareLayout({
 
 			{/* Header */}
 			{title && (
-				<header className="flex items-center justify-center border-b border-border px-4 py-3">
-					<h1 className="text-lg font-medium">{title}</h1>
+				<header className="flex items-center justify-center border-b border-border px-4 py-3 bg-card">
+					<h1 className="text-lg font-medium text-foreground">{title}</h1>
 				</header>
 			)}
 

@@ -114,13 +114,13 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 							loading="lazy"
 						/>
 					) : (
-						<Icon className="h-10 w-10 text-muted-foreground" />
+						<Icon className="h-10 w-10 text-foreground/80 group-hover:text-foreground" />
 					)}
 				</div>
 
 				{/* File name */}
 				<div className="w-full text-center">
-					<p className="truncate text-sm font-medium" title={item.name}>
+					<p className="truncate text-sm font-medium text-foreground" title={item.name}>
 						{item.name}
 					</p>
 					{isFileItem && (

@@ -6,7 +6,7 @@
 
 /* Darkmatter Aesthetic Theme - Petrel */
 body {
-	@apply m-0;
+	@apply m-0 bg-background text-foreground;
 	font-family:
 		"JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
 		"Liberation Mono", "Courier New", monospace;
@@ -18,7 +18,7 @@ code {
 	font-family: "JetBrains Mono", "IBM Plex Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
-/* Darkmatter palette from AGENTS.md - dark by default */
+/* Darkmatter palette - dark by default */
 :root {
 	/* Deep dark backgrounds */
 	--background: 240 6% 6%;
@@ -86,6 +86,55 @@ code {
 	--shadow-offset-x: 0px;
 	--shadow-offset-y: 1px;
 	--letter-spacing: 0rem;
+}
+
+/* Light theme variant - clean light purple accent */
+:root:not(.dark) {
+	/* Light backgrounds */
+	--background: 0 0% 100%;
+	--foreground: 240 10% 3.9%;
+	--card: 0 0% 100%;
+	--card-foreground: 240 10% 3.9%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 240 10% 3.9%;
+	/* Purple accent adjusted for light mode */
+	--primary: 263 70% 50%;
+	--primary-foreground: 0 0% 100%;
+	/* Elevated surfaces */
+	--secondary: 240 4.8% 95.9%;
+	--secondary-foreground: 240 5.9% 10%;
+	--muted: 240 4.8% 95.9%;
+	--muted-foreground: 240 3.8% 46.1%;
+	/* Accent */
+	--accent: 263 70% 50%;
+	--accent-foreground: 0 0% 100%;
+	/* Destructive */
+	--destructive: 0 84.2% 60.2%;
+	--destructive-foreground: 0 0% 98%;
+	/* Borders and inputs */
+	--border: 240 5.9% 90%;
+	--input: 240 5.9% 90%;
+	--ring: 263 70% 50%;
+	/* Sidebar */
+	--sidebar: 0 0% 98%;
+	--sidebar-foreground: 240 5.3% 26.1%;
+	--sidebar-primary: 263 70% 50%;
+	--sidebar-primary-foreground: 0 0% 100%;
+	--sidebar-accent: 240 4.8% 95.9%;
+	--sidebar-accent-foreground: 240 5.9% 10%;
+	--sidebar-border: 240 5.9% 90%;
+	--sidebar-ring: 263 70% 50%;
+	/* Shadows for light theme */
+	--shadow-color: #000000;
+	--shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+	--shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+	--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+	--shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
+	--shadow-opacity: 0.1;
 }
 
 @theme inline {

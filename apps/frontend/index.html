@@ -12,10 +12,12 @@
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <script>
+      // Darkmatter aesthetic - dark by default
       if (
-        window.matchMedia('(prefers-color-scheme: dark)').matches ||
-        localStorage.getItem('theme') === 'dark'
+        localStorage.getItem('theme') === 'light'
       ) {
+        // Only remove dark class if explicitly set to light
+      } else {
         document.documentElement.classList.add('dark');
       }
     </script>
