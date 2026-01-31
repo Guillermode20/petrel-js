@@ -64,6 +64,12 @@ export function useVideoPlayer({
         startPosition,
         enableWorker: true,
         lowLatencyMode: false,
+        xhrSetup: (xhr, url) => {
+          const token = localStorage.getItem('petrel_access_token')
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+          }
+        },
       })
 
       hls.loadSource(src)
