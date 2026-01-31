@@ -24,6 +24,7 @@ export interface SharedFileBrowserProps {
 	onFolderOpen: (folder: Folder) => void;
 	breadcrumbPath?: BreadcrumbItem[];
 	onBreadcrumbClick?: (index: number) => void;
+	onDownloadZip?: (fileIds: number[]) => void;
 	className?: string;
 }
 
@@ -56,19 +57,72 @@ export function SharedFileBrowser({
 	onFolderOpen,
 	breadcrumbPath = [],
 	onBreadcrumbClick,
+	onDownloadZip,
 	className,
 }: SharedFileBrowserProps): React.ReactNode {
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 	const [sortBy, setSortBy] = useState<SortField>("name");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
 	// Combine folders and files, folders first
 	const items = [...folders, ...files];
 
-	// Handle selection (simplified - no multi-select)
-	const handleSelect = () => {
-		setSelectedIds(new Set());
+	// Handle selection with modifier key support
+	const handleSelect = (item: File | Folder, event: React.MouseEvent) => {
+		const key = "mimeType" in item ? `file-${item.id}` : `folder-${item.id}`;
+		const index = items.findIndex(i => ("mimeType" in i ? `file-${i.id}` : `folder-${i.id}`) === key);
+
+		const isCtrlCmd = event.ctrlKey || event.metaKey;
+		const isShift = event.shiftKey;
+
+		if (isShift && lastSelectedIndex !== null && items[lastSelectedIndex]) {
+			// Range selection
+			const start = Math.min(lastSelectedIndex, index);
+			const end = Math.max(lastSelectedIndex, index);
+			const newSelected = new Set(selectedIds);
+			for (let i = start; i <= end; i++) {
+				const item = items[i];
+				if (item) {
+					const itemKey = "mimeType" in item ? `file-${item.id}` : `folder-${item.id}`;
+					newSelected.add(itemKey);
+				}
+			}
+			setSelectedIds(newSelected);
+		} else if (isCtrlCmd) {
+			// Toggle selection
+			const newSelected = new Set(selectedIds);
+			if (newSelected.has(key)) {
+				newSelected.delete(key);
+			} else {
+				newSelected.add(key);
+			}
+			setSelectedIds(newSelected);
+			setLastSelectedIndex(index);
+		} else {
+			// Single selection
+			setSelectedIds(new Set([key]));
+			setLastSelectedIndex(index);
+		}
+	};
+
+	// Handle ZIP download
+	const handleZipDownload = () => {
+		if (!settings.allowDownload || !settings.allowZip) return;
+		const selectedFiles = Array.from(selectedIds)
+			.map((id) => {
+				const match = id.match(/^(file|folder)-(\d+)$/);
+				if (!match) return null;
+				const [, type, idStr] = match;
+				if (type === "file") {
+					return files.find((f) => f.id === Number(idStr));
+				}
+				return null;
+			})
+			.filter(Boolean) as File[];
+		const fileIds = selectedFiles.map((f) => f.id);
+		onDownloadZip?.(fileIds);
 	};
 
 	// Handle sort
@@ -108,7 +162,7 @@ export function SharedFileBrowser({
 	return (
 		<div className={cn("flex flex-1 flex-col", className)}>
 			{/* Toolbar with breadcrumbs */}
-			<div className="flex items-center justify-between border-b border-border px-4 h-10">
+			<div className="flex h-10 items-center justify-between border-b border-border px-4">
 				<div className="flex items-center gap-1 overflow-hidden">
 					{/* Root icon */}
 					<Button
@@ -124,11 +178,11 @@ export function SharedFileBrowser({
 					{/* Breadcrumb path */}
 					{breadcrumbPath.map((item, index) => (
 						<React.Fragment key={item.folder.id}>
-							<ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+							<ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
 							<Button
 								variant="ghost"
 								size="sm"
-								className="h-6 px-1 text-sm font-medium hover:text-foreground truncate max-w-[150px]"
+								className="h-6 max-w-[150px] truncate px-1 text-sm font-medium hover:text-foreground"
 								onClick={() => onBreadcrumbClick?.(index + 1)}
 								disabled={index === breadcrumbPath.length - 1}
 							>
@@ -138,11 +192,11 @@ export function SharedFileBrowser({
 					))}
 
 					{/* Current folder indicator - always show current folder name */}
-					<ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+					<ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
 					<FolderIcon className="h-4 w-4 text-muted-foreground" />
-					<span className="font-medium text-sm ml-1">{folder.name}</span>
+					<span className="ml-1 text-sm font-medium">{folder.name}</span>
 
-					<span className="text-sm text-muted-foreground ml-2">
+					<span className="ml-2 text-sm text-muted-foreground">
 						({files.length} files, {folders.length} folders)
 					</span>
 				</div>
@@ -160,6 +214,7 @@ export function SharedFileBrowser({
 						onContextMenu={() => {}}
 						onMove={() => {}}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
+						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						isLoading={false}
 					/>
 				) : (
@@ -171,6 +226,7 @@ export function SharedFileBrowser({
 						onContextMenu={() => {}}
 						onMove={() => {}}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
+						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						sortBy={sortBy}
 						sortOrder={sortOrder}
 						onSort={handleSort}

@@ -7,6 +7,8 @@ export { PasswordPrompt } from "./PasswordPrompt";
 export type { PhotoGalleryProps } from "./PhotoGallery";
 export { PhotoGallery } from "./PhotoGallery";
 export { QRCodeDisplay } from "./QRCodeDisplay";
+export { SelectionToolbar } from "./SelectionToolbar";
+export type { SelectionToolbarProps } from "./SelectionToolbar";
 export type { ShareAudioPlaylistProps } from "./ShareAudioPlaylist";
 export { ShareAudioPlaylist } from "./ShareAudioPlaylist";
 export type { ShareFileViewProps } from "./ShareFileView";

@@ -28,6 +28,7 @@ export function FileList({
 	onDelete,
 	onShare,
 	onDownload,
+	onDownloadZip,
 	onCopyLink,
 	sortBy,
 	sortOrder,
@@ -112,6 +113,7 @@ export function FileList({
 							onDelete={() => onDelete?.(item)}
 							onShare={() => onShare?.(item)}
 							onDownload={() => onDownload?.(item)}
+							onDownloadZip={onDownloadZip}
 							onMove={() => {}}
 							onCopyLink={() => onCopyLink?.(item)}
 						>

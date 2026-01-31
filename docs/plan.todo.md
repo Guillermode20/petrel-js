@@ -426,7 +426,78 @@
 
 ---
 
-## Phase 6: Polish & Deployment
+## Phase 6: Global Context Menus
+
+### Core Context Menu System
+- [ ] `ContextMenu` primitive component — floating menu with darkmatter styling
+  - Keyboard navigation (arrow keys, Enter, Escape)
+  - Click-outside to dismiss
+  - Nested submenu support
+  - Position-aware rendering (flip if off-screen)
+- [ ] `ContextMenuProvider` — global state for menu positioning and content
+- [ ] `useContextMenu` hook — open menus programmatically from any component
+
+### File Browser Context Menus
+- [ ] **Single file/folder menu:**
+  - Open / Preview
+  - Download
+  - Share (opens CreateShareModal)
+  - Rename
+  - Move to folder
+  - Copy
+  - Delete (with confirmation)
+  - Properties (metadata panel)
+- [ ] **Multi-selection menu:**
+  - Download as ZIP
+  - Move selected to folder
+  - Delete selected (bulk confirmation)
+  - Share selected (creates folder share if multiple)
+  - Clear selection
+- [ ] **Empty space menu:**
+  - Upload files
+  - New folder
+  - Paste (if clipboard has items)
+  - Refresh
+  - View options (grid/list toggle)
+
+### Viewer Context Menus
+- [ ] **Video player:**
+  - Playback speed submenu
+  - Audio track submenu
+  - Subtitle submenu
+  - Picture-in-picture toggle
+  - Download video
+  - Copy current timestamp link
+- [ ] **Image viewer:**
+  - Open in new tab
+  - Download
+  - Copy image
+  - View EXIF data
+  - Navigate next/previous
+- [ ] **Audio player:**
+  - Add to playlist
+  - Download track
+  - View album info
+
+### Share View Context Menus
+- [ ] **Public share menu:**
+  - Copy share link
+  - Download (if permitted)
+  - Report/feedback (future)
+- [ ] **Folder share items:**
+  - Preview (for supported types)
+  - Download individual
+  - Add to bulk selection
+
+### Integration
+- [ ] Connect to existing keyboard shortcuts
+- [ ] Mobile long-press to trigger context menu
+- [ ] Right-click on sidebar items (quick navigation)
+- [ ] Consistent styling with terminal aesthetic
+
+---
+
+## Phase 7: Polish & Deployment
 
 ### Aesthetic Refinements
 - [x] Custom monospace font (JetBrains Mono / IBM Plex Mono)

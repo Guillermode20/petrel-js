@@ -5,6 +5,7 @@ import { shareRateLimit } from "../../lib/rate-limit";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
+import { createZipArchive, generateJobId, getZipJob, cleanupZip } from "../../services/zip.service";
 import { authMiddleware, requireAuth } from "../auth";
 import type { ApiResponse, ShareContentData, ShareData } from "./types";
 
@@ -207,10 +208,182 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}),
 			query: t.Object({
 				password: t.Optional(t.String()),
+				h: t.Optional(t.String()), // Hidden password param
 			}),
 			detail: {
 				summary: "Download shared file",
 				description: "Streams the shared file for download",
+				tags: ["Shares"],
+			},
+		},
+	)
+	.post(
+		"/:token/download-zip",
+		async ({ params, body, query, set }) => {
+			const share = await shareService.getShareByToken(params.token);
+			if (!share) {
+				set.status = 404;
+				return { data: null, error: "Share not found" };
+			}
+
+			if (isExpired(share.share.expiresAt)) {
+				set.status = 410;
+				return { data: null, error: "Share expired" };
+			}
+
+			if (!share.settings.allowZip) {
+				set.status = 403;
+				return { data: null, error: "ZIP download not allowed for this share" };
+			}
+
+			if (share.share.passwordHash) {
+				const password = query.password ?? "";
+				const valid = await shareService.verifySharePassword(share.share, password);
+				if (!valid) {
+					set.status = 401;
+					return { data: null, error: "Invalid password" };
+				}
+			}
+
+			// Get the files to include in the ZIP
+			const fileIds = body.fileIds;
+			if (!fileIds || fileIds.length === 0) {
+				set.status = 400;
+				return { data: null, error: "No files specified" };
+			}
+
+			// Verify all files are accessible via this share
+			const files = [];
+			for (const fileId of fileIds) {
+				const file = await fileService.getById(fileId);
+				if (!file) {
+					set.status = 404;
+					return { data: null, error: `File ${fileId} not found` };
+				}
+
+				// If it's a folder share, verify file is within the shared folder
+				if (share.share.type === "folder") {
+					const shareContent = await shareService.getShareContent(share.share);
+					if (!shareContent) {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					if (file.parentId === null) {
+						set.status = 403;
+						return { data: null, error: `File ${fileId} not accessible via this share` };
+					}
+					const isInFolder = await folderService.isDescendantOf(file.parentId, (shareContent as { path: string }).path);
+					if (!isInFolder) {
+						set.status = 403;
+						return { data: null, error: `File ${fileId} not accessible via this share` };
+					}
+				} else if (share.share.type === "file" && share.share.targetId !== fileId) {
+					// For file shares, only the shared file is accessible
+					set.status = 403;
+					return { data: null, error: `File ${fileId} not accessible via this share` };
+				}
+
+				files.push(file);
+			}
+
+			// Create ZIP archive
+			const jobId = generateJobId();
+			const result = await createZipArchive(files, params.token, jobId);
+
+			if (!result.success) {
+				set.status = 400;
+				return { data: null, error: result.error };
+			}
+
+			// Return job ID for polling
+			return { data: { jobId, status: "processing" }, error: null };
+		},
+		{
+			params: t.Object({
+				token: t.String({ minLength: 1 }),
+			}),
+			body: t.Object({
+				fileIds: t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 100 }),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+			detail: {
+				summary: "Create ZIP download",
+				description: "Creates a ZIP archive of selected files",
+				tags: ["Shares"],
+			},
+		},
+	)
+	.get(
+		"/:token/download-zip/:jobId",
+		async ({ params, query, set }) => {
+			const share = await shareService.getShareByToken(params.token);
+			if (!share) {
+				set.status = 404;
+				return { data: null, error: "Share not found" };
+			}
+
+			if (isExpired(share.share.expiresAt)) {
+				set.status = 410;
+				return { data: null, error: "Share expired" };
+			}
+
+			if (share.share.passwordHash) {
+				const password = query.password ?? "";
+				const valid = await shareService.verifySharePassword(share.share, password);
+				if (!valid) {
+					set.status = 401;
+					return { data: null, error: "Invalid password" };
+				}
+			}
+
+			const job = getZipJob(params.jobId);
+			if (!job) {
+				set.status = 404;
+				return { data: null, error: "Job not found" };
+			}
+
+			if (job.status === "error") {
+				set.status = 500;
+				return { data: null, error: job.error || "ZIP creation failed" };
+			}
+
+			if (job.status !== "completed" || !job.tempPath) {
+				// Return progress
+				return { data: { jobId: params.jobId, status: job.status, progress: job.progress }, error: null };
+			}
+
+			// Stream the ZIP file
+			const fileStat = await stat(job.tempPath).catch(() => null);
+			if (!fileStat) {
+				set.status = 404;
+				return { data: null, error: "ZIP file not found" };
+			}
+
+			const headers = (set.headers ??= {} as Record<string, string>);
+			headers["Content-Type"] = "application/zip";
+			headers["Content-Length"] = fileStat.size.toString();
+			headers["Content-Disposition"] = `attachment; filename="${params.token}-download.zip"`;
+
+			const response = new Response(Bun.file(job.tempPath));
+
+			// Clean up after streaming (fire and forget)
+			void cleanupZip(params.jobId);
+
+			return response;
+		},
+		{
+			params: t.Object({
+				token: t.String({ minLength: 1 }),
+				jobId: t.String({ minLength: 1 }),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+			detail: {
+				summary: "Download ZIP file",
+				description: "Downloads the generated ZIP archive",
 				tags: ["Shares"],
 			},
 		},

@@ -473,6 +473,39 @@ class ApiClient {
 		return this.request(`/shares/${id}`, { method: "DELETE" });
 	}
 
+	// ZIP download endpoints
+	async createZipDownload(
+		shareToken: string,
+		fileIds: number[],
+		password?: string,
+	): Promise<{ jobId: string; status: string }> {
+		const params = password ? `?password=${encodeURIComponent(password)}` : "";
+		return this.request<{ jobId: string; status: string }>(`/shares/${shareToken}/download-zip${params}`, {
+			method: "POST",
+			body: JSON.stringify({ fileIds }),
+		});
+	}
+
+	async getZipDownloadStatus(
+		shareToken: string,
+		jobId: string,
+		password?: string,
+	): Promise<{ jobId: string; status: string; progress?: number }> {
+		const params = password ? `?password=${encodeURIComponent(password)}` : "";
+		return this.request<{ jobId: string; status: string; progress?: number }>(
+			`/shares/${shareToken}/download-zip/${jobId}${params}`,
+		);
+	}
+
+	getZipDownloadUrl(shareToken: string, jobId: string, password?: string): string {
+		const params = new URLSearchParams();
+		if (password) {
+			params.set("password", password);
+		}
+		const query = params.toString();
+		return `${API_BASE}/shares/${shareToken}/download-zip/${jobId}${query ? `?${query}` : ""}`;
+	}
+
 	async getMyShares(): Promise<Array<Share & ShareSettings & { content: File | Folder }>> {
 		const result =
 			await this.request<Array<{ share: Share; settings: ShareSettings; content: File | Folder }>>(

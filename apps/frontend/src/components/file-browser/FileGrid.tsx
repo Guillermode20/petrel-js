@@ -17,6 +17,7 @@ export function FileGrid({
 	onDelete,
 	onShare,
 	onDownload,
+	onDownloadZip,
 	onCopyLink,
 	isLoading,
 }: FileGridProps) {
@@ -65,6 +66,7 @@ export function FileGrid({
 						onDelete={() => onDelete?.(item)}
 						onShare={() => onShare?.(item)}
 						onDownload={() => onDownload?.(item)}
+						onDownloadZip={onDownloadZip}
 						onMove={() => {}} // Custom move menu could be added later
 						onCopyLink={() => onCopyLink?.(item)}
 					>

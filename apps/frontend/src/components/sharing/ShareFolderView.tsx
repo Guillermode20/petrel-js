@@ -1,8 +1,10 @@
 import type { File, Folder, ShareSettings } from "@petrel/shared";
 import { FolderOpen, Image, Music } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 import { getPreviewType } from "../viewers/file-preview/utils";
 import { FolderBrowser } from "./FolderBrowser";
 import { PhotoGallery } from "./PhotoGallery";
@@ -39,6 +41,45 @@ export function ShareFolderView({
 }: ShareFolderViewProps): React.ReactNode {
 	const detectedMode = useMemo(() => detectViewMode(files), [files]);
 	const [viewMode, setViewMode] = useState<FolderViewMode>(detectedMode);
+
+	// Handle ZIP download
+	const handleDownloadZip = useCallback(
+		async (fileIds: number[]) => {
+			if (!settings.allowZip) {
+				toast.error("ZIP download not allowed for this share");
+				return;
+			}
+
+			try {
+				toast.info("Creating ZIP archive...");
+				const { jobId } = await api.createZipDownload(shareToken, fileIds, password);
+
+				// Poll for completion
+				const pollInterval = setInterval(async () => {
+					const status = await api.getZipDownloadStatus(shareToken, jobId, password);
+
+					if (status.status === "completed") {
+						clearInterval(pollInterval);
+						// Trigger download
+						const url = api.getZipDownloadUrl(shareToken, jobId, password);
+						window.open(url, "_blank");
+						toast.success("ZIP download started");
+					} else if (status.status === "error") {
+						clearInterval(pollInterval);
+						toast.error("Failed to create ZIP archive");
+					}
+				}, 1000);
+
+				// Stop polling after 30 seconds
+				setTimeout(() => {
+					clearInterval(pollInterval);
+				}, 30000);
+			} catch {
+				toast.error("Failed to create ZIP archive");
+			}
+		},
+		[settings.allowZip, shareToken, password],
+	);
 
 	// Determine available modes based on content
 	const availableModes = useMemo(() => {
@@ -103,6 +144,7 @@ export function ShareFolderView({
 				shareToken,
 				password,
 				settings,
+				onDownloadZip: handleDownloadZip,
 			})}
 		</div>
 	);
@@ -115,6 +157,7 @@ interface ViewRenderProps {
 	shareToken: string;
 	password?: string;
 	settings: ShareSettings;
+	onDownloadZip?: (fileIds: number[]) => void;
 }
 
 /**
@@ -151,6 +194,7 @@ function renderView(mode: FolderViewMode, props: ViewRenderProps): React.ReactNo
 					shareToken={props.shareToken}
 					password={props.password}
 					settings={props.settings}
+					onDownloadZip={props.onDownloadZip}
 				/>
 			);
 	}

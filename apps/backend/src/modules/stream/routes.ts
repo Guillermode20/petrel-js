@@ -3,10 +3,13 @@ import { config } from "../../config";
 import { streamRateLimit } from "../../lib/rate-limit";
 import { resolveStoragePath } from "../../lib/storage";
 import { fileService } from "../../services/file.service";
+import { folderService } from "../../services/folder.service";
+import { shareService } from "../../services/share.service";
 import { streamService } from "../../services/stream.service";
 import { transcodeQueue } from "../../services/transcode.service";
 import { videoService } from "../../services/video.service";
 import { authMiddleware } from "../auth";
+import { shareRateLimit } from "../../lib/rate-limit";
 import type { ApiResponse, StreamInfoResponse } from "./types";
 
 const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
@@ -15,7 +18,7 @@ function canRead(user: unknown): boolean {
 	return Boolean(user) || GUEST_ACCESS_ENABLED;
 }
 
-export const streamRoutes = new Elysia({ prefix: "/api/stream" })
+const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 	.use(authMiddleware)
 	.use(streamRateLimit)
 	.get(
@@ -379,3 +382,210 @@ export const streamRoutes = new Elysia({ prefix: "/api/stream" })
 			}),
 		},
 	);
+
+// Share-aware streaming routes (public access with token validation)
+const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
+	.use(shareRateLimit)
+	.get(
+		"/:token/:fileId/master.m3u8",
+		async ({ params, query, set }) => {
+			const share = await shareService.getShareByToken(params.token);
+			if (!share) {
+				set.status = 404;
+				return "#EXTM3U\n# Share not found";
+			}
+
+			if (share.share.expiresAt && new Date(share.share.expiresAt) < new Date()) {
+				set.status = 410;
+				return "#EXTM3U\n# Share expired";
+			}
+
+			if (share.share.passwordHash) {
+				const password = query.password ?? "";
+				const valid = await shareService.verifySharePassword(share.share, password);
+				if (!valid) {
+					set.status = 401;
+					return "#EXTM3U\n# Invalid password";
+				}
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			if (Number.isNaN(fileId)) {
+				set.status = 400;
+				return "#EXTM3U\n# Invalid file ID";
+			}
+
+			// Verify file is accessible via this share
+			const file = await fileService.getById(fileId);
+			if (!file) {
+				set.status = 404;
+				return "#EXTM3U\n# File not found";
+			}
+
+			// Check if file is within shared folder (for folder shares)
+			if (share.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share.share);
+				if (!shareContent) {
+					set.status = 400;
+					return "#EXTM3U\n# Invalid share";
+				}
+				if (file.parentId === null) {
+					set.status = 403;
+					return "#EXTM3U\n# Access denied";
+				}
+				const isInFolder = await folderService.isDescendantOf(file.parentId, (shareContent as { path: string }).path);
+				if (!isInFolder) {
+					set.status = 403;
+					return "#EXTM3U\n# Access denied";
+				}
+			} else if (share.share.type === "file" && share.share.targetId !== fileId) {
+				set.status = 403;
+				return "#EXTM3U\n# Access denied";
+			}
+
+			if (!file.mimeType.startsWith("video/")) {
+				set.status = 400;
+				return "#EXTM3U\n# File is not a video";
+			}
+
+			const filePath = fileService.resolveDiskPath(file);
+			const streamInfo = await streamService.getStreamInfo(fileId, filePath);
+
+			if (!streamInfo.available) {
+				if (streamInfo.isTransmux) {
+					void streamService.generateTransmuxStream(fileId, filePath);
+					set.status = 202;
+					return "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n/processing.m3u8";
+				}
+				set.status = 202;
+				return "#EXTM3U\n# Stream not ready, transcode in progress";
+			}
+
+			const playlist = await streamService.getMasterPlaylist(fileId);
+			if (!playlist) {
+				set.status = 500;
+				return "#EXTM3U\n# Failed to generate playlist";
+			}
+
+			set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
+			set.headers["Cache-Control"] = "no-cache";
+
+			const password = query.password;
+			const passwordQuery = password ? `&password=${encodeURIComponent(password)}` : "";
+
+			let content = "";
+			if (playlist.qualities.length > 0) {
+				content = streamService.generateMasterPlaylistContent(
+					fileId,
+					playlist.qualities.map((q) => q.name),
+				);
+			} else {
+				content = playlist.content;
+			}
+
+			// Replace segment URLs with share-aware URLs
+			return content
+				.replace(/\.m3u8/g, `.m3u8?shareToken=${params.token}${passwordQuery}`);
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	)
+	.get(
+		"/:token/:fileId/:playlist",
+		async ({ params, query, set }) => {
+			const share = await shareService.getShareByToken(params.token);
+			if (!share) {
+				set.status = 404;
+				return "#EXTM3U\n# Share not found";
+			}
+
+			if (share.share.expiresAt && new Date(share.share.expiresAt) < new Date()) {
+				set.status = 410;
+				return "#EXTM3U\n# Share expired";
+			}
+
+			if (share.share.passwordHash) {
+				const password = query.password ?? "";
+				const valid = await shareService.verifySharePassword(share.share, password);
+				if (!valid) {
+					set.status = 401;
+					return "#EXTM3U\n# Invalid password";
+				}
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			if (Number.isNaN(fileId)) {
+				set.status = 400;
+				return "#EXTM3U\n# Invalid file ID";
+			}
+
+			const playlistName = params.playlist;
+
+			if (playlistName.endsWith(".m3u8")) {
+				const quality = playlistName.replace(".m3u8", "");
+
+				if (quality === "processing") {
+					set.status = 202;
+					set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
+					set.headers["Cache-Control"] = "no-cache";
+					return "#EXTM3U\n# Stream is being prepared, please wait...";
+				}
+
+				const playlistPath = await streamService.getQualityPlaylist(fileId, quality);
+
+				if (!playlistPath) {
+					set.status = 404;
+					return "#EXTM3U\n# Playlist not found";
+				}
+
+				set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
+				set.headers["Cache-Control"] = "no-cache";
+
+				const password = query.password;
+				const passwordQuery = password ? `?password=${encodeURIComponent(password)}` : "";
+
+				const content = await Bun.file(playlistPath).text();
+				return content
+					.replace(/segment_/g, `/api/stream/share/${params.token}/${fileId}/segment_`)
+					.replace(/\.ts/g, `.ts${passwordQuery}`);
+			}
+
+			if (playlistName.startsWith("segment_") && playlistName.endsWith(".ts")) {
+				const segmentPath = await streamService.getSegment(fileId, playlistName);
+
+				if (!segmentPath) {
+					set.status = 404;
+					return "Segment not found";
+				}
+
+				set.headers["Content-Type"] = "video/MP2T";
+				set.headers["Cache-Control"] = "max-age=31536000";
+
+				return Bun.file(segmentPath);
+			}
+
+			set.status = 400;
+			return "Invalid request";
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+				playlist: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	);
+
+export const streamRoutes = new Elysia({ prefix: "/api" })
+	.use(authenticatedStreamRoutes)
+	.use(shareStreamRoutes);

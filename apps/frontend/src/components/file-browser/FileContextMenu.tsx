@@ -1,5 +1,5 @@
 import type { File, Folder } from "@petrel/shared";
-import { Copy, Download, ExternalLink, FolderInput, Pencil, Share2, Trash2 } from "lucide-react";
+import { Copy, Download, ExternalLink, FileArchive, FolderInput, Pencil, Share2, Trash2 } from "lucide-react";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -19,6 +19,8 @@ interface FileContextMenuProps {
 	onShare: () => void;
 	onMove: () => void;
 	onCopyLink: () => void;
+	onDownloadZip?: () => void;
+	allowZip?: boolean;
 }
 
 /**
@@ -34,9 +36,10 @@ export function FileContextMenu({
 	onShare,
 	onMove,
 	onCopyLink,
+	onDownloadZip,
+	allowZip = true,
 }: FileContextMenuProps) {
 	const isFileItem = isFile(item);
-	const _isImage = isFileItem && item.mimeType.startsWith("image/");
 
 	return (
 		<ContextMenu>
@@ -50,6 +53,12 @@ export function FileContextMenu({
 					<ContextMenuItem onClick={onDownload}>
 						<Download className="mr-2 h-4 w-4" />
 						Download
+					</ContextMenuItem>
+				)}
+				{allowZip && onDownloadZip && (
+					<ContextMenuItem onClick={onDownloadZip}>
+						<FileArchive className="mr-2 h-4 w-4" />
+						Download ZIP
 					</ContextMenuItem>
 				)}
 				<ContextMenuSeparator />

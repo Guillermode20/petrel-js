@@ -1,6 +1,6 @@
 import type { Share } from "@petrel/shared";
 import { addDays, addHours, addMonths, addWeeks, format } from "date-fns";
-import { Clock, Download, Link, Loader2, Lock } from "lucide-react";
+import { Clock, Download, FileArchive, Info, Link, Loader2, Lock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -66,6 +66,8 @@ export function CreateShareModal({
 	const [usePassword, setUsePassword] = useState(false);
 	const [password, setPassword] = useState("");
 	const [allowDownload, setAllowDownload] = useState(true);
+	const [allowZip, setAllowZip] = useState(true);
+	const [showMetadata, setShowMetadata] = useState(true);
 	const [createdShare, setCreatedShare] = useState<Share | null>(null);
 
 	const createShareMutation = useCreateShare();
@@ -79,6 +81,8 @@ export function CreateShareModal({
 				expiresAt: expiresAt?.toISOString(),
 				password: usePassword ? password : undefined,
 				allowDownload,
+				allowZip,
+				showMetadata,
 			});
 
 			setCreatedShare(share);
@@ -95,6 +99,8 @@ export function CreateShareModal({
 		setUsePassword(false);
 		setPassword("");
 		setAllowDownload(true);
+		setAllowZip(true);
+		setShowMetadata(true);
 		onClose();
 	}
 
@@ -183,12 +189,30 @@ export function CreateShareModal({
 						</div>
 
 						{/* Permissions */}
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<Download className="h-4 w-4 text-muted-foreground" />
-								<span className="text-sm">Allow downloads</span>
+						<div className="space-y-3">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Download className="h-4 w-4 text-muted-foreground" />
+									<span className="text-sm">Allow downloads</span>
+								</div>
+								<Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
 							</div>
-							<Switch checked={allowDownload} onCheckedChange={setAllowDownload} />
+
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<FileArchive className="h-4 w-4 text-muted-foreground" />
+									<span className="text-sm">Allow ZIP downloads</span>
+								</div>
+								<Switch checked={allowZip} onCheckedChange={setAllowZip} />
+							</div>
+
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Info className="h-4 w-4 text-muted-foreground" />
+									<span className="text-sm">Show metadata</span>
+								</div>
+								<Switch checked={showMetadata} onCheckedChange={setShowMetadata} />
+							</div>
 						</div>
 					</div>
 				)}

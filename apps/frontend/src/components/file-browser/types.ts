@@ -20,6 +20,7 @@ export interface FileGridProps {
 	onDelete?: (item: File | Folder) => void;
 	onShare?: (item: File | Folder) => void;
 	onDownload?: (item: File | Folder) => void;
+	onDownloadZip?: () => void;
 	onCopyLink?: (item: File | Folder) => void;
 	isLoading?: boolean;
 }
@@ -35,6 +36,7 @@ export interface FileListProps {
 	onDelete?: (item: File | Folder) => void;
 	onShare?: (item: File | Folder) => void;
 	onDownload?: (item: File | Folder) => void;
+	onDownloadZip?: () => void;
 	onCopyLink?: (item: File | Folder) => void;
 	sortBy: SortField;
 	sortOrder: "asc" | "desc";

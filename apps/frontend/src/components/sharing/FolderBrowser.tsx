@@ -14,6 +14,7 @@ export interface FolderBrowserProps {
 	shareToken: string;
 	password?: string;
 	settings: ShareSettings;
+	onDownloadZip?: (fileIds: number[]) => void;
 	className?: string;
 }
 
@@ -38,6 +39,7 @@ export function FolderBrowser({
 	shareToken,
 	password,
 	settings,
+	onDownloadZip,
 	className,
 }: FolderBrowserProps): React.ReactNode {
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -122,6 +124,7 @@ export function FolderBrowser({
 			onFolderOpen={handleFolderOpen}
 			breadcrumbPath={breadcrumbPath}
 			onBreadcrumbClick={handleBreadcrumbClick}
+			onDownloadZip={onDownloadZip}
 			className={className}
 		/>
 	);
