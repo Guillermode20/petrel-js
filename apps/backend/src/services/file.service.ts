@@ -1,4 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { rename } from 'node:fs/promises';
 import type { File } from '@petrel/shared';
 import { db } from '../../db';
 import { files } from '../../db/schema';
@@ -170,22 +171,35 @@ export class FileService {
     if (!current) return null;
 
     const diskPath = this.resolveDiskPath(current);
-    await Bun.write(diskPath, content);
+    const tempPath = `${diskPath}.tmp`;
 
-    const newHash = await this.calculateFileHash(diskPath);
-    const newSize = Bun.file(diskPath).size;
+    try {
+      await Bun.write(tempPath, content);
 
-    const updated = await db
-      .update(files)
-      .set({
-        hash: newHash,
-        size: newSize,
-      })
-      .where(eq(files.id, id))
-      .returning();
+      const newHash = await this.calculateFileHash(tempPath);
+      const newSize = Bun.file(tempPath).size;
 
-    const updatedRow = updated[0];
-    return updatedRow ? this.mapFileRow(updatedRow) : null;
+      const updated = await db
+        .update(files)
+        .set({
+          hash: newHash,
+          size: newSize,
+        })
+        .where(eq(files.id, id))
+        .returning();
+
+      const updatedRow = updated[0];
+      if (!updatedRow) {
+        await Bun.file(tempPath).delete();
+        return null;
+      }
+
+      await rename(tempPath, diskPath);
+      return this.mapFileRow(updatedRow);
+    } catch (err) {
+      await Bun.file(tempPath).delete().catch(() => {});
+      throw err;
+    }
   }
 
   private async calculateFileHash(filePath: string): Promise<string> {

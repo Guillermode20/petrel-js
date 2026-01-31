@@ -810,6 +810,47 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
             return { data: null, error: 'File not found' };
           }
 
+          const TEXT_MIME_TYPES = [
+            'text/plain',
+            'text/markdown',
+            'text/html',
+            'text/css',
+            'text/javascript',
+            'application/json',
+            'application/javascript',
+            'application/xml',
+            'text/xml',
+            'text/x-python',
+            'text/x-java',
+            'text/x-c',
+            'text/x-c++',
+            'text/x-csharp',
+            'text/x-ruby',
+            'text/x-php',
+            'text/x-go',
+            'text/x-rust',
+            'text/x-typescript',
+            'text/x-shellscript',
+            'text/yaml',
+            'text/x-yaml',
+            'application/x-yaml',
+            'text/x-toml',
+            'application/x-toml',
+            'text/x-ini',
+            'text/csv',
+            'application/sql',
+            'text/x-sql',
+            'application/x-sh',
+            'text/x-script.python',
+            'text/x-script.perl',
+            'text/x-script.php',
+          ];
+
+          if (!TEXT_MIME_TYPES.includes(file.mimeType)) {
+            set.status = 400;
+            return { data: null, error: 'Cannot edit non-text files' };
+          }
+
           const updated = await fileService.updateFileContent(params.id, body.content);
           if (!updated) {
             set.status = 500;
@@ -823,7 +864,7 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
             id: t.Number(),
           }),
           body: t.Object({
-            content: t.String({ minLength: 1 }),
+            content: t.String({ minLength: 1, maxLength: 10_000_000 }),
           }),
           detail: {
             summary: 'Update file content',
