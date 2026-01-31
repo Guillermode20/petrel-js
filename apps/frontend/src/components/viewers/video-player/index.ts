@@ -1,5 +1,5 @@
-export { VideoPlayer } from './VideoPlayer'
-export { useVideoPlayer } from './useVideoPlayer'
-export { VideoControlBar } from './VideoControls'
-export * from './types'
-export * from './utils'
+export * from "./types";
+export { useVideoPlayer } from "./useVideoPlayer";
+export * from "./utils";
+export { VideoControlBar } from "./VideoControls";
+export { VideoPlayer } from "./VideoPlayer";

@@ -4,5 +4,5 @@
  * Provides share link CRUD endpoints.
  */
 
-export { shareRoutes } from './routes';
-export type { ShareData } from './types';
+export { shareRoutes } from "./routes";
+export type { ShareData } from "./types";

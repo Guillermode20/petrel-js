@@ -1,40 +1,40 @@
-import type { File, Folder } from '@petrel/shared';
+import type { File, Folder } from "@petrel/shared";
 
 export interface PaginationInfo {
-  limit: number;
-  offset: number;
-  total: number;
+	limit: number;
+	offset: number;
+	total: number;
 }
 
 export interface FileListData {
-  files: File[];
-  folders: Folder[];
-  currentFolder: Folder | null;
-  parentChain: Folder[];
-  pagination: PaginationInfo;
+	files: File[];
+	folders: Folder[];
+	currentFolder: Folder | null;
+	parentChain: Folder[];
+	pagination: PaginationInfo;
 }
 
 export type ApiResponse<T> =
-  | { data: T; error: null }
-  | { data: null; error: string }
-  | { data: null; error: null }; // In-progress (upload pending)
+	| { data: T; error: null }
+	| { data: null; error: string }
+	| { data: null; error: null }; // In-progress (upload pending)
 
 export interface UploadChunkRequest {
-  uploadId: string;
-  chunkIndex: number;
-  totalChunks: number;
-  fileName: string;
-  path?: string;
-  mimeType?: string;
-  size?: number;
+	uploadId: string;
+	chunkIndex: number;
+	totalChunks: number;
+	fileName: string;
+	path?: string;
+	mimeType?: string;
+	size?: number;
 }
 
 export interface FileUpdateRequest {
-  name?: string;
-  path?: string;
+	name?: string;
+	path?: string;
 }
 
 export interface CreateFolderRequest {
-  name: string;
-  parentPath?: string | null;
+	name: string;
+	parentPath?: string | null;
 }

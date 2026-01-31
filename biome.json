@@ -5,29 +5,38 @@
 		"ignoreUnknown": false,
 		"includes": [
 			"**",
-			"!**/node_modules/**",
-			"!**/dist/**",
-			"!**/build/**",
-			"!**/.tanstack/**",
-			"!apps/frontend/src/routeTree.gen.ts",
-			"!apps/frontend/src/styles.css"
+			"!**/node_modules",
+			"!**/dist",
+			"!**/build",
+			"!**/.tanstack",
+			"apps/frontend/src/routeTree.gen.ts",
+			"apps/frontend/src/styles.css"
 		]
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab"
-	},
-	"assist": {
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
+		"indentStyle": "tab",
+		"lineWidth": 100
 	},
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"complexity": {
+				"noExcessiveCognitiveComplexity": {
+					"level": "warn",
+					"options": { "maxAllowedComplexity": 15 }
+				}
+			},
+			"style": {
+				"noDefaultExport": "error",
+				"useExportType": "error",
+				"useImportType": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "error",
+				"noConsole": "warn"
+			}
 		}
 	},
 	"javascript": {

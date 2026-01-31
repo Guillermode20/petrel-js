@@ -1,27 +1,27 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1769640137136,
-      "tag": "0000_puzzling_squadron_sinister",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1769688012650,
-      "tag": "0001_loving_micromacro",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1769701313443,
-      "tag": "0002_loud_the_anarchist",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1769640137136,
+			"tag": "0000_puzzling_squadron_sinister",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1769688012650,
+			"tag": "0001_loving_micromacro",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1769701313443,
+			"tag": "0002_loud_the_anarchist",
+			"breakpoints": true
+		}
+	]
 }

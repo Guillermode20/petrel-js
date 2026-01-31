@@ -1,3 +1,3 @@
-export { FilePreview } from './FilePreview'
-export { getPreviewType, canPreview, getPreviewTypeLabel } from './utils'
-export type { FilePreviewProps, PreviewType } from './types'
+export { FilePreview } from "./FilePreview";
+export type { FilePreviewProps, PreviewType } from "./types";
+export { canPreview, getPreviewType, getPreviewTypeLabel } from "./utils";

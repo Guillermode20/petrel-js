@@ -5,17 +5,17 @@
  * Includes login, logout, refresh token endpoints and auth middleware.
  */
 
-export { authRoutes } from './routes';
-export { authMiddleware, requireAuth, requireAdmin } from './middleware';
-export { hashPassword, verifyPassword } from './utils';
+export { authMiddleware, requireAdmin, requireAuth } from "./middleware";
+export { authRoutes } from "./routes";
 export type {
-  JWTPayload,
-  RefreshPayload,
-  User,
-  AuthContext,
-  LoginRequest,
-  TokenResponse,
-  MeResponse,
-  ErrorResponse,
-  SuccessResponse,
-} from './types';
+	AuthContext,
+	ErrorResponse,
+	JWTPayload,
+	LoginRequest,
+	MeResponse,
+	RefreshPayload,
+	SuccessResponse,
+	TokenResponse,
+	User,
+} from "./types";
+export { hashPassword, verifyPassword } from "./utils";

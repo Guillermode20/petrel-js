@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
-import { Database } from 'bun:sqlite';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import * as schema from '../../db/schema';
+import { Database } from "bun:sqlite";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import * as schema from "../../db/schema";
 
 /**
  * Test database utilities for integration testing.
@@ -9,19 +8,19 @@ import * as schema from '../../db/schema';
  */
 
 export interface TestDb {
-  db: ReturnType<typeof drizzle>;
-  sqlite: Database;
-  close: () => void;
+	db: ReturnType<typeof drizzle>;
+	sqlite: Database;
+	close: () => void;
 }
 
 /**
  * Create an in-memory test database with the full schema
  */
 export function createTestDatabase(): TestDb {
-  const sqlite = new Database(':memory:');
-  
-  // Create tables matching the schema
-  sqlite.exec(`
+	const sqlite = new Database(":memory:");
+
+	// Create tables matching the schema
+	sqlite.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
@@ -127,92 +126,100 @@ export function createTestDatabase(): TestDb {
     );
   `);
 
-  const db = drizzle(sqlite, { schema });
+	const db = drizzle(sqlite, { schema });
 
-  return {
-    db,
-    sqlite,
-    close: () => sqlite.close(),
-  };
+	return {
+		db,
+		sqlite,
+		close: () => sqlite.close(),
+	};
 }
 
 /**
  * Create a test user and return the user data
  */
 export async function createTestUser(
-  testDb: TestDb,
-  userData: { username: string; passwordHash: string; role?: string }
+	testDb: TestDb,
+	userData: { username: string; passwordHash: string; role?: string },
 ): Promise<typeof schema.users.$inferSelect> {
-  const result = testDb.sqlite.prepare(`
+	const result = testDb.sqlite
+		.prepare(`
     INSERT INTO users (username, password_hash, role)
     VALUES (?, ?, ?)
-  `).run(userData.username, userData.passwordHash, userData.role ?? 'user');
+  `)
+		.run(userData.username, userData.passwordHash, userData.role ?? "user");
 
-  const user = testDb.sqlite.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
-  return user as typeof schema.users.$inferSelect;
+	const user = testDb.sqlite
+		.prepare("SELECT * FROM users WHERE id = ?")
+		.get(result.lastInsertRowid);
+	return user as typeof schema.users.$inferSelect;
 }
 
 /**
  * Create a test file and return the file data
  */
 export async function createTestFile(
-  testDb: TestDb,
-  fileData: {
-    name: string;
-    path: string;
-    size: number;
-    mimeType: string;
-    hash: string;
-    uploadedBy?: number;
-  }
+	testDb: TestDb,
+	fileData: {
+		name: string;
+		path: string;
+		size: number;
+		mimeType: string;
+		hash: string;
+		uploadedBy?: number;
+	},
 ): Promise<typeof schema.files.$inferSelect> {
-  const result = testDb.sqlite.prepare(`
+	const result = testDb.sqlite
+		.prepare(`
     INSERT INTO files (name, path, size, mime_type, hash, uploaded_by)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(
-    fileData.name,
-    fileData.path,
-    fileData.size,
-    fileData.mimeType,
-    fileData.hash,
-    fileData.uploadedBy ?? null
-  );
+  `)
+		.run(
+			fileData.name,
+			fileData.path,
+			fileData.size,
+			fileData.mimeType,
+			fileData.hash,
+			fileData.uploadedBy ?? null,
+		);
 
-  const file = testDb.sqlite.prepare('SELECT * FROM files WHERE id = ?').get(result.lastInsertRowid) as Record<string, unknown>;
-  
-  // Map snake_case columns to camelCase
-  return {
-    id: file.id as number,
-    name: file.name as string,
-    path: file.path as string,
-    size: file.size as number,
-    mimeType: file.mime_type as string,
-    hash: file.hash as string,
-    uploadedBy: file.uploaded_by as number | null,
-    metadata: file.metadata as unknown,
-    createdAt: file.created_at ? new Date((file.created_at as number) * 1000) : new Date(),
-  };
+	const file = testDb.sqlite
+		.prepare("SELECT * FROM files WHERE id = ?")
+		.get(result.lastInsertRowid) as Record<string, unknown>;
+
+	// Map snake_case columns to camelCase
+	return {
+		id: file.id as number,
+		name: file.name as string,
+		path: file.path as string,
+		size: file.size as number,
+		mimeType: file.mime_type as string,
+		hash: file.hash as string,
+		uploadedBy: file.uploaded_by as number | null,
+		metadata: file.metadata as unknown,
+		createdAt: file.created_at ? new Date((file.created_at as number) * 1000) : new Date(),
+	};
 }
 
 /**
  * Clear all data from the test database
  */
 export function clearTestDatabase(testDb: TestDb): void {
-  const tables = [
-    'album_files',
-    'albums',
-    'subtitles',
-    'video_tracks',
-    'transcode_jobs',
-    'share_settings',
-    'shares',
-    'folders',
-    'files',
-    'refresh_tokens',
-    'users',
-  ];
+	const tables = [
+		"album_files",
+		"albums",
+		"subtitles",
+		"video_tracks",
+		"transcode_jobs",
+		"share_settings",
+		"shares",
+		"folders",
+		"files",
+		"refresh_tokens",
+		"users",
+	];
 
-  for (const table of tables) {
-    testDb.sqlite.exec(`DELETE FROM ${table}`);
-  }
+	for (const table of tables) {
+		testDb.sqlite.exec(`DELETE FROM ${table}`);
+	}
 }

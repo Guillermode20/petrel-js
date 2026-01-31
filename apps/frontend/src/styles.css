@@ -1,171 +1,172 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-@import 'tw-animate-css';
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 /* Darkmatter Aesthetic Theme - Petrel */
 body {
-  @apply m-0;
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco,
-    Consolas, 'Liberation Mono', 'Courier New', monospace;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	@apply m-0;
+	font-family:
+		"JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		"Liberation Mono", "Courier New", monospace;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: 'JetBrains Mono', 'IBM Plex Mono', Menlo, Monaco, Consolas, 'Courier New', monospace;
+	font-family: "JetBrains Mono", "IBM Plex Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 /* Darkmatter palette from AGENTS.md - dark by default */
 :root {
-  /* Deep dark backgrounds */
-  --background: 240 6% 6%;
-  --foreground: 0 0% 97%;
-  --card: 240 6% 6%;
-  --card-foreground: 0 0% 97%;
-  --popover: 240 6% 6%;
-  --popover-foreground: 0 0% 97%;
-  /* Purple/violet accent - #a668fc */
-  --primary: 263 70% 66%;
-  --primary-foreground: 0 0% 100%;
-  /* Elevated surfaces */
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 0 0% 97%;
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 4% 46%;
-  /* Accent matches primary purple */
-  --accent: 263 70% 66%;
-  --accent-foreground: 0 0% 100%;
-  /* Destructive red */
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  /* Borders and inputs */
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 263 70% 66%;
-  /* Chart colors */
-  --chart-1: 263 70% 66%;
-  --chart-2: 280 60% 55%;
-  --chart-3: 200 70% 50%;
-  --chart-4: 160 60% 45%;
-  --chart-5: 30 80% 55%;
-  /* Sidebar */
-  --sidebar: 240 6% 8%;
-  --sidebar-foreground: 0 0% 97%;
-  --sidebar-primary: 263 70% 66%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 4% 16%;
-  --sidebar-accent-foreground: 0 0% 97%;
-  --sidebar-border: 240 4% 16%;
-  --sidebar-ring: 263 70% 66%;
-  /* Typography */
-  --font-sans: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
-  --font-serif: serif;
-  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
-  /* Modern rounded corners - tightened */
-  --radius: 0.35rem;
-  /* Shadows for dark theme */
-  --shadow-x: 0px;
-  --shadow-y: 1px;
-  --shadow-blur: 4px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0.3;
-  --shadow-color: #000000;
-  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.2);
-  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.2);
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5);
-  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
-  --tracking-normal: 0rem;
-  --spacing: 0.2rem;
-  --shadow-offset-x: 0px;
-  --shadow-offset-y: 1px;
-  --letter-spacing: 0rem;
+	/* Deep dark backgrounds */
+	--background: 240 6% 6%;
+	--foreground: 0 0% 97%;
+	--card: 240 6% 6%;
+	--card-foreground: 0 0% 97%;
+	--popover: 240 6% 6%;
+	--popover-foreground: 0 0% 97%;
+	/* Purple/violet accent - #a668fc */
+	--primary: 263 70% 66%;
+	--primary-foreground: 0 0% 100%;
+	/* Elevated surfaces */
+	--secondary: 240 4% 16%;
+	--secondary-foreground: 0 0% 97%;
+	--muted: 240 4% 16%;
+	--muted-foreground: 240 4% 46%;
+	/* Accent matches primary purple */
+	--accent: 263 70% 66%;
+	--accent-foreground: 0 0% 100%;
+	/* Destructive red */
+	--destructive: 0 84% 60%;
+	--destructive-foreground: 0 0% 100%;
+	/* Borders and inputs */
+	--border: 240 4% 16%;
+	--input: 240 4% 16%;
+	--ring: 263 70% 66%;
+	/* Chart colors */
+	--chart-1: 263 70% 66%;
+	--chart-2: 280 60% 55%;
+	--chart-3: 200 70% 50%;
+	--chart-4: 160 60% 45%;
+	--chart-5: 30 80% 55%;
+	/* Sidebar */
+	--sidebar: 240 6% 8%;
+	--sidebar-foreground: 0 0% 97%;
+	--sidebar-primary: 263 70% 66%;
+	--sidebar-primary-foreground: 0 0% 100%;
+	--sidebar-accent: 240 4% 16%;
+	--sidebar-accent-foreground: 0 0% 97%;
+	--sidebar-border: 240 4% 16%;
+	--sidebar-ring: 263 70% 66%;
+	/* Typography */
+	--font-sans: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+	--font-serif: serif;
+	--font-mono: "JetBrains Mono", "IBM Plex Mono", monospace;
+	/* Modern rounded corners - tightened */
+	--radius: 0.35rem;
+	/* Shadows for dark theme */
+	--shadow-x: 0px;
+	--shadow-y: 1px;
+	--shadow-blur: 4px;
+	--shadow-spread: 0px;
+	--shadow-opacity: 0.3;
+	--shadow-color: #000000;
+	--shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.2);
+	--shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.2);
+	--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+	--shadow: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
+	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+	--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5);
+	--shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
+	--tracking-normal: 0rem;
+	--spacing: 0.2rem;
+	--shadow-offset-x: 0px;
+	--shadow-offset-y: 1px;
+	--letter-spacing: 0rem;
 }
 
 @theme inline {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-chart-1: hsl(var(--chart-1));
-  --color-chart-2: hsl(var(--chart-2));
-  --color-chart-3: hsl(var(--chart-3));
-  --color-chart-4: hsl(var(--chart-4));
-  --color-chart-5: hsl(var(--chart-5));
-  --color-sidebar: hsl(var(--sidebar));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
+	--color-background: hsl(var(--background));
+	--color-foreground: hsl(var(--foreground));
+	--color-card: hsl(var(--card));
+	--color-card-foreground: hsl(var(--card-foreground));
+	--color-popover: hsl(var(--popover));
+	--color-popover-foreground: hsl(var(--popover-foreground));
+	--color-primary: hsl(var(--primary));
+	--color-primary-foreground: hsl(var(--primary-foreground));
+	--color-secondary: hsl(var(--secondary));
+	--color-secondary-foreground: hsl(var(--secondary-foreground));
+	--color-muted: hsl(var(--muted));
+	--color-muted-foreground: hsl(var(--muted-foreground));
+	--color-accent: hsl(var(--accent));
+	--color-accent-foreground: hsl(var(--accent-foreground));
+	--color-destructive: hsl(var(--destructive));
+	--color-destructive-foreground: hsl(var(--destructive-foreground));
+	--color-border: hsl(var(--border));
+	--color-input: hsl(var(--input));
+	--color-ring: hsl(var(--ring));
+	--color-chart-1: hsl(var(--chart-1));
+	--color-chart-2: hsl(var(--chart-2));
+	--color-chart-3: hsl(var(--chart-3));
+	--color-chart-4: hsl(var(--chart-4));
+	--color-chart-5: hsl(var(--chart-5));
+	--color-sidebar: hsl(var(--sidebar));
+	--color-sidebar-foreground: hsl(var(--sidebar-foreground));
+	--color-sidebar-primary: hsl(var(--sidebar-primary));
+	--color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+	--color-sidebar-accent: hsl(var(--sidebar-accent));
+	--color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+	--color-sidebar-border: hsl(var(--sidebar-border));
+	--color-sidebar-ring: hsl(var(--sidebar-ring));
 
-  --font-sans: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
-  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
-  --font-serif: serif;
+	--font-sans: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+	--font-mono: "JetBrains Mono", "IBM Plex Mono", monospace;
+	--font-serif: serif;
 
-  /* Modern rounded corners for darkmatter aesthetic - tighter curves */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.35rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.65rem;
-  --radius-2xl: 0.8rem;
-  --radius-3xl: 1rem;
-  --radius-4xl: 1.2rem;
-  --radius: 0.35rem;
+	/* Modern rounded corners for darkmatter aesthetic - tighter curves */
+	--radius-sm: 0.25rem;
+	--radius-md: 0.35rem;
+	--radius-lg: 0.5rem;
+	--radius-xl: 0.65rem;
+	--radius-2xl: 0.8rem;
+	--radius-3xl: 1rem;
+	--radius-4xl: 1.2rem;
+	--radius: 0.35rem;
 
-  --shadow-2xs: var(--shadow-2xs);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-sm: var(--shadow-sm);
-  --shadow: var(--shadow);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-2xl: var(--shadow-2xl);
+	--shadow-2xs: var(--shadow-2xs);
+	--shadow-xs: var(--shadow-xs);
+	--shadow-sm: var(--shadow-sm);
+	--shadow: var(--shadow);
+	--shadow-md: var(--shadow-md);
+	--shadow-lg: var(--shadow-lg);
+	--shadow-xl: var(--shadow-xl);
+	--shadow-2xl: var(--shadow-2xl);
 
-  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
-  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
-  --tracking-normal: var(--tracking-normal);
-  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
-  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
-  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
-  --spacing: var(--spacing);
-  --letter-spacing: var(--letter-spacing);
-  --shadow-offset-y: var(--shadow-offset-y);
-  --shadow-offset-x: var(--shadow-offset-x);
-  --shadow-spread: var(--shadow-spread);
-  --shadow-blur: var(--shadow-blur);
-  --shadow-opacity: var(--shadow-opacity);
-  --color-shadow-color: var(--shadow-color);
+	--tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+	--tracking-tight: calc(var(--tracking-normal) - 0.025em);
+	--tracking-normal: var(--tracking-normal);
+	--tracking-wide: calc(var(--tracking-normal) + 0.025em);
+	--tracking-wider: calc(var(--tracking-normal) + 0.05em);
+	--tracking-widest: calc(var(--tracking-normal) + 0.1em);
+	--spacing: var(--spacing);
+	--letter-spacing: var(--letter-spacing);
+	--shadow-offset-y: var(--shadow-offset-y);
+	--shadow-offset-x: var(--shadow-offset-x);
+	--shadow-spread: var(--shadow-spread);
+	--shadow-blur: var(--shadow-blur);
+	--shadow-opacity: var(--shadow-opacity);
+	--color-shadow-color: var(--shadow-color);
 }
 
 body {
-  letter-spacing: var(--tracking-normal);
+	letter-spacing: var(--tracking-normal);
 }
 
 @layer base {
-  body {
-    letter-spacing: var(--tracking-normal);
-  }
+	body {
+		letter-spacing: var(--tracking-normal);
+	}
 }

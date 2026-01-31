@@ -1,11 +1,11 @@
-export { CreateShareModal } from './CreateShareModal'
-export { ShareTable } from './ShareTable'
-export { CopyLinkButton, getShareUrl } from './CopyLinkButton'
-export { QRCodeDisplay } from './QRCodeDisplay'
+export { CopyLinkButton, getShareUrl } from "./CopyLinkButton";
+export { CreateShareModal } from "./CreateShareModal";
+export { QRCodeDisplay } from "./QRCodeDisplay";
+export { ShareTable } from "./ShareTable";
 export type {
-  CreateShareModalProps,
-  ShareTableProps,
-  CopyLinkButtonProps,
-  QRCodeDisplayProps,
-  ShareCardProps,
-} from './types'
+	CopyLinkButtonProps,
+	CreateShareModalProps,
+	QRCodeDisplayProps,
+	ShareCardProps,
+	ShareTableProps,
+} from "./types";

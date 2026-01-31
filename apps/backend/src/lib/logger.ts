@@ -1,5 +1,5 @@
-import pino from 'pino';
-import { config } from '../config';
+import pino from "pino";
+import { config } from "../config";
 
 /**
  * Structured logger using Pino.
@@ -10,31 +10,31 @@ import { config } from '../config';
  * - Request correlation IDs for tracing
  */
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === "production";
 
 /**
  * Main application logger instance
  */
 export const logger = pino({
-  level: config.LOG_LEVEL,
-  ...(config.LOG_PRETTY && !isProduction
-    ? {
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        },
-      }
-    : {}),
-  base: {
-    service: 'petrel-api',
-  },
-  formatters: {
-    level: (label) => ({ level: label }),
-  },
+	level: config.LOG_LEVEL,
+	...(config.LOG_PRETTY && !isProduction
+		? {
+				transport: {
+					target: "pino-pretty",
+					options: {
+						colorize: true,
+						translateTime: "SYS:standard",
+						ignore: "pid,hostname",
+					},
+				},
+			}
+		: {}),
+	base: {
+		service: "petrel-api",
+	},
+	formatters: {
+		level: (label) => ({ level: label }),
+	},
 });
 
 /**
@@ -42,14 +42,14 @@ export const logger = pino({
  * Useful for adding request-specific metadata like correlation IDs
  */
 export function createChildLogger(bindings: Record<string, unknown>): pino.Logger {
-  return logger.child(bindings);
+	return logger.child(bindings);
 }
 
 /**
  * Generate a unique correlation ID for request tracing
  */
 export function generateCorrelationId(): string {
-  return crypto.randomUUID();
+	return crypto.randomUUID();
 }
 
 /**

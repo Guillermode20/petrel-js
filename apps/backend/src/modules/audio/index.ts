@@ -1,1 +1,1 @@
-export { audioRoutes } from './routes';
+export { audioRoutes } from "./routes";

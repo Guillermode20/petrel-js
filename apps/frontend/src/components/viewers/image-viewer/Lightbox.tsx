@@ -1,351 +1,370 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
-import { X, ChevronLeft, ChevronRight, Download, Info, ZoomIn, ZoomOut, RotateCw, Play, Pause, Package, Timer } from 'lucide-react'
-import { format } from 'date-fns'
-import type { ImageMetadata } from '@petrel/shared'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Slider } from '@/components/ui/slider'
+import type { ImageMetadata } from "@petrel/shared";
+import { format } from "date-fns";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
-import { api } from '@/lib/api'
-import type { LightboxProps } from './types'
+	ChevronLeft,
+	ChevronRight,
+	Download,
+	Info,
+	Package,
+	Pause,
+	Play,
+	RotateCw,
+	Timer,
+	X,
+	ZoomIn,
+	ZoomOut,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Slider } from "@/components/ui/slider";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import type { LightboxProps } from "./types";
 
 /**
  * Fullscreen lightbox for viewing images with zoom, pan, EXIF display, and slideshow
  */
 export function Lightbox({
-    images,
-    initialIndex = 0,
-    open,
-    onOpenChange,
-    onDownload,
+	images,
+	initialIndex = 0,
+	open,
+	onOpenChange,
+	onDownload,
 }: LightboxProps) {
-    const [currentIndex, setCurrentIndex] = useState(initialIndex)
-    const [zoom, setZoom] = useState(1)
-    const [showInfo, setShowInfo] = useState(false)
-    const [isSlideshow, setIsSlideshow] = useState(false)
-    const [slideshowInterval, setSlideshowInterval] = useState(4)
-    const slideshowRef = useRef<ReturnType<typeof setInterval> | null>(null)
-    const touchStartRef = useRef<{ x: number; y: number; distance: number } | null>(null)
+	const [currentIndex, setCurrentIndex] = useState(initialIndex);
+	const [zoom, setZoom] = useState(1);
+	const [showInfo, setShowInfo] = useState(false);
+	const [isSlideshow, setIsSlideshow] = useState(false);
+	const [slideshowInterval, setSlideshowInterval] = useState(4);
+	const slideshowRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const touchStartRef = useRef<{ x: number; y: number; distance: number } | null>(null);
 
-    const currentImage = images[currentIndex]
-    const metadata = currentImage?.metadata as ImageMetadata | undefined
+	const currentImage = images[currentIndex];
+	const metadata = currentImage?.metadata as ImageMetadata | undefined;
 
-    // Reset state when opening
-    useEffect(() => {
-        if (open) {
-            setCurrentIndex(initialIndex)
-            setZoom(1)
-        }
-    }, [open, initialIndex])
+	// Reset state when opening
+	useEffect(() => {
+		if (open) {
+			setCurrentIndex(initialIndex);
+			setZoom(1);
+		}
+	}, [open, initialIndex]);
 
-    // Slideshow timer
-    useEffect(() => {
-        if (isSlideshow) {
-            slideshowRef.current = setInterval(() => {
-                setCurrentIndex((prev) => (prev + 1) % images.length)
-            }, slideshowInterval * 1000)
-        }
-        return () => {
-            if (slideshowRef.current) {
-                clearInterval(slideshowRef.current)
-            }
-        }
-    }, [isSlideshow, images.length, slideshowInterval])
+	// Slideshow timer
+	useEffect(() => {
+		if (isSlideshow) {
+			slideshowRef.current = setInterval(() => {
+				setCurrentIndex((prev) => (prev + 1) % images.length);
+			}, slideshowInterval * 1000);
+		}
+		return () => {
+			if (slideshowRef.current) {
+				clearInterval(slideshowRef.current);
+			}
+		};
+	}, [isSlideshow, images.length, slideshowInterval]);
 
-    const goToNext = useCallback(() => {
-        setCurrentIndex((prev) => (prev + 1) % images.length)
-        setZoom(1)
-    }, [images.length])
+	const goToNext = useCallback(() => {
+		setCurrentIndex((prev) => (prev + 1) % images.length);
+		setZoom(1);
+	}, [images.length]);
 
-    const goToPrevious = useCallback(() => {
-        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length)
-        setZoom(1)
-    }, [images.length])
+	const goToPrevious = useCallback(() => {
+		setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+		setZoom(1);
+	}, [images.length]);
 
-    const handleZoomIn = useCallback(() => {
-        setZoom((prev) => Math.min(prev + 0.5, 4))
-    }, [])
+	const handleZoomIn = useCallback(() => {
+		setZoom((prev) => Math.min(prev + 0.5, 4));
+	}, []);
 
-    const handleZoomOut = useCallback(() => {
-        setZoom((prev) => Math.max(prev - 0.5, 0.5))
-    }, [])
+	const handleZoomOut = useCallback(() => {
+		setZoom((prev) => Math.max(prev - 0.5, 0.5));
+	}, []);
 
-    const handleResetZoom = useCallback(() => {
-        setZoom(1)
-    }, [])
+	const handleResetZoom = useCallback(() => {
+		setZoom(1);
+	}, []);
 
-    // Keyboard navigation
-    useEffect(() => {
-        if (!open) return
+	// Keyboard navigation
+	useEffect(() => {
+		if (!open) return;
 
-        const handleKeyDown = (e: KeyboardEvent) => {
-            switch (e.key) {
-                case 'ArrowLeft':
-                    e.preventDefault()
-                    goToPrevious()
-                    break
-                case 'ArrowRight':
-                    e.preventDefault()
-                    goToNext()
-                    break
-                case 'Escape':
-                    e.preventDefault()
-                    onOpenChange(false)
-                    break
-                case '+':
-                case '=':
-                    e.preventDefault()
-                    handleZoomIn()
-                    break
-                case '-':
-                    e.preventDefault()
-                    handleZoomOut()
-                    break
-                case 'i':
-                    e.preventDefault()
-                    setShowInfo((prev) => !prev)
-                    break
-            }
-        }
+		const handleKeyDown = (e: KeyboardEvent) => {
+			switch (e.key) {
+				case "ArrowLeft":
+					e.preventDefault();
+					goToPrevious();
+					break;
+				case "ArrowRight":
+					e.preventDefault();
+					goToNext();
+					break;
+				case "Escape":
+					e.preventDefault();
+					onOpenChange(false);
+					break;
+				case "+":
+				case "=":
+					e.preventDefault();
+					handleZoomIn();
+					break;
+				case "-":
+					e.preventDefault();
+					handleZoomOut();
+					break;
+				case "i":
+					e.preventDefault();
+					setShowInfo((prev) => !prev);
+					break;
+			}
+		};
 
-        document.addEventListener('keydown', handleKeyDown)
-        return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [open, goToNext, goToPrevious, onOpenChange, handleZoomIn, handleZoomOut])
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [open, goToNext, goToPrevious, onOpenChange, handleZoomIn, handleZoomOut]);
 
-    // Pinch-to-zoom for mobile
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        if (e.touches.length === 2) {
-            const dx = e.touches[0].clientX - e.touches[1].clientX
-            const dy = e.touches[0].clientY - e.touches[1].clientY
-            const distance = Math.sqrt(dx * dx + dy * dy)
-            touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance }
-        }
-    }, [])
+	// Pinch-to-zoom for mobile
+	const handleTouchStart = useCallback((e: React.TouchEvent) => {
+		if (e.touches.length === 2) {
+			const dx = e.touches[0].clientX - e.touches[1].clientX;
+			const dy = e.touches[0].clientY - e.touches[1].clientY;
+			const distance = Math.sqrt(dx * dx + dy * dy);
+			touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, distance };
+		}
+	}, []);
 
-    const handleTouchMove = useCallback((e: React.TouchEvent) => {
-        if (e.touches.length === 2 && touchStartRef.current) {
-            e.preventDefault()
-            const dx = e.touches[0].clientX - e.touches[1].clientX
-            const dy = e.touches[0].clientY - e.touches[1].clientY
-            const distance = Math.sqrt(dx * dx + dy * dy)
-            const scaleFactor = distance / touchStartRef.current.distance
-            const newZoom = Math.max(0.5, Math.min(4, zoom * scaleFactor))
-            setZoom(newZoom)
-        }
-    }, [zoom])
+	const handleTouchMove = useCallback(
+		(e: React.TouchEvent) => {
+			if (e.touches.length === 2 && touchStartRef.current) {
+				e.preventDefault();
+				const dx = e.touches[0].clientX - e.touches[1].clientX;
+				const dy = e.touches[0].clientY - e.touches[1].clientY;
+				const distance = Math.sqrt(dx * dx + dy * dy);
+				const scaleFactor = distance / touchStartRef.current.distance;
+				const newZoom = Math.max(0.5, Math.min(4, zoom * scaleFactor));
+				setZoom(newZoom);
+			}
+		},
+		[zoom],
+	);
 
-    const handleTouchEnd = useCallback(() => {
-        touchStartRef.current = null
-    }, [])
+	const handleTouchEnd = useCallback(() => {
+		touchStartRef.current = null;
+	}, []);
 
-    if (!currentImage) return null
+	if (!currentImage) return null;
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-none h-screen w-screen p-0 border-none bg-black/95">
-                {/* Top bar */}
-                <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
-                    <div className="text-sm text-white">
-                        {currentIndex + 1} / {images.length}
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className={cn('h-8 w-8 text-white hover:bg-white/20', isSlideshow && 'bg-white/20')}
-                                    onClick={() => setIsSlideshow((prev) => !prev)}
-                                >
-                                    {isSlideshow ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                                <div className="px-3 py-2">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Timer className="h-4 w-4" />
-                                        <span className="text-sm">Interval: {slideshowInterval}s</span>
-                                    </div>
-                                    <Slider
-                                        value={[slideshowInterval]}
-                                        min={1}
-                                        max={10}
-                                        step={1}
-                                        onValueChange={([value]) => setSlideshowInterval(value)}
-                                    />
-                                </div>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-white hover:bg-white/20"
-                            onClick={handleZoomOut}
-                        >
-                            <ZoomOut className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-white hover:bg-white/20"
-                            onClick={handleResetZoom}
-                        >
-                            <RotateCw className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-white hover:bg-white/20"
-                            onClick={handleZoomIn}
-                        >
-                            <ZoomIn className="h-4 w-4" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn('h-8 w-8 text-white hover:bg-white/20', showInfo && 'bg-white/20')}
-                            onClick={() => setShowInfo((prev) => !prev)}
-                        >
-                            <Info className="h-4 w-4" />
-                        </Button>
-                        {onDownload && (
-                            <>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-white hover:bg-white/20"
-                                    onClick={() => onDownload(currentImage)}
-                                >
-                                    <Download className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-white hover:bg-white/20"
-                                    onClick={() => onDownload(images)}
-                                    title="Download all as ZIP"
-                                >
-                                    <Package className="h-4 w-4" />
-                                </Button>
-                            </>
-                        )}
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-white hover:bg-white/20"
-                            onClick={() => onOpenChange(false)}
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-none h-screen w-screen p-0 border-none bg-black/95">
+				{/* Top bar */}
+				<div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
+					<div className="text-sm text-white">
+						{currentIndex + 1} / {images.length}
+					</div>
+					<div className="flex items-center gap-1">
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									className={cn(
+										"h-8 w-8 text-white hover:bg-white/20",
+										isSlideshow && "bg-white/20",
+									)}
+									onClick={() => setIsSlideshow((prev) => !prev)}
+								>
+									{isSlideshow ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-48">
+								<div className="px-3 py-2">
+									<div className="flex items-center gap-2 mb-2">
+										<Timer className="h-4 w-4" />
+										<span className="text-sm">Interval: {slideshowInterval}s</span>
+									</div>
+									<Slider
+										value={[slideshowInterval]}
+										min={1}
+										max={10}
+										step={1}
+										onValueChange={([value]) => setSlideshowInterval(value)}
+									/>
+								</div>
+							</DropdownMenuContent>
+						</DropdownMenu>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 text-white hover:bg-white/20"
+							onClick={handleZoomOut}
+						>
+							<ZoomOut className="h-4 w-4" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 text-white hover:bg-white/20"
+							onClick={handleResetZoom}
+						>
+							<RotateCw className="h-4 w-4" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 text-white hover:bg-white/20"
+							onClick={handleZoomIn}
+						>
+							<ZoomIn className="h-4 w-4" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className={cn("h-8 w-8 text-white hover:bg-white/20", showInfo && "bg-white/20")}
+							onClick={() => setShowInfo((prev) => !prev)}
+						>
+							<Info className="h-4 w-4" />
+						</Button>
+						{onDownload && (
+							<>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-8 w-8 text-white hover:bg-white/20"
+									onClick={() => onDownload(currentImage)}
+								>
+									<Download className="h-4 w-4" />
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="h-8 w-8 text-white hover:bg-white/20"
+									onClick={() => onDownload(images)}
+									title="Download all as ZIP"
+								>
+									<Package className="h-4 w-4" />
+								</Button>
+							</>
+						)}
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-8 w-8 text-white hover:bg-white/20"
+							onClick={() => onOpenChange(false)}
+						>
+							<X className="h-4 w-4" />
+						</Button>
+					</div>
+				</div>
 
-                {/* Main image */}
-                <div className="flex h-full w-full items-center justify-center overflow-auto">
-                    <img
-                        src={api.getThumbnailUrl(currentImage.id, 'large')}
-                        alt={currentImage.name}
-                        className="max-h-full max-w-full object-contain transition-transform duration-200"
-                        style={{ transform: `scale(${zoom})` }}
-                        draggable={false}
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                    />
-                </div>
+				{/* Main image */}
+				<div className="flex h-full w-full items-center justify-center overflow-auto">
+					<img
+						src={api.getThumbnailUrl(currentImage.id, "large")}
+						alt={currentImage.name}
+						className="max-h-full max-w-full object-contain transition-transform duration-200"
+						style={{ transform: `scale(${zoom})` }}
+						draggable={false}
+						onTouchStart={handleTouchStart}
+						onTouchMove={handleTouchMove}
+						onTouchEnd={handleTouchEnd}
+					/>
+				</div>
 
-                {/* Navigation arrows */}
-                {images.length > 1 && (
-                    <>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 text-white hover:bg-white/20"
-                            onClick={goToPrevious}
-                        >
-                            <ChevronLeft className="h-8 w-8" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 text-white hover:bg-white/20"
-                            onClick={goToNext}
-                        >
-                            <ChevronRight className="h-8 w-8" />
-                        </Button>
-                    </>
-                )}
+				{/* Navigation arrows */}
+				{images.length > 1 && (
+					<>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 text-white hover:bg-white/20"
+							onClick={goToPrevious}
+						>
+							<ChevronLeft className="h-8 w-8" />
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 text-white hover:bg-white/20"
+							onClick={goToNext}
+						>
+							<ChevronRight className="h-8 w-8" />
+						</Button>
+					</>
+				)}
 
-                {/* EXIF info panel */}
-                {showInfo && metadata && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 text-sm text-white">
-                        <div className="mx-auto max-w-2xl">
-                            <h3 className="mb-2 font-medium">{currentImage.name}</h3>
-                            <div className="grid grid-cols-2 gap-x-8 gap-y-1 md:grid-cols-4">
-                                <div>
-                                    <span className="text-muted-foreground">Dimensions: </span>
-                                    {metadata.width} × {metadata.height}
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">Format: </span>
-                                    {metadata.format.toUpperCase()}
-                                </div>
-                                {metadata.exif && (
-                                    <>
-                                        {metadata.exif.make && (
-                                            <div>
-                                                <span className="text-muted-foreground">Camera: </span>
-                                                {metadata.exif.make} {metadata.exif.model}
-                                            </div>
-                                        )}
-                                        {metadata.exif.lens && (
-                                            <div>
-                                                <span className="text-muted-foreground">Lens: </span>
-                                                {metadata.exif.lens}
-                                            </div>
-                                        )}
-                                        {metadata.exif.focalLength && (
-                                            <div>
-                                                <span className="text-muted-foreground">Focal: </span>
-                                                {metadata.exif.focalLength}
-                                            </div>
-                                        )}
-                                        {metadata.exif.fNumber && (
-                                            <div>
-                                                <span className="text-muted-foreground">Aperture: </span>
-                                                {metadata.exif.fNumber}
-                                            </div>
-                                        )}
-                                        {metadata.exif.exposureTime && (
-                                            <div>
-                                                <span className="text-muted-foreground">Shutter: </span>
-                                                {metadata.exif.exposureTime}
-                                            </div>
-                                        )}
-                                        {metadata.exif.iso && (
-                                            <div>
-                                                <span className="text-muted-foreground">ISO: </span>
-                                                {metadata.exif.iso}
-                                            </div>
-                                        )}
-                                        {metadata.exif.dateTaken && (
-                                            <div>
-                                                <span className="text-muted-foreground">Date: </span>
-                                                {format(new Date(metadata.exif.dateTaken), 'PPP')}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </DialogContent>
-        </Dialog>
-    )
+				{/* EXIF info panel */}
+				{showInfo && metadata && (
+					<div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 text-sm text-white">
+						<div className="mx-auto max-w-2xl">
+							<h3 className="mb-2 font-medium">{currentImage.name}</h3>
+							<div className="grid grid-cols-2 gap-x-8 gap-y-1 md:grid-cols-4">
+								<div>
+									<span className="text-muted-foreground">Dimensions: </span>
+									{metadata.width} × {metadata.height}
+								</div>
+								<div>
+									<span className="text-muted-foreground">Format: </span>
+									{metadata.format.toUpperCase()}
+								</div>
+								{metadata.exif && (
+									<>
+										{metadata.exif.make && (
+											<div>
+												<span className="text-muted-foreground">Camera: </span>
+												{metadata.exif.make} {metadata.exif.model}
+											</div>
+										)}
+										{metadata.exif.lens && (
+											<div>
+												<span className="text-muted-foreground">Lens: </span>
+												{metadata.exif.lens}
+											</div>
+										)}
+										{metadata.exif.focalLength && (
+											<div>
+												<span className="text-muted-foreground">Focal: </span>
+												{metadata.exif.focalLength}
+											</div>
+										)}
+										{metadata.exif.fNumber && (
+											<div>
+												<span className="text-muted-foreground">Aperture: </span>
+												{metadata.exif.fNumber}
+											</div>
+										)}
+										{metadata.exif.exposureTime && (
+											<div>
+												<span className="text-muted-foreground">Shutter: </span>
+												{metadata.exif.exposureTime}
+											</div>
+										)}
+										{metadata.exif.iso && (
+											<div>
+												<span className="text-muted-foreground">ISO: </span>
+												{metadata.exif.iso}
+											</div>
+										)}
+										{metadata.exif.dateTaken && (
+											<div>
+												<span className="text-muted-foreground">Date: </span>
+												{format(new Date(metadata.exif.dateTaken), "PPP")}
+											</div>
+										)}
+									</>
+								)}
+							</div>
+						</div>
+					</div>
+				)}
+			</DialogContent>
+		</Dialog>
+	);
 }
