@@ -23,7 +23,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useCreateShare } from "@/hooks";
 import { CopyLinkButton, getShareUrl } from "./CopyLinkButton";
-import { QRCodeDisplay } from "./QRCodeDisplay";
 import type { CreateShareModalProps } from "./types";
 
 type ExpiryOption = "1h" | "24h" | "7d" | "30d" | "never";
@@ -101,7 +100,7 @@ export function CreateShareModal({
 
 	return (
 		<Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-			<DialogContent className="sm:max-w-md">
+			<DialogContent className="w-full max-w-lg sm:max-w-md">
 				<DialogHeader>
 					<DialogTitle className="flex items-center gap-2">
 						<Link className="h-5 w-5" />
@@ -116,11 +115,6 @@ export function CreateShareModal({
 
 				{createdShare ? (
 					<div className="space-y-6 py-4">
-						{/* QR Code */}
-						<div className="flex justify-center">
-							<QRCodeDisplay shareToken={createdShare.token} size={160} />
-						</div>
-
 						{/* Link display */}
 						<div className="flex items-center gap-2">
 							<Input

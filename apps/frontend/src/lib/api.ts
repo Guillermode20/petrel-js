@@ -343,6 +343,50 @@ class ApiClient {
 		return `${API_BASE}/stream/${id}/master.m3u8${token}`;
 	}
 
+	// Share-aware URL methods for public share views
+	getShareDownloadUrl(shareToken: string, password?: string): string {
+		const params = new URLSearchParams();
+		if (password) {
+			params.set("password", password);
+		}
+		const query = params.toString();
+		return `${API_BASE}/shares/${shareToken}/download${query ? `?${query}` : ""}`;
+	}
+
+	getShareStreamUrl(shareToken: string, fileId: number, password?: string): string {
+		const params = new URLSearchParams();
+		params.set("shareToken", shareToken);
+		if (password) {
+			params.set("password", password);
+		}
+		const query = params.toString();
+		return `${API_BASE}/stream/${fileId}/master.m3u8?${query}`;
+	}
+
+	getShareThumbnailUrl(
+		shareToken: string,
+		fileId: number,
+		size: "small" | "medium" | "large" = "medium",
+		password?: string,
+	): string {
+		const params = new URLSearchParams();
+		params.set("size", size);
+		params.set("shareToken", shareToken);
+		if (password) {
+			params.set("password", password);
+		}
+		return `${API_BASE}/files/${fileId}/thumbnail?${params.toString()}`;
+	}
+
+	getShareFileContentUrl(shareToken: string, fileId: number, password?: string): string {
+		const params = new URLSearchParams();
+		params.set("shareToken", shareToken);
+		if (password) {
+			params.set("password", password);
+		}
+		return `${API_BASE}/files/${fileId}/content?${params.toString()}`;
+	}
+
 	// Shares endpoints
 	async createShare(data: {
 		type: "file" | "folder";
@@ -353,10 +397,12 @@ class ApiClient {
 		allowZip?: boolean;
 		showMetadata?: boolean;
 	}): Promise<Share & ShareSettings> {
-		return this.request("/shares", {
+		const result = await this.request<{ share: Share; settings: ShareSettings }>("/shares", {
 			method: "POST",
 			body: JSON.stringify(data),
 		});
+		// Flatten the nested response into Share & ShareSettings
+		return { ...result.share, ...result.settings };
 	}
 
 	async getShare(
@@ -366,19 +412,34 @@ class ApiClient {
 		share: Share & ShareSettings;
 		content: File | Folder;
 		files?: File[];
+		folders?: Folder[];
 	}> {
 		const params = password ? `?password=${encodeURIComponent(password)}` : "";
-		return this.request(`/shares/${token}${params}`);
+		const result = await this.request<{
+			share: Share;
+			settings: ShareSettings;
+			content: File | Folder;
+			files?: File[];
+			folders?: Folder[];
+		}>(`/shares/${token}${params}`);
+		// Flatten share + settings into a single object
+		return {
+			share: { ...result.share, ...result.settings },
+			content: result.content,
+			files: result.files,
+			folders: result.folders,
+		};
 	}
 
 	async updateShare(
 		id: number,
 		data: { expiresAt?: string; password?: string; allowDownload?: boolean; allowZip?: boolean },
-	): Promise<Share> {
-		return this.request(`/shares/${id}`, {
+	): Promise<Share & ShareSettings> {
+		const result = await this.request<{ share: Share; settings: ShareSettings }>(`/shares/${id}`, {
 			method: "PATCH",
 			body: JSON.stringify(data),
 		});
+		return { ...result.share, ...result.settings };
 	}
 
 	async deleteShare(id: number): Promise<void> {
@@ -386,7 +447,16 @@ class ApiClient {
 	}
 
 	async getMyShares(): Promise<Array<Share & ShareSettings & { content: File | Folder }>> {
-		return this.request("/shares");
+		const result =
+			await this.request<Array<{ share: Share; settings: ShareSettings; content: File | Folder }>>(
+				"/shares",
+			);
+		// Flatten each item's share + settings
+		return result.map((item) => ({
+			...item.share,
+			...item.settings,
+			content: item.content,
+		}));
 	}
 
 	// Stream endpoints

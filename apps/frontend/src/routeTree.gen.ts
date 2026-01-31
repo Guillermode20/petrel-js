@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SharesRouteImport } from './routes/shares'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
+import { Route as STokenRouteImport } from './routes/s/$token'
 import { Route as FilesFolderIdRouteImport } from './routes/files/$folderId'
 import { Route as FilesPreviewFileIdRouteImport } from './routes/files/preview.$fileId'
 
@@ -30,6 +31,11 @@ const FilesIndexRoute = FilesIndexRouteImport.update({
   path: '/files/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const STokenRoute = STokenRouteImport.update({
+  id: '/s/$token',
+  path: '/s/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FilesFolderIdRoute = FilesFolderIdRouteImport.update({
   id: '/files/$folderId',
   path: '/files/$folderId',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/shares': typeof SharesRoute
   '/files/$folderId': typeof FilesFolderIdRoute
+  '/s/$token': typeof STokenRoute
   '/files/': typeof FilesIndexRoute
   '/files/preview/$fileId': typeof FilesPreviewFileIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/shares': typeof SharesRoute
   '/files/$folderId': typeof FilesFolderIdRoute
+  '/s/$token': typeof STokenRoute
   '/files': typeof FilesIndexRoute
   '/files/preview/$fileId': typeof FilesPreviewFileIdRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/shares': typeof SharesRoute
   '/files/$folderId': typeof FilesFolderIdRoute
+  '/s/$token': typeof STokenRoute
   '/files/': typeof FilesIndexRoute
   '/files/preview/$fileId': typeof FilesPreviewFileIdRoute
 }
@@ -69,15 +78,23 @@ export interface FileRouteTypes {
     | '/'
     | '/shares'
     | '/files/$folderId'
+    | '/s/$token'
     | '/files/'
     | '/files/preview/$fileId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/shares' | '/files/$folderId' | '/files' | '/files/preview/$fileId'
+  to:
+    | '/'
+    | '/shares'
+    | '/files/$folderId'
+    | '/s/$token'
+    | '/files'
+    | '/files/preview/$fileId'
   id:
     | '__root__'
     | '/'
     | '/shares'
     | '/files/$folderId'
+    | '/s/$token'
     | '/files/'
     | '/files/preview/$fileId'
   fileRoutesById: FileRoutesById
@@ -86,6 +103,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SharesRoute: typeof SharesRoute
   FilesFolderIdRoute: typeof FilesFolderIdRoute
+  STokenRoute: typeof STokenRoute
   FilesIndexRoute: typeof FilesIndexRoute
   FilesPreviewFileIdRoute: typeof FilesPreviewFileIdRoute
 }
@@ -113,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FilesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/s/$token': {
+      id: '/s/$token'
+      path: '/s/$token'
+      fullPath: '/s/$token'
+      preLoaderRoute: typeof STokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/files/$folderId': {
       id: '/files/$folderId'
       path: '/files/$folderId'
@@ -134,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SharesRoute: SharesRoute,
   FilesFolderIdRoute: FilesFolderIdRoute,
+  STokenRoute: STokenRoute,
   FilesIndexRoute: FilesIndexRoute,
   FilesPreviewFileIdRoute: FilesPreviewFileIdRoute,
 }
