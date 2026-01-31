@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "../viewers/video-player/utils";
+import { formatDuration } from "@/components/viewers/video-player/utils";
 
 export interface ShareAudioPlaylistProps {
 	files: File[];

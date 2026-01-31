@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "../video-player/utils";
+import { formatDuration } from "@/components/viewers/video-player/utils";
 import type { PlaylistProps } from "./types";
 
 /**

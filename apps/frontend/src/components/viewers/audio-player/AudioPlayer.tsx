@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "../video-player/utils";
+import { formatDuration } from "@/components/viewers/video-player/utils";
 import type { AudioPlayerProps } from "./types";
 import { useAudioPlayer } from "./useAudioPlayer";
 
