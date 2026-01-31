@@ -369,9 +369,9 @@
 ## Phase 4: Public Share Views
 
 ### Shared File View (`/s/:token`)
-- [ ] `ShareLayout` — clean, minimal wrapper
-- [ ] Password entry form (if protected)
-- [ ] `SmartViewer` — detects content type:
+- [x] `ShareLayout` — clean, minimal wrapper
+- [x] Password entry form (if protected)
+- [x] `SmartViewer` — detects content type:
   ```typescript
   switch (type) {
     case 'video': return <VideoPlayer />
@@ -382,13 +382,13 @@
     default: return <DownloadPrompt />
   }
   ```
-- [ ] Download button (if permitted)
-- [ ] Expiry warning banner
-- [ ] "Powered by Petrel" subtle footer
+- [x] Download button (if permitted)
+- [x] Expiry warning banner
+- [x] "Powered by Petrel" subtle footer
 
 ### Shared Folder View (`/s/:token` for folders)
-- [ ] File listing with folder navigation
-- [ ] Smart defaults:
+- [x] File listing with folder navigation
+- [x] Smart defaults:
   - All images → render as `PhotoGallery`
   - All audio → render as `AudioPlaylist`
   - Mixed → render as `FolderBrowser`

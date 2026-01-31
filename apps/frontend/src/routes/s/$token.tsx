@@ -165,7 +165,7 @@ function SharePage(): React.ReactNode {
 
 	// Render folder share
 	return (
-		<ShareLayout title={content.name} expiresAt={expiresAt}>
+		<ShareLayout expiresAt={expiresAt}>
 			<ShareFolderView
 				folder={content as Folder}
 				files={files ?? []}

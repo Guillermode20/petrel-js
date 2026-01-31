@@ -216,6 +216,83 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 		},
 	)
 	.get(
+		"/:token/folder/:folderId",
+		async ({ params, query, set }): Promise<ApiResponse<ShareContentData>> => {
+			const share = await shareService.getShareByToken(params.token);
+			if (!share) {
+				set.status = 404;
+				return { data: null, error: "Share not found" };
+			}
+
+			if (isExpired(share.share.expiresAt)) {
+				set.status = 410;
+				return { data: null, error: "Share expired" };
+			}
+
+			if (share.share.passwordHash) {
+				const password = query.password ?? "";
+				const valid = await shareService.verifySharePassword(share.share, password);
+				if (!valid) {
+					set.status = 401;
+					return { data: null, error: "Invalid password" };
+				}
+			}
+
+			// Get the shared folder to verify hierarchy
+			const shareContent = await shareService.getShareContent(share.share);
+			if (!shareContent || share.share.type !== "folder") {
+				set.status = 400;
+				return { data: null, error: "Invalid share type" };
+			}
+
+			// Verify requested folder is within the shared folder hierarchy
+			const isDescendant = await folderService.isDescendantOf(
+				params.folderId,
+				shareContent.path,
+			);
+			if (!isDescendant) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
+			}
+
+			// Get the requested folder
+			const folder = await folderService.getById(params.folderId);
+			if (!folder) {
+				set.status = 404;
+				return { data: null, error: "Folder not found" };
+			}
+
+			// Get child folders and files
+			const childFolders = await folderService.listByParentId(folder.id);
+			const fileList = await fileService.listByPath(folder.path, 100, 0);
+
+			return {
+				data: {
+					share: share.share,
+					settings: share.settings,
+					content: folder,
+					files: fileList.files,
+					folders: childFolders,
+				},
+				error: null,
+			};
+		},
+		{
+			params: t.Object({
+				token: t.String({ minLength: 1 }),
+				folderId: t.Number({ minimum: 1 }),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+			detail: {
+				summary: "Get shared subfolder contents",
+				description: "Returns contents of a subfolder within a shared folder",
+				tags: ["Shares"],
+			},
+		},
+	)
+	.get(
 		"/:token",
 		async ({ params, query, set }): Promise<ApiResponse<ShareContentData>> => {
 			const share = await shareService.getShareByToken(params.token);

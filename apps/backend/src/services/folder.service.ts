@@ -162,6 +162,24 @@ export class FolderService {
 			await this.updateChildrenPaths(child.id, child.path, nextChildPath);
 		}
 	}
+
+	/**
+	 * Check if a folder is a descendant of (or equal to) an ancestor path
+	 * Used for share validation to ensure subfolder requests are within shared hierarchy
+	 */
+	async isDescendantOf(folderId: number, ancestorPath: string): Promise<boolean> {
+		const folder = await this.getById(folderId);
+		if (!folder) return false;
+
+		const normalizedAncestor = normalizeRelativePath(ancestorPath);
+		const normalizedFolder = normalizeRelativePath(folder.path);
+
+		// Folder is the ancestor itself, or a direct child (starts with ancestor/)
+		return (
+			normalizedFolder === normalizedAncestor ||
+			normalizedFolder.startsWith(`${normalizedAncestor}/`)
+		);
+	}
 }
 
 export const folderService = new FolderService();

@@ -431,6 +431,33 @@ class ApiClient {
 		};
 	}
 
+	async getShareSubfolder(
+		token: string,
+		folderId: number,
+		password?: string,
+	): Promise<{
+		share: Share & ShareSettings;
+		content: File | Folder;
+		files?: File[];
+		folders?: Folder[];
+	}> {
+		const params = password ? `?password=${encodeURIComponent(password)}` : "";
+		const result = await this.request<{
+			share: Share;
+			settings: ShareSettings;
+			content: File | Folder;
+			files?: File[];
+			folders?: Folder[];
+		}>(`/shares/${token}/folder/${folderId}${params}`);
+		// Flatten share + settings into a single object
+		return {
+			share: { ...result.share, ...result.settings },
+			content: result.content,
+			files: result.files,
+			folders: result.folders,
+		};
+	}
+
 	async updateShare(
 		id: number,
 		data: { expiresAt?: string; password?: string; allowDownload?: boolean; allowZip?: boolean },

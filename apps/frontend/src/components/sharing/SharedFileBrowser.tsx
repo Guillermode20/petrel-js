@@ -1,11 +1,17 @@
 import type { File, Folder, ShareSettings } from "@petrel/shared";
-import { FolderIcon } from "lucide-react";
+import { ChevronRight, FolderIcon, Home } from "lucide-react";
 import React, { useState } from "react";
 import { FileGrid } from "@/components/file-browser/FileGrid";
 import { FileList } from "@/components/file-browser/FileList";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SortField, ViewMode } from "@/components/file-browser/types";
+
+export interface BreadcrumbItem {
+	folder: Folder;
+	index: number;
+}
 
 export interface SharedFileBrowserProps {
 	folder: Folder;
@@ -16,6 +22,8 @@ export interface SharedFileBrowserProps {
 	settings: ShareSettings;
 	onFileOpen: (file: File) => void;
 	onFolderOpen: (folder: Folder) => void;
+	breadcrumbPath?: BreadcrumbItem[];
+	onBreadcrumbClick?: (index: number) => void;
 	className?: string;
 }
 
@@ -35,9 +43,7 @@ export interface SharedFileBrowserProps {
  * - Grid/list view toggle
  * - File/folder opening
  * - Download (if allowed by share settings)
- *
- * Note: Breadcrumb navigation is not currently supported for shares as the API doesn't
- * provide subfolder contents. Only the top-level folder contents are displayed.
+ * - Breadcrumb navigation for subfolders
  */
 export function SharedFileBrowser({
 	folder,
@@ -48,6 +54,8 @@ export function SharedFileBrowser({
 	settings,
 	onFileOpen,
 	onFolderOpen,
+	breadcrumbPath = [],
+	onBreadcrumbClick,
 	className,
 }: SharedFileBrowserProps): React.ReactNode {
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -99,12 +107,42 @@ export function SharedFileBrowser({
 
 	return (
 		<div className={cn("flex flex-1 flex-col", className)}>
-			{/* Toolbar */}
-			<div className="flex items-center justify-between border-b border-border px-4 py-2">
-				<div className="flex items-center gap-2">
+			{/* Toolbar with breadcrumbs */}
+			<div className="flex items-center justify-between border-b border-border px-4 h-10">
+				<div className="flex items-center gap-1 overflow-hidden">
+					{/* Root icon */}
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-6 px-1 text-muted-foreground hover:text-foreground"
+						onClick={() => onBreadcrumbClick?.(0)}
+						disabled={breadcrumbPath.length === 0}
+					>
+						<Home className="h-4 w-4" />
+					</Button>
+
+					{/* Breadcrumb path */}
+					{breadcrumbPath.map((item, index) => (
+						<React.Fragment key={item.folder.id}>
+							<ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-6 px-1 text-sm font-medium hover:text-foreground truncate max-w-[150px]"
+								onClick={() => onBreadcrumbClick?.(index + 1)}
+								disabled={index === breadcrumbPath.length - 1}
+							>
+								{item.folder.name}
+							</Button>
+						</React.Fragment>
+					))}
+
+					{/* Current folder indicator - always show current folder name */}
+					<ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
 					<FolderIcon className="h-4 w-4 text-muted-foreground" />
-					<span className="font-medium">{folder.name}</span>
-					<span className="text-sm text-muted-foreground">
+					<span className="font-medium text-sm ml-1">{folder.name}</span>
+
+					<span className="text-sm text-muted-foreground ml-2">
 						({files.length} files, {folders.length} folders)
 					</span>
 				</div>
