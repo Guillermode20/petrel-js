@@ -70,7 +70,9 @@ export const streamRoutes = new Elysia({ prefix: "/api/stream" })
 			params,
 			set,
 			user,
-		}): Promise<ApiResponse<{ jobId: number | null; ready: boolean }>> => {
+		}): Promise<
+			ApiResponse<{ jobId: number | null; ready: boolean; firstSegmentUrl: string | null }>
+		> => {
 			if (!canRead(user)) {
 				set.status = 401;
 				return { data: null, error: "Unauthorized" };
@@ -97,16 +99,20 @@ export const streamRoutes = new Elysia({ prefix: "/api/stream" })
 			const streamInfo = await streamService.getStreamInfo(fileId, filePath);
 
 			if (streamInfo.available) {
-				return { data: { jobId: null, ready: true }, error: null };
+				// Stream is ready - get first segment URL for preloading
+				const firstSegmentUrl = await streamService.getFirstSegmentUrl(fileId);
+				return { data: { jobId: null, ready: true, firstSegmentUrl }, error: null };
 			}
 
 			if (streamInfo.isTransmux) {
 				await streamService.generateTransmuxStream(fileId, filePath);
-				return { data: { jobId: null, ready: true }, error: null };
+				// After transmux, get the first segment URL
+				const firstSegmentUrl = await streamService.getFirstSegmentUrl(fileId);
+				return { data: { jobId: null, ready: true, firstSegmentUrl }, error: null };
 			}
 
 			const job = await transcodeQueue.queueTranscode(fileId);
-			return { data: { jobId: job.id, ready: false }, error: null };
+			return { data: { jobId: job.id, ready: false, firstSegmentUrl: null }, error: null };
 		},
 		{
 			params: t.Object({
@@ -139,11 +145,14 @@ export const streamRoutes = new Elysia({ prefix: "/api/stream" })
 
 			if (!streamInfo.available) {
 				if (streamInfo.isTransmux) {
-					await streamService.generateTransmuxStream(fileId, filePath);
-				} else {
+					// Trigger transmux asynchronously and return 202 immediately
+					// Client will poll /info endpoint until stream is ready
+					void streamService.generateTransmuxStream(fileId, filePath);
 					set.status = 202;
-					return "#EXTM3U\n# Stream not ready, transcode in progress";
+					return "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n/processing.m3u8";
 				}
+				set.status = 202;
+				return "#EXTM3U\n# Stream not ready, transcode in progress";
 			}
 
 			const playlist = await streamService.getMasterPlaylist(fileId);
@@ -201,6 +210,15 @@ export const streamRoutes = new Elysia({ prefix: "/api/stream" })
 
 			if (playlistName.endsWith(".m3u8")) {
 				const quality = playlistName.replace(".m3u8", "");
+
+				// Handle processing placeholder playlist
+				if (quality === "processing") {
+					set.status = 202;
+					set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
+					set.headers["Cache-Control"] = "no-cache";
+					return "#EXTM3U\n# Stream is being prepared, please wait...";
+				}
+
 				const playlistPath = await streamService.getQualityPlaylist(fileId, quality);
 
 				if (!playlistPath) {

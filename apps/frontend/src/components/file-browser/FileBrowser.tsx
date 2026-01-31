@@ -116,6 +116,17 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			if (isFolder(item)) {
 				navigate({ to: "/files/$folderId", params: { folderId: String(item.id) } });
 			} else {
+				// Pre-warm stream for video files before navigation
+				if (item.mimeType.startsWith("video/")) {
+					void api.prepareStream(item.id).then((result) => {
+						// Pre-fetch first segment in parallel while navigating
+						if (result.ready && result.firstSegmentUrl) {
+							const token = localStorage.getItem("petrel_access_token");
+							const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+							void fetch(result.firstSegmentUrl, { method: "GET", headers });
+						}
+					});
+				}
 				navigate({
 					to: "/files/preview/$fileId",
 					params: { fileId: String(item.id) },

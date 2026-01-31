@@ -1,10 +1,12 @@
 import type { File } from "@petrel/shared";
-import { forwardRef, useState } from "react";
+import { forwardRef, useRef, useState } from "react";
 import { isFile, isFolder } from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { FileItemProps } from "./types";
 import { formatFileSize, getFileIcon, getFolderIcon } from "./utils";
+
+const PRELOAD_DELAY_MS = 250; // 250ms hover before preloading
 
 /**
  * File card component for grid view
@@ -15,10 +17,12 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 		ref,
 	) {
 		const [isDragOver, setIsDragOver] = useState(false);
+		const preloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 		const isFileItem = isFile(item);
 		const isFolderItem = isFolder(item);
 		const Icon = isFileItem ? getFileIcon((item as File).mimeType) : getFolderIcon();
 		const showThumbnail = isFileItem && (item as File).mimeType.startsWith("image/");
+		const isVideoFile = isFileItem && (item as File).mimeType.startsWith("video/");
 
 		const handleDragOver = (e: React.DragEvent) => {
 			if (!isFolderItem) return;
@@ -41,6 +45,44 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 			}
 		};
 
+		// Hover preload for video files
+		const handleMouseEnter = () => {
+			if (isVideoFile) {
+				// Clear any existing timeout
+				if (preloadTimeoutRef.current) {
+					clearTimeout(preloadTimeoutRef.current);
+				}
+				// Set new timeout to preload after delay
+				preloadTimeoutRef.current = setTimeout(() => {
+					void api.prepareStream((item as File).id).then((result) => {
+						// If stream is ready, pre-fetch the first segment in parallel
+						if (result.ready && result.firstSegmentUrl) {
+							const token = localStorage.getItem("petrel_access_token");
+							const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+							void fetch(result.firstSegmentUrl, { method: "GET", headers });
+						}
+					});
+				}, PRELOAD_DELAY_MS);
+			}
+		};
+
+		const handleMouseLeave = () => {
+			// Clear preload timeout if user leaves before delay
+			if (preloadTimeoutRef.current) {
+				clearTimeout(preloadTimeoutRef.current);
+				preloadTimeoutRef.current = null;
+			}
+		};
+
+		const handleDoubleClickWithCleanup = () => {
+			// Clear any pending preload timeout and trigger immediately
+			if (preloadTimeoutRef.current) {
+				clearTimeout(preloadTimeoutRef.current);
+				preloadTimeoutRef.current = null;
+			}
+			onDoubleClick?.(item);
+		};
+
 		return (
 			<div
 				ref={ref}
@@ -57,7 +99,9 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 					className,
 				)}
 				onClick={(e) => onSelect?.(item, e)}
-				onDoubleClick={() => onDoubleClick?.(item)}
+				onDoubleClick={handleDoubleClickWithCleanup}
+				onMouseEnter={handleMouseEnter}
+				onMouseLeave={handleMouseLeave}
 				{...props}
 			>
 				{/* Thumbnail or icon */}

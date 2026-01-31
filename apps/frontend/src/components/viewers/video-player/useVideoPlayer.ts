@@ -63,7 +63,14 @@ export function useVideoPlayer({
 			const hls = new Hls({
 				startPosition,
 				enableWorker: true,
-				lowLatencyMode: false,
+				lowLatencyMode: true,
+				autoStartLoad: true,
+				maxBufferLength: 10,
+				maxMaxBufferLength: 20,
+				manifestLoadingTimeOut: 10000,
+				manifestLoadingMaxRetry: 3,
+				levelLoadingTimeOut: 10000,
+				levelLoadingMaxRetry: 3,
 				xhrSetup: (xhr, _url) => {
 					const token = localStorage.getItem("petrel_access_token");
 					if (token) {

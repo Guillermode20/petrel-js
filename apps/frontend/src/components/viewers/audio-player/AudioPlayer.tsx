@@ -96,12 +96,7 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 					<SkipBack className="h-5 w-5" />
 				</Button>
 
-				<Button
-					size="icon"
-					className="h-14 w-14 rounded-full"
-					onClick={controls.togglePlay}
-					disabled={isLoading}
-				>
+				<Button size="icon" className="h-14 w-14 rounded-full" onClick={controls.togglePlay}>
 					{isLoading ? (
 						<Loader2 className="h-6 w-6 animate-spin" />
 					) : isPlaying ? (

@@ -96,3 +96,6 @@ storage/
 *.db
 *.sqlite
 *.sqlite3
+
+# ========== OpenCode ==========
+.opencode/

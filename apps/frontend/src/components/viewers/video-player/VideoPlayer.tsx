@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getStreamUrl, useStreamInfo, useStreamSubtitles, useStreamTracks } from "@/hooks";
 import { cn } from "@/lib/utils";
@@ -28,11 +29,12 @@ export function VideoPlayer({
 	const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Fetch stream info (qualities, transcode status)
-	const { data: streamInfo } = useStreamInfo(fileId);
+	const { data: streamInfo, isLoading: isStreamInfoLoading } = useStreamInfo(fileId);
 	const { data: subtitlesData } = useStreamSubtitles(fileId);
 	const { data: tracksData } = useStreamTracks(fileId);
 
 	const src = getStreamUrl(fileId);
+	const isStreamReady = streamInfo?.available ?? false;
 
 	const audioTracks = tracksData
 		?.filter((track) => track.type === "audio")
@@ -63,6 +65,31 @@ export function VideoPlayer({
 		transcodeJob: streamInfo?.transcodeJob ?? undefined,
 		autoPlay,
 	});
+
+	// Preload HLS manifest in document head for faster loading
+	useEffect(() => {
+		if (!src || !isStreamReady) return;
+
+		// Prevent duplicate preload links
+		const linkId = `preload-manifest-${fileId}`;
+		if (document.getElementById(linkId)) return;
+
+		// Create preload link for manifest
+		const link = document.createElement("link");
+		link.id = linkId;
+		link.rel = "preload";
+		link.href = src;
+		link.as = "fetch";
+		link.crossOrigin = "anonymous";
+		document.head.appendChild(link);
+
+		return () => {
+			const existingLink = document.getElementById(linkId);
+			if (existingLink && existingLink.parentNode) {
+				existingLink.parentNode.removeChild(existingLink);
+			}
+		};
+	}, [src, isStreamReady, fileId]);
 
 	// Handle video end
 	useEffect(() => {
@@ -173,6 +200,16 @@ export function VideoPlayer({
 			>
 				<VideoControlBar state={state} controls={controls} />
 			</div>
+
+			{/* Loading overlay when stream not ready */}
+			{(!isStreamReady || isStreamInfoLoading) && (
+				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+					<div className="text-center">
+						<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+						<p className="text-muted-foreground">Preparing stream...</p>
+					</div>
+				</div>
+			)}
 
 			{/* Error overlay */}
 			{state.error && (

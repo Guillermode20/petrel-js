@@ -135,6 +135,44 @@ export class StreamService {
 		return segmentPath;
 	}
 
+	/**
+	 * Get the first segment URL for preloading.
+	 * Returns the first .ts segment from the first available quality playlist.
+	 */
+	async getFirstSegmentUrl(fileId: number): Promise<string | null> {
+		const hlsDir = getHlsDirectory(fileId);
+		const hlsDirAbsolute = resolveStoragePath(hlsDir);
+
+		// Read all files in the HLS directory
+		const files = await readdir(hlsDirAbsolute).catch(() => []);
+
+		// Find quality playlists (not master.m3u8)
+		const playlists = files.filter((f) => f.endsWith(".m3u8") && f !== "master.m3u8");
+		if (playlists.length === 0) {
+			return null;
+		}
+
+		// Read the first playlist to find segments
+		const firstPlaylist = playlists[0];
+		if (!firstPlaylist) {
+			return null;
+		}
+		const playlistPath = path.join(hlsDirAbsolute, firstPlaylist);
+		const content = await Bun.file(playlistPath).text();
+
+		// Parse segments from playlist
+		const lines = content.split("\n");
+		for (const line of lines) {
+			const trimmed = line.trim();
+			if (trimmed && !trimmed.startsWith("#") && trimmed.endsWith(".ts")) {
+				// Return the API URL for this segment
+				return `/api/stream/${fileId}/${trimmed}`;
+			}
+		}
+
+		return null;
+	}
+
 	generateMasterPlaylistContent(fileId: number, qualities: string[]): string {
 		const lines = ["#EXTM3U"];
 

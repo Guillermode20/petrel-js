@@ -78,19 +78,55 @@ function FilePreviewPage() {
 
 	if (fileLoading) {
 		return (
-			<div className="flex h-full items-center justify-center">
-				<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+			<div className="flex h-full flex-col">
+				<div className="flex items-center justify-end border-b border-border px-4 py-2">
+					<button
+						onClick={handleClose}
+						className="rounded p-2 hover:bg-secondary"
+						aria-label="Close"
+					>
+						<svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
+				<div className="flex flex-1 items-center justify-center">
+					<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+				</div>
 			</div>
 		);
 	}
 
 	if (fileError || !file) {
 		return (
-			<div className="flex h-full flex-col items-center justify-center gap-4">
-				<p className="text-lg font-medium">File not found</p>
-				<p className="text-sm text-muted-foreground">
-					The file you're looking for doesn't exist or has been deleted.
-				</p>
+			<div className="flex h-full flex-col">
+				<div className="flex items-center justify-end border-b border-border px-4 py-2">
+					<button
+						onClick={handleClose}
+						className="rounded p-2 hover:bg-secondary"
+						aria-label="Close"
+					>
+						<svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M6 18L18 6M6 6l12 12"
+							/>
+						</svg>
+					</button>
+				</div>
+				<div className="flex flex-1 flex-col items-center justify-center gap-4">
+					<p className="text-lg font-medium">File not found</p>
+					<p className="text-sm text-muted-foreground">
+						The file you're looking for doesn't exist or has been deleted.
+					</p>
+				</div>
 			</div>
 		);
 	}

@@ -50,12 +50,12 @@ export function useAudioPlayer({
 		volumeRef.current = state.volume;
 	}, [state.volume]);
 
-	// Initialize Howl instance
+	// Initialize Howl instance immediately with parallel range probing
 	useEffect(() => {
 		let isMounted = true;
 		const url = api.getAudioStreamUrl(file.id);
 
-		setStreamUrl(null);
+		setStreamUrl(url);
 		setState((prev) => ({
 			...prev,
 			isLoading: true,
@@ -65,6 +65,7 @@ export function useAudioPlayer({
 			scrubbingMessage: null,
 		}));
 
+		// Probe range support in parallel (non-blocking)
 		const probeRangeSupport = async (): Promise<void> => {
 			try {
 				const response = await fetch(url, { method: "HEAD" });
@@ -89,10 +90,6 @@ export function useAudioPlayer({
 					supportsScrubbing: false,
 					scrubbingMessage: "Scrubbing unavailable right now. Download for precise seeking.",
 				}));
-			} finally {
-				if (isMounted) {
-					setStreamUrl(url);
-				}
 			}
 		};
 

@@ -418,7 +418,9 @@ class ApiClient {
 		return this.request(`/stream/${fileId}/tracks`);
 	}
 
-	async prepareStream(fileId: number): Promise<{ jobId?: number; ready: boolean }> {
+	async prepareStream(
+		fileId: number,
+	): Promise<{ jobId?: number; ready: boolean; firstSegmentUrl?: string }> {
 		return this.request(`/stream/${fileId}/prepare`, { method: "POST" });
 	}
 }
