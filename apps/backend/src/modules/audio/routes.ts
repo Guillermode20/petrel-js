@@ -1,5 +1,6 @@
 import { Elysia, t } from 'elysia';
 import { stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
 import type { File as SharedFile } from '@petrel/shared';
 import { authMiddleware } from '../auth';
 import { config } from '../../config';
@@ -152,6 +153,8 @@ export const audioRoutes = new Elysia({ prefix: '/api/audio' })
     async ({ params, query, set, user }) => {
       const context = await resolveAudioStreamContext(params, query, user, set);
       if (!context) {
+        const statusCode = typeof set.status === 'number' ? set.status : 401;
+        set.status = statusCode;
         return '';
       }
 
@@ -204,11 +207,10 @@ export const audioRoutes = new Elysia({ prefix: '/api/audio' })
         headers.set('Content-Range', `bytes ${start}-${end}/${context.size}`);
       }
 
-      const fileBlob = Bun.file(context.path);
-      const body = range ? fileBlob.slice(start, end + 1) : fileBlob;
+      const stream = createReadStream(context.path, { start, end });
 
       set.status = statusCode;
-      return new Response(body.stream(), { status: statusCode, headers });
+      return new Response(stream, { status: statusCode, headers });
     },
     {
       params: t.Object({ id: t.String() }),

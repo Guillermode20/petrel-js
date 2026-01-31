@@ -45,8 +45,6 @@ export function AudioPlayer({
         scrubbingMessage,
     } = state
 
-    const hasAlbumArt = metadata?.albumArt
-
     return (
         <div
             className={cn(
@@ -54,17 +52,9 @@ export function AudioPlayer({
                 className
             )}
         >
-            {/* Album art */}
+            {/* Album art placeholder */}
             <div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg bg-secondary">
-                {hasAlbumArt ? (
-                    <img
-                        src={api.getThumbnailUrl(file.id, 'medium')}
-                        alt={metadata?.album ?? file.name}
-                        className="h-full w-full object-cover"
-                    />
-                ) : (
-                    <Music className="h-16 w-16 text-muted-foreground" />
-                )}
+                <Music className="h-16 w-16 text-muted-foreground" />
             </div>
 
             {/* Track info */}

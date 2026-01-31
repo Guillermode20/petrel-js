@@ -91,3 +91,8 @@ __tests__/
 
 # ========== Storage ==========
 storage/
+
+# ========== Database ==========
+*.db
+*.sqlite
+*.sqlite3

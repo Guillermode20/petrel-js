@@ -117,9 +117,12 @@ export function useAudioPlayer({
       return
     }
 
+    const format = file.mimeType.split('/')[1] || 'mp3'
+
     const howl = new Howl({
       src: [streamUrl],
-      html5: true, // Streaming for large files
+      format: [format],
+      html5: true,
       autoplay: autoPlay,
       volume: volumeRef.current,
       loop: loopRef.current,
