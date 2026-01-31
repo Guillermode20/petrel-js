@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { codeToHtml, type BundledLanguage } from 'shiki'
-import { Loader2, AlertCircle, Copy, Check } from 'lucide-react'
+import { Loader2, AlertCircle, Copy, Check, Edit2, Save, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Textarea } from '@/components/ui/textarea'
 import { api } from '@/lib/api'
 import type { CodeViewerProps } from './types'
 
@@ -63,7 +64,8 @@ const EXTENSION_TO_LANGUAGE: Record<string, BundledLanguage> = {
 
 function getLanguageFromFilename(filename: string): BundledLanguage {
     const ext = filename.split('.').pop()?.toLowerCase() ?? ''
-    return EXTENSION_TO_LANGUAGE[ext] ?? 'text'
+    const lang = EXTENSION_TO_LANGUAGE[ext]
+    return lang ?? ('plaintext' as BundledLanguage)
 }
 
 /**
@@ -75,6 +77,9 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [copied, setCopied] = useState(false)
+    const [isEditing, setIsEditing] = useState(false)
+    const [editContent, setEditContent] = useState('')
+    const [isSaving, setIsSaving] = useState(false)
 
     // Fetch the code content
     useEffect(() => {
@@ -90,6 +95,7 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 
                 const text = await response.text()
                 setCode(text)
+                setEditContent(text)
 
                 // Highlight the code
                 const language = getLanguageFromFilename(file.name)
@@ -116,6 +122,44 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
             setTimeout(() => setCopied(false), 2000)
         } catch (err) {
             console.error('Failed to copy:', err)
+        }
+    }
+
+    async function handleSave(): Promise<void> {
+        try {
+            setIsSaving(true)
+            await api.updateFileContent(file.id, editContent)
+            setCode(editContent)
+            
+            // Re-highlight the code
+            const language = getLanguageFromFilename(file.name)
+            const html = await codeToHtml(editContent, {
+                lang: language,
+                theme: 'github-dark-default',
+            })
+            setHighlightedHtml(html)
+            
+            setIsEditing(false)
+        } catch (err) {
+            console.error('Failed to save:', err)
+            setError('Failed to save file')
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    function handleCancel(): void {
+        setEditContent(code)
+        setIsEditing(false)
+    }
+
+    function handleKeyDown(e: React.KeyboardEvent): void {
+        if (e.ctrlKey && e.key === 's') {
+            e.preventDefault()
+            handleSave()
+        }
+        if (e.key === 'Escape') {
+            handleCancel()
         }
     }
 
@@ -168,33 +212,90 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
                     </span>
                 </div>
 
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={copyToClipboard}
-                    className="gap-2"
-                >
-                    {copied ? (
+                <div className="flex items-center gap-2">
+                    {isEditing ? (
                         <>
-                            <Check className="h-4 w-4" />
-                            Copied
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancel}
+                                disabled={isSaving}
+                                className="gap-2"
+                            >
+                                <X className="h-4 w-4" />
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="default"
+                                size="sm"
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="gap-2"
+                            >
+                                {isSaving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-4 w-4" />
+                                        Save
+                                    </>
+                                )}
+                            </Button>
                         </>
                     ) : (
                         <>
-                            <Copy className="h-4 w-4" />
-                            Copy
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={copyToClipboard}
+                                className="gap-2"
+                            >
+                                {copied ? (
+                                    <>
+                                        <Check className="h-4 w-4" />
+                                        Copied
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="h-4 w-4" />
+                                        Copy
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setIsEditing(true)}
+                                className="gap-2"
+                            >
+                                <Edit2 className="h-4 w-4" />
+                                Edit
+                            </Button>
                         </>
                     )}
-                </Button>
+                </div>
             </div>
 
-            {/* Code content */}
-            <ScrollArea className="flex-1 bg-[#0d1117]">
-                <div
-                    className="p-4 text-sm [&_pre]:!bg-transparent [&_code]:font-mono"
-                    dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            {/* Content */}
+            {isEditing ? (
+                <Textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="flex-1 resize-none border-0 p-4 font-mono text-sm focus-visible:ring-0"
+                    placeholder="Start typing..."
                 />
-            </ScrollArea>
+            ) : (
+                <ScrollArea className="flex-1 bg-[#0d1117]">
+                    <div
+                        className="p-4 text-sm [&_pre]:!bg-transparent [&_code]:font-mono"
+                        dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+                    />
+                </ScrollArea>
+            )}
         </div>
     )
 }

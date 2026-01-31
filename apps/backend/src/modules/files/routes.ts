@@ -801,6 +801,37 @@ export const fileRoutes = new Elysia({ prefix: '/api' })
           },
         }
       )
+      .put(
+        '/:id/content',
+        async ({ params, body, set }): Promise<ApiResponse<SharedFile>> => {
+          const file = await fileService.getById(params.id);
+          if (!file) {
+            set.status = 404;
+            return { data: null, error: 'File not found' };
+          }
+
+          const updated = await fileService.updateFileContent(params.id, body.content);
+          if (!updated) {
+            set.status = 500;
+            return { data: null, error: 'Failed to update file content' };
+          }
+
+          return { data: updated, error: null };
+        },
+        {
+          params: t.Object({
+            id: t.Number(),
+          }),
+          body: t.Object({
+            content: t.String({ minLength: 1 }),
+          }),
+          detail: {
+            summary: 'Update file content',
+            description: 'Updates the content of a text file',
+            tags: ['Files'],
+          },
+        }
+      )
   )
   .group('', (app) =>
     app

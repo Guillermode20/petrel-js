@@ -165,6 +165,36 @@ export class FileService {
     return updatedRow ? this.mapFileRow(updatedRow) : null;
   }
 
+  async updateFileContent(id: number, content: string): Promise<File | null> {
+    const current = await this.getById(id);
+    if (!current) return null;
+
+    const diskPath = this.resolveDiskPath(current);
+    await Bun.write(diskPath, content);
+
+    const newHash = await this.calculateFileHash(diskPath);
+    const newSize = Bun.file(diskPath).size;
+
+    const updated = await db
+      .update(files)
+      .set({
+        hash: newHash,
+        size: newSize,
+      })
+      .where(eq(files.id, id))
+      .returning();
+
+    const updatedRow = updated[0];
+    return updatedRow ? this.mapFileRow(updatedRow) : null;
+  }
+
+  private async calculateFileHash(filePath: string): Promise<string> {
+    const fileBuffer = await Bun.file(filePath).arrayBuffer();
+    const hasher = new Bun.CryptoHasher('sha256');
+    hasher.update(new Uint8Array(fileBuffer));
+    return hasher.digest('hex');
+  }
+
   resolveDiskPath(file: File): string {
     const relativePath = buildFileRelativePath(file.path, file.name);
     return resolveStoragePath(relativePath);

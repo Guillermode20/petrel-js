@@ -286,6 +286,13 @@ class ApiClient {
     })
   }
 
+  async updateFileContent(id: number, content: string): Promise<File> {
+    return this.request(`/files/${id}/content`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    })
+  }
+
   async createFolder(name: string, parentId?: number): Promise<Folder> {
     return this.request('/folders', {
       method: 'POST',
