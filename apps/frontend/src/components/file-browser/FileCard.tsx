@@ -1,7 +1,7 @@
 import type { File } from "@petrel/shared";
 import type { HTMLAttributes } from "react";
 import { forwardRef, useCallback, useRef, useState } from "react";
-import { isFile, isFolder } from "@/hooks";
+import { isFile, isFolder, useAuth } from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { FileItemProps } from "./types";
@@ -20,6 +20,7 @@ export const FileCard = forwardRef<
 	{ item, isSelected, onSelect, onDoubleClick, onDragStart, onDrop, className, currentFolderPath, searchQuery, ...triggerProps },
 	ref,
 ) {
+		const { token } = useAuth();
 		const [isDragOver, setIsDragOver] = useState(false);
 		const preloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 		const isFileItem = isFile(item);
@@ -66,7 +67,6 @@ export const FileCard = forwardRef<
 					void api.prepareStream((item as File).id).then((result) => {
 						// If stream is ready, pre-fetch the first segment in parallel
 						if (result.ready && result.firstSegmentUrl) {
-							const token = localStorage.getItem("petrel_access_token");
 							const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 							void fetch(result.firstSegmentUrl, { method: "GET", headers });
 						}

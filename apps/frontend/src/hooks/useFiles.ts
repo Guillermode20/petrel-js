@@ -1,5 +1,6 @@
 import type { File, Folder } from "@petrel/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 
 /**
@@ -72,6 +73,9 @@ export function useUploadFile() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
 		},
+		onError: (error: Error) => {
+			toast.error(`Upload failed: ${error.message}`);
+		},
 	});
 }
 
@@ -85,6 +89,9 @@ export function useDeleteFile() {
 		mutationFn: (id: number) => api.deleteFile(id),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
+		},
+		onError: (error: Error) => {
+			toast.error(`Delete failed: ${error.message}`);
 		},
 	});
 }
@@ -102,6 +109,9 @@ export function useUpdateFile() {
 			queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
 			queryClient.invalidateQueries({ queryKey: fileKeys.detail(variables.id) });
 		},
+		onError: (error: Error) => {
+			toast.error(`Update failed: ${error.message}`);
+		},
 	});
 }
 
@@ -117,6 +127,9 @@ export function useCreateFolder() {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
 		},
+		onError: (error: Error) => {
+			toast.error(`Folder creation failed: ${error.message}`);
+		},
 	});
 }
 
@@ -131,6 +144,9 @@ export function useUpdateFolder() {
 			api.updateFolder(id, data),
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
+		},
+		onError: (error: Error) => {
+			toast.error(`Folder update failed: ${error.message}`);
 		},
 	});
 }

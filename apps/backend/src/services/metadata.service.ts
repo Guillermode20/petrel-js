@@ -1,7 +1,9 @@
-import type { AudioMetadata, ImageMetadata } from "@petrel/shared";
+import type { AudioMetadata, ImageMetadata, File as SharedFile } from "@petrel/shared";
 import exifr from "exifr";
 import { parseFile } from "music-metadata";
 import sharp from "sharp";
+import { videoService } from "./video.service";
+import { fileService } from "./file.service";
 
 const DEFAULT_EXIF_OPTIONS = {
 	tiff: true,
@@ -84,6 +86,31 @@ export class MetadataService {
 		]);
 
 		return mapImageMetadata(sharpMetadata, exifData as Record<string, unknown> | null);
+	}
+
+	async enrichMetadata(file: SharedFile): Promise<SharedFile | null> {
+		if (file.mimeType.startsWith("audio/")) {
+			const metadata = await this.extractAudioMetadata(fileService.resolveDiskPath(file));
+			return await fileService.updateMetadata(file.id, metadata);
+		}
+
+		if (file.mimeType.startsWith("image/")) {
+			const metadata = await this.extractImageMetadata(fileService.resolveDiskPath(file));
+			return await fileService.updateMetadata(file.id, metadata);
+		}
+
+		if (file.mimeType.startsWith("video/")) {
+			try {
+				const filePath = fileService.resolveDiskPath(file);
+				const metadata = await videoService.processVideoFile(file.id, filePath);
+				return await fileService.updateMetadata(file.id, metadata);
+			} catch {
+				// Video processing may fail for unsupported formats
+				return null;
+			}
+		}
+
+		return null;
 	}
 }
 

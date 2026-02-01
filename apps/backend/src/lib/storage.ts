@@ -1,4 +1,4 @@
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, rename, stat, unlink } from "node:fs/promises";
 import path from "node:path";
 import { config } from "../config";
 
@@ -61,6 +61,28 @@ export async function pathExists(absolutePath: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+export async function moveFileOnDisk(sourcePath: string, targetPath: string): Promise<void> {
+	if (sourcePath === targetPath) return;
+
+	const sourceExists = await pathExists(sourcePath);
+	if (!sourceExists) return;
+
+	await rename(sourcePath, targetPath).catch(async () => {
+		await Bun.write(targetPath, Bun.file(sourcePath));
+		await unlink(sourcePath).catch(() => null);
+	});
+}
+
+export async function calculateFileHash(filePath: string): Promise<string> {
+	const file = Bun.file(filePath);
+	const hasher = new Bun.CryptoHasher("sha256");
+	const stream = file.stream();
+	for await (const chunk of stream) {
+		hasher.update(chunk as Uint8Array);
+	}
+	return hasher.digest("hex");
 }
 
 export function getChunkRelativePath(uploadId: string, chunkIndex: number): string {

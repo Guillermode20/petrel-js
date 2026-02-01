@@ -78,6 +78,7 @@ export function useAuth() {
 
 	return {
 		user: user ?? null,
+		token: localStorage.getItem(ACCESS_TOKEN_KEY),
 		isLoading: !isInitialized || isLoading,
 		isAuthenticated: !!user,
 		login,

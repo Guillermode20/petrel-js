@@ -1,9 +1,20 @@
-import { rename } from "node:fs/promises";
+import { readdir, rename, rm, stat } from "node:fs/promises";
 import type { File } from "@petrel/shared";
+import type { BunFile } from "bun";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { files } from "../../db/schema";
-import { buildFileRelativePath, normalizeRelativePath, resolveStoragePath } from "../lib/storage";
+import {
+	buildFileRelativePath,
+	calculateFileHash,
+	ensureDirectory,
+	getChunkDirectoryRelativePath,
+	getChunkRelativePath,
+	normalizeRelativePath,
+	resolveStoragePath,
+} from "../lib/storage";
+import { folderService } from "./folder.service";
+import { metadataService } from "./metadata.service";
 
 export interface FileListResult {
 	files: File[];
@@ -195,7 +206,7 @@ export class FileService {
 		try {
 			await Bun.write(tempPath, content);
 
-			const newHash = await this.calculateFileHash(tempPath);
+			const newHash = await calculateFileHash(tempPath);
 			const newSize = Bun.file(tempPath).size;
 
 			const updated = await db
@@ -223,11 +234,111 @@ export class FileService {
 		}
 	}
 
-	private async calculateFileHash(filePath: string): Promise<string> {
-		const fileBuffer = await Bun.file(filePath).arrayBuffer();
-		const hasher = new Bun.CryptoHasher("sha256");
-		hasher.update(new Uint8Array(fileBuffer));
-		return hasher.digest("hex");
+	async handleChunkUpload(params: {
+		uploadId: string;
+		chunkIndex: number;
+		totalChunks: number;
+		fileName: string;
+		folderPath: string;
+		mimeType: string;
+		chunk: Blob;
+		userId: number;
+	}): Promise<{ file: File | null; allChunksPresent: boolean }> {
+		await this.writeChunkToDisk(params.chunk, params.uploadId, params.chunkIndex);
+		const allChunksPresent = await this.areAllChunksPresent(params.uploadId, params.totalChunks);
+
+		if (!allChunksPresent) {
+			return { file: null, allChunksPresent: false };
+		}
+
+		const created = await this.finalizeUpload({
+			uploadId: params.uploadId,
+			totalChunks: params.totalChunks,
+			folderPath: params.folderPath,
+			fileName: params.fileName,
+			mimeType: params.mimeType,
+			userId: params.userId,
+		});
+
+		return { file: created, allChunksPresent: true };
+	}
+
+	private async writeChunkToDisk(chunk: Blob, uploadId: string, chunkIndex: number): Promise<void> {
+		const chunkDir = getChunkDirectoryRelativePath(uploadId);
+		await ensureDirectory(chunkDir);
+
+		const chunkPath = resolveStoragePath(getChunkRelativePath(uploadId, chunkIndex));
+		await Bun.write(chunkPath, chunk);
+	}
+
+	private async areAllChunksPresent(uploadId: string, totalChunks: number): Promise<boolean> {
+		const chunkDir = resolveStoragePath(getChunkDirectoryRelativePath(uploadId));
+		const entries = await readdir(chunkDir).catch(() => []);
+		return entries.length >= totalChunks;
+	}
+
+	private async finalizeUpload(params: {
+		uploadId: string;
+		totalChunks: number;
+		folderPath: string;
+		fileName: string;
+		mimeType: string;
+		userId: number;
+	}): Promise<File> {
+		const finalRelativePath = buildFileRelativePath(params.folderPath, params.fileName);
+		const finalPath = resolveStoragePath(finalRelativePath);
+		await ensureDirectory(params.folderPath);
+		await this.assembleChunks(params.uploadId, params.totalChunks, finalPath);
+
+		const fileHash = await calculateFileHash(finalPath);
+		const size = Bun.file(finalPath).size;
+
+		const folder = await folderService.getFolderByPath(params.folderPath);
+		const parentId = folder?.id ?? null;
+
+		const created = await this.createFile({
+			name: params.fileName,
+			path: params.folderPath,
+			size,
+			mimeType: params.mimeType,
+			hash: fileHash,
+			uploadedBy: params.userId,
+			parentId,
+			metadata: null,
+		});
+
+		const updated = await metadataService.enrichMetadata(created);
+		return updated ?? created;
+	}
+
+	private async assembleChunks(
+		uploadId: string,
+		totalChunks: number,
+		finalPath: string,
+	): Promise<void> {
+		const chunkDir = resolveStoragePath(getChunkDirectoryRelativePath(uploadId));
+		const writer = Bun.file(finalPath).writer();
+
+		for (let index = 0; index < totalChunks; index += 1) {
+			const chunkFileName = index.toString().padStart(6, "0");
+			const chunkPath = resolveStoragePath(
+				`${getChunkDirectoryRelativePath(uploadId)}/${chunkFileName}`,
+			);
+			await this.appendFileToWriter(writer, chunkPath);
+		}
+
+		await writer.end();
+		await rm(chunkDir, { recursive: true, force: true });
+	}
+
+	private async appendFileToWriter(
+		writer: ReturnType<BunFile["writer"]>,
+		chunkPath: string,
+	): Promise<void> {
+		const stream = Bun.file(chunkPath).stream();
+		for await (const data of stream) {
+			await writer.write(data as Uint8Array);
+		}
 	}
 
 	resolveDiskPath(file: File): string {

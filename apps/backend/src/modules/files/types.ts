@@ -1,23 +1,6 @@
-import type { File, Folder } from "@petrel/shared";
+import type { ApiResponse, FileListData, PaginationInfo } from "@petrel/shared";
 
-export interface PaginationInfo {
-	limit: number;
-	offset: number;
-	total: number;
-}
-
-export interface FileListData {
-	files: File[];
-	folders: Folder[];
-	currentFolder: Folder | null;
-	parentChain: Folder[];
-	pagination: PaginationInfo;
-}
-
-export type ApiResponse<T> =
-	| { data: T; error: null }
-	| { data: null; error: string }
-	| { data: null; error: null }; // In-progress (upload pending)
+export type { ApiResponse, FileListData, PaginationInfo };
 
 export interface UploadChunkRequest {
 	uploadId: string;

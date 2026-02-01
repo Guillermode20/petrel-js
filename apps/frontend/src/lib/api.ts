@@ -1,28 +1,15 @@
-import type { File, Folder, Share, ShareSettings, TranscodeJob, User } from "@petrel/shared";
+import type {
+	ApiResponse,
+	File,
+	Folder,
+	PaginatedResponse,
+	Share,
+	ShareSettings,
+	TranscodeJob,
+	User,
+} from "@petrel/shared";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
-
-/**
- * Standard API response shape from Petrel backend
- */
-export interface ApiResponse<T> {
-	data: T | null;
-	error: string | null;
-}
-
-/**
- * Pagination metadata returned by list endpoints
- */
-export interface PaginatedResponse<T> {
-	data: {
-		items: T[];
-		total: number;
-		page: number;
-		limit: number;
-		hasMore: boolean;
-	} | null;
-	error: string | null;
-}
 
 /**
  * API client for Petrel backend

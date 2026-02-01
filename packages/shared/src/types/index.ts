@@ -142,3 +142,33 @@ export interface ImageMetadata {
 		} | null;
 	} | null;
 }
+
+export interface PaginationInfo {
+	limit: number;
+	offset: number;
+	total: number;
+}
+
+export interface FileListData {
+	files: File[];
+	folders: Folder[];
+	currentFolder: Folder | null;
+	parentChain: Folder[];
+	pagination: PaginationInfo;
+}
+
+export interface ApiResponse<T> {
+	data: T | null;
+	error: string | null;
+}
+
+export interface PaginatedResponse<T> {
+	data: {
+		items: T[];
+		total: number;
+		page: number;
+		limit: number;
+		hasMore: boolean;
+	} | null;
+	error: string | null;
+}

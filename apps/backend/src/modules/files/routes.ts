@@ -1,23 +1,19 @@
-import { readdir, rename, rm, stat, unlink } from "node:fs/promises";
+import { stat, unlink } from "node:fs/promises";
 import type { File as SharedFile } from "@petrel/shared";
-import type { BunFile } from "bun";
 import { Elysia, t } from "elysia";
-import sharp from "sharp";
 import { config } from "../../config";
 import { uploadRateLimit, zipRateLimit } from "../../lib/rate-limit";
 import {
 	buildFileRelativePath,
 	ensureDirectory,
-	getChunkDirectoryRelativePath,
-	getChunkRelativePath,
-	getThumbnailDirectoryRelativePath,
-	getThumbnailRelativePath,
 	normalizeFileName,
 	normalizeRelativePath,
 	resolveStoragePath,
+	moveFileOnDisk,
 	type ThumbnailSize,
 } from "../../lib/storage";
 import {
+	generateImageThumbnail,
 	generateVideoSprite,
 	generateVideoThumbnail,
 	type SpriteMetadata,
@@ -25,11 +21,8 @@ import {
 import { generateWaveformData, generateWaveformImage, type WaveformData } from "../../lib/waveform";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
-import { metadataService } from "../../services/metadata.service";
-import { videoService } from "../../services/video.service";
 import {
 	buildZipDownloadFilename,
-	cleanupZip,
 	createZipArchive,
 	getPrimaryJobFolderName,
 	getZipJob,
@@ -53,20 +46,9 @@ function getPagination(query: { limit?: number; offset?: number }): {
 	return { limit, offset };
 }
 
-function isValidChunkIndex(chunkIndex: number, totalChunks: number): boolean {
-	return chunkIndex >= 0 && chunkIndex < totalChunks;
-}
-
 function parseThumbnailSize(input: string | undefined): ThumbnailSize {
 	if (input === "small" || input === "large" || input === "blur") return input;
 	return "medium";
-}
-
-function getThumbnailSizePx(size: ThumbnailSize): number {
-	if (size === "small") return 256;
-	if (size === "blur") return 32;
-	if (size === "large") return 1024;
-	return 512;
 }
 
 function normalizePathSafe(
@@ -114,207 +96,6 @@ async function resolveFolderPathById(
 		return null;
 	}
 	return folder.path;
-}
-
-async function calculateFileHash(filePath: string): Promise<string> {
-	const fileBuffer = await Bun.file(filePath).arrayBuffer();
-	const hasher = new Bun.CryptoHasher("sha256");
-	hasher.update(new Uint8Array(fileBuffer));
-	return hasher.digest("hex");
-}
-
-async function writeChunkToDisk(chunk: Blob, uploadId: string, chunkIndex: number): Promise<void> {
-	const chunkDir = getChunkDirectoryRelativePath(uploadId);
-	await ensureDirectory(chunkDir);
-
-	const chunkPath = resolveStoragePath(getChunkRelativePath(uploadId, chunkIndex));
-	await Bun.write(chunkPath, chunk);
-}
-
-async function areAllChunksPresent(uploadId: string, totalChunks: number): Promise<boolean> {
-	const chunkDir = resolveStoragePath(getChunkDirectoryRelativePath(uploadId));
-	const files = await readdir(chunkDir).catch(() => []);
-	return files.length >= totalChunks;
-}
-
-type BunFileWriter = ReturnType<BunFile["writer"]>;
-
-async function appendFileToWriter(writer: BunFileWriter, chunkPath: string): Promise<void> {
-	const stream = Bun.file(chunkPath).stream();
-	for await (const data of stream) {
-		await writer.write(data as Uint8Array);
-	}
-}
-
-async function assembleChunks(
-	uploadId: string,
-	totalChunks: number,
-	finalPath: string,
-): Promise<void> {
-	const chunkDir = resolveStoragePath(getChunkDirectoryRelativePath(uploadId));
-	const writer = Bun.file(finalPath).writer();
-
-	for (let index = 0; index < totalChunks; index += 1) {
-		const chunkFileName = index.toString().padStart(6, "0");
-		const chunkPath = resolveStoragePath(
-			`${getChunkDirectoryRelativePath(uploadId)}/${chunkFileName}`,
-		);
-		await appendFileToWriter(writer, chunkPath);
-	}
-
-	await writer.end();
-	await rm(chunkDir, { recursive: true, force: true });
-}
-
-async function moveFileOnDisk(sourcePath: string, targetPath: string): Promise<void> {
-	if (sourcePath === targetPath) return;
-
-	const sourceExists = await stat(sourcePath)
-		.then(() => true)
-		.catch(() => false);
-	if (!sourceExists) return;
-
-	await rename(sourcePath, targetPath).catch(async () => {
-		await Bun.write(targetPath, Bun.file(sourcePath));
-		await unlink(sourcePath).catch(() => null);
-	});
-}
-
-async function finalizeUpload(params: {
-	uploadId: string;
-	totalChunks: number;
-	folderPath: string;
-	fileName: string;
-	mimeType: string;
-	userId: number;
-}): Promise<SharedFile> {
-	const finalRelativePath = buildFileRelativePath(params.folderPath, params.fileName);
-	const finalPath = resolveStoragePath(finalRelativePath);
-	await ensureDirectory(params.folderPath);
-	await assembleChunks(params.uploadId, params.totalChunks, finalPath);
-
-	const fileHash = await calculateFileHash(finalPath);
-	const size = Bun.file(finalPath).size;
-
-	const folder = await folderService.getFolderByPath(params.folderPath);
-	const parentId = folder?.id ?? null;
-
-	const created = await fileService.createFile({
-		name: params.fileName,
-		path: params.folderPath,
-		size,
-		mimeType: params.mimeType,
-		hash: fileHash,
-		uploadedBy: params.userId,
-		parentId,
-		metadata: null,
-	});
-
-	const updated = await enrichMetadata(created);
-	return updated ?? created;
-}
-
-async function enrichMetadata(file: SharedFile): Promise<SharedFile | null> {
-	if (file.mimeType.startsWith("audio/")) {
-		const metadata = await metadataService.extractAudioMetadata(fileService.resolveDiskPath(file));
-		return await fileService.updateMetadata(file.id, metadata);
-	}
-
-	if (file.mimeType.startsWith("image/")) {
-		const metadata = await metadataService.extractImageMetadata(fileService.resolveDiskPath(file));
-		return await fileService.updateMetadata(file.id, metadata);
-	}
-
-	if (file.mimeType.startsWith("video/")) {
-		try {
-			const filePath = fileService.resolveDiskPath(file);
-			const metadata = await videoService.processVideoFile(file.id, filePath);
-			return await fileService.updateMetadata(file.id, metadata);
-		} catch {
-			// Video processing may fail for unsupported formats
-			return null;
-		}
-	}
-
-	return null;
-}
-
-async function ensureThumbnail(file: SharedFile, size: ThumbnailSize): Promise<string> {
-	const thumbnailRelative = getThumbnailRelativePath(file.id, size);
-	const thumbnailPath = resolveStoragePath(thumbnailRelative);
-	const thumbnailStat = await stat(thumbnailPath).catch(() => null);
-
-	if (!thumbnailStat) {
-		const filePath = fileService.resolveDiskPath(file);
-		await ensureDirectory(getThumbnailDirectoryRelativePath(file.id));
-		const pipeline = sharp(filePath).resize({
-			width: getThumbnailSizePx(size),
-			height: getThumbnailSizePx(size),
-			fit: "inside",
-		});
-
-		if (size === "blur") {
-			pipeline.blur(8);
-		}
-
-		await pipeline.toFormat("webp").toFile(thumbnailPath);
-	}
-
-	return thumbnailPath;
-}
-
-async function handleChunkUpload(
-	body: {
-		uploadId: string;
-		chunkIndex: number;
-		totalChunks: number;
-		fileName: string;
-		path?: string;
-		mimeType?: string;
-		chunk: Blob;
-	},
-	userId: number,
-	set: { status?: number },
-): Promise<ApiResponse<SharedFile>> {
-	if (!isValidChunkIndex(body.chunkIndex, body.totalChunks)) {
-		set.status = 400;
-		return { data: null, error: "Invalid chunk index" };
-	}
-
-	const folderPath = normalizePathSafe(body.path, set);
-	if (folderPath === null) {
-		return { data: null, error: "Invalid path" };
-	}
-
-	const safeFileName = normalizeNameSafe(body.fileName, set);
-	if (!safeFileName) {
-		return { data: null, error: "Invalid file name" };
-	}
-	const existing = await fileService.findByPathAndName(folderPath, safeFileName);
-
-	if (existing) {
-		set.status = 409;
-		return { data: null, error: "File already exists" };
-	}
-
-	await writeChunkToDisk(body.chunk, body.uploadId, body.chunkIndex);
-	const allChunksPresent = await areAllChunksPresent(body.uploadId, body.totalChunks);
-
-	if (!allChunksPresent) {
-		set.status = 202;
-		return { data: null, error: null };
-	}
-
-	const created = await finalizeUpload({
-		uploadId: body.uploadId,
-		totalChunks: body.totalChunks,
-		folderPath,
-		fileName: safeFileName,
-		mimeType: body.mimeType ?? "application/octet-stream",
-		userId,
-	});
-
-	return { data: created, error: null };
 }
 
 export const fileRoutes = new Elysia({ prefix: "/api" })
@@ -477,7 +258,8 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 			const size = parseThumbnailSize(query.size);
 
 			if (file.mimeType.startsWith("image/")) {
-				const thumbnailPath = await ensureThumbnail(file, size);
+				const filePath = fileService.resolveDiskPath(file);
+				const thumbnailPath = await generateImageThumbnail(filePath, file.id, size);
 				set.headers["Content-Type"] = "image/webp";
 				set.headers["Cache-Control"] = "max-age=31536000";
 				return new Response(Bun.file(thumbnailPath));
@@ -686,6 +468,11 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						return { data: null, error: "Invalid total chunks" };
 					}
 
+					if (chunkIndex < 0 || chunkIndex >= totalChunks) {
+						set.status = 400;
+						return { data: null, error: "Invalid chunk index" };
+					}
+
 					let folderPath: string | undefined;
 					if (body.folderId !== undefined) {
 						const folderId = parseNumberField(body.folderId, set, "folderId");
@@ -699,19 +486,39 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						folderPath = resolvedPath;
 					}
 
-					return await handleChunkUpload(
-						{
-							uploadId: body.uploadId,
-							chunkIndex,
-							totalChunks,
-							fileName: body.fileName,
-							path: folderPath ?? body.path,
-							mimeType: body.mimeType,
-							chunk: body.chunk,
-						},
-						user.userId,
-						set,
-					);
+					const safeFolderPath = normalizePathSafe(folderPath ?? body.path, set);
+					if (safeFolderPath === null) {
+						return { data: null, error: "Invalid path" };
+					}
+
+					const safeFileName = normalizeNameSafe(body.fileName, set);
+					if (!safeFileName) {
+						return { data: null, error: "Invalid file name" };
+					}
+
+					const existing = await fileService.findByPathAndName(safeFolderPath, safeFileName);
+					if (existing) {
+						set.status = 409;
+						return { data: null, error: "File already exists" };
+					}
+
+					const result = await fileService.handleChunkUpload({
+						uploadId: body.uploadId,
+						chunkIndex,
+						totalChunks,
+						fileName: safeFileName,
+						folderPath: safeFolderPath,
+						mimeType: body.mimeType ?? "application/octet-stream",
+						chunk: body.chunk,
+						userId: user.userId,
+					});
+
+					if (!result.allChunksPresent) {
+						set.status = 202;
+						return { data: null, error: null };
+					}
+
+					return { data: result.file, error: null };
 				},
 				{
 					body: t.Object({
