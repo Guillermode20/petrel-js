@@ -669,12 +669,19 @@ export async function getZipStats(): Promise<{
 export function buildZipDownloadFilename(
 	requested?: string | null,
 	timestamp: Date = new Date(),
+	folderName?: string | null,
 ): string {
 	const sanitized = requested?.replace(/[^a-zA-Z0-9_\-\s.]/g, "_").trim();
 	if (sanitized) {
 		return sanitized.endsWith(".zip") ? sanitized : `${sanitized}.zip`;
 	}
-	return `petrel-download-${formatTimestamp(timestamp)}.zip`;
+	const folderSlug = folderName
+		?.replace(/[^a-zA-Z0-9_\-\s]/g, "_")
+		.trim()
+		.replace(/\s+/g, "-")
+		.toLowerCase();
+	const base = folderSlug && folderSlug.length > 0 ? `petrel-${folderSlug}` : "petrel-download";
+	return `${base}-${formatTimestamp(timestamp)}.zip`;
 }
 
 function formatTimestamp(date: Date): string {
@@ -686,4 +693,19 @@ function formatTimestamp(date: Date): string {
 	const minutes = pad(date.getMinutes());
 	const seconds = pad(date.getSeconds());
 	return `${year}${month}${day}-${hours}${minutes}${seconds}`;
+}
+
+export async function getPrimaryJobFolderName(job: ZipJob): Promise<string | null> {
+	if (!job.folderIds || job.folderIds.length !== 1) {
+		return null;
+	}
+	if (job.fileIds && job.fileIds.length > 0) {
+		return null;
+	}
+	const folderId = job.folderIds[0];
+	if (typeof folderId !== "number") {
+		return null;
+	}
+	const folder = await folderService.getById(folderId);
+	return folder?.name ?? null;
 }

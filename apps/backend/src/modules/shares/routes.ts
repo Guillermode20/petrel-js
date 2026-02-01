@@ -9,6 +9,7 @@ import {
 	buildZipDownloadFilename,
 	cleanupZip,
 	createZipArchive,
+	getPrimaryJobFolderName,
 	getZipJob,
 	scheduleZipCleanup,
 } from "../../services/zip.service";
@@ -413,7 +414,12 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}
 
 			// Generate filename
-			const filename = buildZipDownloadFilename(query.filename, job.completedAt ?? new Date());
+			const primaryFolderName = await getPrimaryJobFolderName(job);
+			const filename = buildZipDownloadFilename(
+				query.filename,
+				job.completedAt ?? new Date(),
+				primaryFolderName,
+			);
 
 			const headers = (set.headers ??= {} as Record<string, string>);
 			headers["Content-Type"] = "application/zip";
