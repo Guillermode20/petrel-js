@@ -72,7 +72,7 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 		hasMetadata: !!metadata,
 	};
 
-	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+	const longPressHandlers = useLongPress(
 		contextMenuContext,
 		contextMenuHandlerId,
 	);

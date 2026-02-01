@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, FileContext } from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
@@ -159,6 +161,27 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 		setRotation((prev) => (prev + 90) % 360);
 	}
 
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, data?: unknown) => {
+			if (context.type !== "file") return;
+			void data;
+
+			if (action === "download") {
+				window.open(api.getDownloadUrl(file.id), "_blank");
+				return;
+			}
+		},
+		[file.id],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+	const contextMenuContext: FileContext = {
+		type: "file",
+		item: file,
+	};
+
+	const longPressHandlers = useLongPress(contextMenuContext, contextMenuHandlerId);
+
 	// Keyboard navigation
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent): void {
@@ -209,7 +232,7 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 	}
 
 	return (
-		<div className={cn("flex flex-col", className)}>
+		<div className={cn("flex flex-col", className)} {...longPressHandlers}>
 			{/* Toolbar */}
 			<div className="flex items-center justify-between border-b border-border bg-card p-2">
 				{/* Page navigation */}

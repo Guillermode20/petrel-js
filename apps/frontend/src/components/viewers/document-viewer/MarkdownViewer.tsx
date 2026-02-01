@@ -1,8 +1,10 @@
 import { AlertCircle, Edit2, Loader2, Save, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import remarkGfm from "remark-gfm";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, FileContext } from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,6 +67,35 @@ export function MarkdownViewer({ file, className }: MarkdownViewerProps) {
 		setIsEditing(false);
 	}
 
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, data?: unknown) => {
+			if (context.type !== "file") return;
+			void data;
+
+			if (action === "download") {
+				window.open(api.getDownloadUrl(file.id), "_blank");
+				return;
+			}
+			if (action === "clipboard-copy") {
+				try {
+					await navigator.clipboard.writeText(content);
+				} catch (_err) {
+					// ignore
+				}
+				return;
+			}
+		},
+		[file.id, content],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+	const contextMenuContext: FileContext = {
+		type: "file",
+		item: file,
+	};
+
+	const longPressHandlers = useLongPress(contextMenuContext, contextMenuHandlerId);
+
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
 		if (e.ctrlKey && e.key === "s") {
 			e.preventDefault();
@@ -108,6 +139,7 @@ export function MarkdownViewer({ file, className }: MarkdownViewerProps) {
 				"flex flex-col overflow-hidden rounded-lg border border-border bg-card",
 				className,
 			)}
+			{...longPressHandlers}
 		>
 			{/* Header */}
 			<div className="flex items-center justify-between border-b border-border px-4 py-2">

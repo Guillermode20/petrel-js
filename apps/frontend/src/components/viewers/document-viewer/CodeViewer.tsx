@@ -1,6 +1,8 @@
 import { AlertCircle, Check, Copy, Edit2, Loader2, Save, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { type BundledLanguage, codeToHtml } from "shiki";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, FileContext } from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -149,6 +151,31 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 		setIsEditing(false);
 	}
 
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, data?: unknown) => {
+			if (context.type !== "file") return;
+			void data;
+
+			if (action === "download") {
+				window.open(api.getDownloadUrl(file.id), "_blank");
+				return;
+			}
+			if (action === "clipboard-copy") {
+				void copyToClipboard();
+				return;
+			}
+		},
+		[file.id, copyToClipboard],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+	const contextMenuContext: FileContext = {
+		type: "file",
+		item: file,
+	};
+
+	const longPressHandlers = useLongPress(contextMenuContext, contextMenuHandlerId);
+
 	function handleKeyDown(e: React.KeyboardEvent): void {
 		if (e.ctrlKey && e.key === "s") {
 			e.preventDefault();
@@ -190,7 +217,7 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 	const language = getLanguageFromFilename(file.name);
 
 	return (
-		<div className={cn("flex flex-col overflow-hidden rounded-lg border border-border", className)}>
+		<div className={cn("flex flex-col overflow-hidden rounded-lg border border-border", className)} {...longPressHandlers}>
 			{/* Header */}
 			<div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
 				<div className="flex items-center gap-3">

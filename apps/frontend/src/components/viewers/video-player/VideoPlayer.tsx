@@ -264,7 +264,7 @@ export function VideoPlayer({
 		state.subtitleTrack,
 	]);
 
-	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+	const longPressHandlers = useLongPress(
 		contextMenuContext,
 		contextMenuHandlerId,
 	);

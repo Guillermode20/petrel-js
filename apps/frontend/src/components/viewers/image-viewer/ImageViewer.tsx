@@ -50,7 +50,7 @@ export function ImageViewer({ file, className }: ImageViewerProps) {
 		showingInfo: showInfo,
 	};
 
-	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+	const longPressHandlers = useLongPress(
 		contextMenuContext,
 		contextMenuHandlerId,
 	);

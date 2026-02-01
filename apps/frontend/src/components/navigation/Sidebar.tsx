@@ -38,7 +38,7 @@ function SidebarNavItem({ item, isActive, onClick, contextMenuHandlerId }: Sideb
 		label: item.label,
 		href: item.href,
 	};
-	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(context, contextMenuHandlerId);
+	const longPressHandlers = useLongPress(context, contextMenuHandlerId);
 
 	return (
 		<Link
