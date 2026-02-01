@@ -64,6 +64,39 @@ export const envSchema = z.object({
 		.string()
 		.transform((val) => val === "true")
 		.default("true"),
+
+	// ZIP Download Settings
+	ZIP_MAX_FILES: z
+		.string()
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().int().positive().max(1000))
+		.default("100"),
+	ZIP_MAX_SIZE_BYTES: z
+		.string()
+		.transform((val) => parseInt(val, 10))
+		.pipe(
+			z
+				.number()
+				.int()
+				.positive()
+				.max(10 * 1024 * 1024 * 1024),
+		) // Max 10GB
+		.default("2147483648"), // 2GB default
+	ZIP_COMPRESSION_LEVEL: z
+		.string()
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().int().min(0).max(9))
+		.default("6"),
+	ZIP_JOB_MAX_AGE_MINUTES: z
+		.string()
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().int().positive().max(1440)) // Max 24 hours
+		.default("60"), // 1 hour default
+	ZIP_RATE_LIMIT_PER_MINUTE: z
+		.string()
+		.transform((val) => parseInt(val, 10))
+		.pipe(z.number().int().positive().max(100))
+		.default("5"),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

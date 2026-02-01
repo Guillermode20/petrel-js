@@ -5,7 +5,13 @@ import { shareRateLimit } from "../../lib/rate-limit";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
-import { createZipArchive, generateJobId, getZipJob, cleanupZip } from "../../services/zip.service";
+import {
+	buildZipDownloadFilename,
+	cleanupZip,
+	createZipArchive,
+	getZipJob,
+	scheduleZipCleanup,
+} from "../../services/zip.service";
 import { authMiddleware, requireAuth } from "../auth";
 import type { ApiResponse, ShareContentData, ShareData } from "./types";
 
@@ -246,50 +252,81 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				}
 			}
 
-			// Get the files to include in the ZIP
+			// Get the files/folders to include in the ZIP
 			const fileIds = body.fileIds;
-			if (!fileIds || fileIds.length === 0) {
+			const folderIds = body.folderIds;
+
+			if ((!fileIds || fileIds.length === 0) && (!folderIds || folderIds.length === 0)) {
 				set.status = 400;
-				return { data: null, error: "No files specified" };
+				return { data: null, error: "No files or folders specified" };
 			}
 
-			// Verify all files are accessible via this share
-			const files = [];
-			for (const fileId of fileIds) {
-				const file = await fileService.getById(fileId);
-				if (!file) {
-					set.status = 404;
-					return { data: null, error: `File ${fileId} not found` };
-				}
-
-				// If it's a folder share, verify file is within the shared folder
-				if (share.share.type === "folder") {
-					const shareContent = await shareService.getShareContent(share.share);
-					if (!shareContent) {
-						set.status = 400;
-						return { data: null, error: "Invalid share" };
+			// Validate fileIds if provided
+			if (fileIds && fileIds.length > 0) {
+				for (const fileId of fileIds) {
+					const file = await fileService.getById(fileId);
+					if (!file) {
+						set.status = 404;
+						return { data: null, error: `File ${fileId} not found` };
 					}
-					if (file.parentId === null) {
+
+					// If it's a folder share, verify file is within the shared folder
+					if (share.share.type === "folder") {
+						const shareContent = await shareService.getShareContent(share.share);
+						if (!shareContent) {
+							set.status = 400;
+							return { data: null, error: "Invalid share" };
+						}
+						if (file.parentId === null) {
+							set.status = 403;
+							return { data: null, error: `File ${fileId} not accessible via this share` };
+						}
+						const isInFolder = await folderService.isDescendantOf(
+							file.parentId,
+							(shareContent as { path: string }).path,
+						);
+						if (!isInFolder) {
+							set.status = 403;
+							return { data: null, error: `File ${fileId} not accessible via this share` };
+						}
+					} else if (share.share.type === "file" && share.share.targetId !== fileId) {
+						// For file shares, only the shared file is accessible
 						set.status = 403;
 						return { data: null, error: `File ${fileId} not accessible via this share` };
 					}
-					const isInFolder = await folderService.isDescendantOf(file.parentId, (shareContent as { path: string }).path);
-					if (!isInFolder) {
-						set.status = 403;
-						return { data: null, error: `File ${fileId} not accessible via this share` };
-					}
-				} else if (share.share.type === "file" && share.share.targetId !== fileId) {
-					// For file shares, only the shared file is accessible
-					set.status = 403;
-					return { data: null, error: `File ${fileId} not accessible via this share` };
 				}
+			}
 
-				files.push(file);
+			// Validate folderIds if provided (must be within share for folder shares)
+			if (folderIds && folderIds.length > 0 && share.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share.share);
+				if (!shareContent) {
+					set.status = 400;
+					return { data: null, error: "Invalid share" };
+				}
+				const sharePath = (shareContent as { path: string }).path;
+
+				for (const folderId of folderIds) {
+					const folder = await folderService.getById(folderId);
+					if (!folder) {
+						set.status = 404;
+						return { data: null, error: `Folder ${folderId} not found` };
+					}
+					// Verify folder is within the shared folder hierarchy
+					const isInShare = folder.path === sharePath || folder.path.startsWith(`${sharePath}/`);
+					if (!isInShare) {
+						set.status = 403;
+						return { data: null, error: `Folder ${folderId} not accessible via this share` };
+					}
+				}
 			}
 
 			// Create ZIP archive
-			const jobId = generateJobId();
-			const result = await createZipArchive(files, params.token, jobId);
+			const result = await createZipArchive({
+				fileIds,
+				folderIds,
+				shareToken: params.token,
+			});
 
 			if (!result.success) {
 				set.status = 400;
@@ -297,28 +334,29 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}
 
 			// Return job ID for polling
-			return { data: { jobId, status: "processing" }, error: null };
+			return { data: { jobId: result.jobId, status: "processing" }, error: null };
 		},
 		{
 			params: t.Object({
 				token: t.String({ minLength: 1 }),
 			}),
 			body: t.Object({
-				fileIds: t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 100 }),
+				fileIds: t.Optional(t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 100 })),
+				folderIds: t.Optional(t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 10 })),
 			}),
 			query: t.Object({
 				password: t.Optional(t.String()),
 			}),
 			detail: {
 				summary: "Create ZIP download",
-				description: "Creates a ZIP archive of selected files",
+				description: "Creates a ZIP archive of selected files and folders",
 				tags: ["Shares"],
 			},
 		},
 	)
 	.get(
 		"/:token/download-zip/:jobId",
-		async ({ params, query, set }) => {
+		async ({ params, query, set, request }) => {
 			const share = await shareService.getShareByToken(params.token);
 			if (!share) {
 				set.status = 404;
@@ -339,10 +377,15 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				}
 			}
 
-			const job = getZipJob(params.jobId);
+			const job = await getZipJob(params.jobId);
 			if (!job) {
 				set.status = 404;
 				return { data: null, error: "Job not found" };
+			}
+
+			if (job.shareToken !== params.token) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
 			}
 
 			if (job.status === "error") {
@@ -350,9 +393,16 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error: job.error || "ZIP creation failed" };
 			}
 
-			if (job.status !== "completed" || !job.tempPath) {
+			const wantsJson =
+				query.format === "json" ||
+				(request.headers.get("accept")?.includes("application/json") ?? false);
+
+			if (job.status !== "completed" || !job.tempPath || wantsJson) {
 				// Return progress
-				return { data: { jobId: params.jobId, status: job.status, progress: job.progress }, error: null };
+				return {
+					data: { jobId: params.jobId, status: job.status, progress: job.progress },
+					error: null,
+				};
 			}
 
 			// Stream the ZIP file
@@ -362,15 +412,21 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error: "ZIP file not found" };
 			}
 
+			// Generate filename
+			const filename = buildZipDownloadFilename(query.filename, job.completedAt ?? new Date());
+
 			const headers = (set.headers ??= {} as Record<string, string>);
 			headers["Content-Type"] = "application/zip";
 			headers["Content-Length"] = fileStat.size.toString();
-			headers["Content-Disposition"] = `attachment; filename="${params.token}-download.zip"`;
+			headers["Content-Disposition"] = `attachment; filename="${filename}"`;
 
 			const response = new Response(Bun.file(job.tempPath));
 
+			// Increment download count when the actual download is initiated
+			await shareService.incrementDownloadCount(share.share.id);
+
 			// Clean up after streaming (fire and forget)
-			void cleanupZip(params.jobId);
+			scheduleZipCleanup(params.jobId);
 
 			return response;
 		},
@@ -381,6 +437,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}),
 			query: t.Object({
 				password: t.Optional(t.String()),
+				filename: t.Optional(t.String()),
+				format: t.Optional(t.Union([t.Literal("json"), t.Literal("file")])),
 			}),
 			detail: {
 				summary: "Download ZIP file",
@@ -420,10 +478,7 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}
 
 			// Verify requested folder is within the shared folder hierarchy
-			const isDescendant = await folderService.isDescendantOf(
-				params.folderId,
-				shareContent.path,
-			);
+			const isDescendant = await folderService.isDescendantOf(params.folderId, shareContent.path);
 			if (!isDescendant) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };

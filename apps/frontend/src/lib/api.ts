@@ -363,7 +363,7 @@ class ApiClient {
 			params.set("password", password);
 		}
 		const query = params.toString();
-		const endpoint = fileId 
+		const endpoint = fileId
 			? `/shares/${shareToken}/download/${fileId}`
 			: `/shares/${shareToken}/download`;
 		return `${API_BASE}${endpoint}${query ? `?${query}` : ""}`;
@@ -493,13 +493,24 @@ class ApiClient {
 	async createZipDownload(
 		shareToken: string,
 		fileIds: number[],
+		folderIds?: number[],
 		password?: string,
 	): Promise<{ jobId: string; status: string }> {
 		const params = password ? `?password=${encodeURIComponent(password)}` : "";
-		return this.request<{ jobId: string; status: string }>(`/shares/${shareToken}/download-zip${params}`, {
-			method: "POST",
-			body: JSON.stringify({ fileIds }),
-		});
+		const body: { fileIds?: number[]; folderIds?: number[] } = {};
+		if (fileIds && fileIds.length > 0) {
+			body.fileIds = fileIds;
+		}
+		if (folderIds && folderIds.length > 0) {
+			body.folderIds = folderIds;
+		}
+		return this.request<{ jobId: string; status: string }>(
+			`/shares/${shareToken}/download-zip${params}`,
+			{
+				method: "POST",
+				body: JSON.stringify(body),
+			},
+		);
 	}
 
 	async getZipDownloadStatus(
@@ -507,40 +518,71 @@ class ApiClient {
 		jobId: string,
 		password?: string,
 	): Promise<{ jobId: string; status: string; progress?: number }> {
-		const params = password ? `?password=${encodeURIComponent(password)}` : "";
+		const params = new URLSearchParams();
+		params.set("format", "json");
+		if (password) {
+			params.set("password", password);
+		}
 		return this.request<{ jobId: string; status: string; progress?: number }>(
-			`/shares/${shareToken}/download-zip/${jobId}${params}`,
+			`/shares/${shareToken}/download-zip/${jobId}?${params.toString()}`,
 		);
 	}
 
-	getZipDownloadUrl(shareToken: string, jobId: string, password?: string): string {
+	getZipDownloadUrl(
+		shareToken: string,
+		jobId: string,
+		password?: string,
+		filename?: string,
+	): string {
 		const params = new URLSearchParams();
 		if (password) {
 			params.set("password", password);
+		}
+		if (filename) {
+			params.set("filename", filename);
 		}
 		const query = params.toString();
 		return `${API_BASE}/shares/${shareToken}/download-zip/${jobId}${query ? `?${query}` : ""}`;
 	}
 
 	// Authenticated ZIP download endpoints
-	async createAuthZipDownload(fileIds: number[]): Promise<{ jobId: string; status: string }> {
+	async createAuthZipDownload(
+		fileIds: number[],
+		folderIds?: number[],
+	): Promise<{ jobId: string; status: string }> {
+		const body: { fileIds?: number[]; folderIds?: number[] } = {};
+		if (fileIds && fileIds.length > 0) {
+			body.fileIds = fileIds;
+		}
+		if (folderIds && folderIds.length > 0) {
+			body.folderIds = folderIds;
+		}
 		return this.request<{ jobId: string; status: string }>("/files/download-zip", {
 			method: "POST",
-			body: JSON.stringify({ fileIds }),
+			body: JSON.stringify(body),
 		});
 	}
 
 	async getAuthZipDownloadStatus(
 		jobId: string,
 	): Promise<{ jobId: string; status: string; progress?: number }> {
+		const params = new URLSearchParams();
+		params.set("format", "json");
 		return this.request<{ jobId: string; status: string; progress?: number }>(
-			`/files/download-zip/${jobId}`,
+			`/files/download-zip/${jobId}?${params.toString()}`,
 		);
 	}
 
-	getAuthZipDownloadUrl(jobId: string): string {
-		const token = this.accessToken ? `?token=${this.accessToken}` : "";
-		return `${API_BASE}/files/download-zip/${jobId}${token}`;
+	getAuthZipDownloadUrl(jobId: string, filename?: string): string {
+		const params = new URLSearchParams();
+		if (this.accessToken) {
+			params.set("token", this.accessToken);
+		}
+		if (filename) {
+			params.set("filename", filename);
+		}
+		const query = params.toString();
+		return `${API_BASE}/files/download-zip/${jobId}${query ? `?${query}` : ""}`;
 	}
 
 	async getMyShares(): Promise<Array<Share & ShareSettings & { content: File | Folder }>> {

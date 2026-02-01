@@ -1,10 +1,9 @@
 import type { File, Folder } from "@petrel/shared";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { buildBreadcrumbSegments, FolderBreadcrumb } from "@/components/navigation";
 import { CreateShareModal } from "@/components/sharing";
-import { isFolder, isFile, parseSelectionKey } from "./utils/selection";
 import {
 	useCreateFolder,
 	useDeleteFile,
@@ -12,6 +11,7 @@ import {
 	useUpdateFile,
 	useUpdateFolder,
 	useUploadFile,
+ 	useZipDownload,
 } from "@/hooks";
 import { api } from "@/lib/api";
 import { CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
@@ -21,6 +21,7 @@ import { SearchBar } from "./SearchBar";
 import { SortDropdown } from "./SortDropdown";
 import type { SortField, UploadProgress, ViewMode } from "./types";
 import { UploadBar, UploadProgressList } from "./UploadZone";
+import { isFile, isFolder, parseSelectionKey } from "./utils/selection";
 import { ViewToggle } from "./ViewToggle";
 
 interface FileBrowserProps {
@@ -65,11 +66,32 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	useEffect(() => {
 		setSelectedIds(new Set());
 	}, []);
-	const deleteMutation = useDeleteFile();
+
 	const updateMutation = useUpdateFile();
 	const updateFolderMutation = useUpdateFolder();
 	const createFolderMutation = useCreateFolder();
 	const uploadMutation = useUploadFile();
+	const deleteMutation = useDeleteFile();
+	const pendingZipToastRef = useRef<string | number | undefined>(undefined);
+	const { startDownload: startZipDownload } = useZipDownload({
+		onComplete: () => {
+			if (pendingZipToastRef.current) {
+				toast.success("ZIP download started", { id: pendingZipToastRef.current });
+				pendingZipToastRef.current = undefined;
+			} else {
+				toast.success("ZIP download started");
+			}
+		},
+		onError: (error) => {
+			const message = error || "Failed to create ZIP archive";
+			if (pendingZipToastRef.current) {
+				toast.error(message, { id: pendingZipToastRef.current });
+				pendingZipToastRef.current = undefined;
+			} else {
+				toast.error(message);
+			}
+		},
+	});
 
 	// Sort items - folders first, then files
 	const sortedItems = useMemo(() => {
@@ -151,34 +173,35 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		toast.success("Link copied to clipboard");
 	}, []);
 
-	const handleCopyShareLink = useCallback(
-		async (item: File | Folder) => {
-			try {
-				const share = await api.createShare({
-					type: isFolder(item) ? "folder" : "file",
-					targetId: item.id,
-					allowDownload: true,
-					allowZip: true,
-					showMetadata: true,
-				});
-				const url = `${window.location.origin}/s/${share.token}`;
-				await navigator.clipboard.writeText(url);
-				toast.success("Share link copied to clipboard");
-			} catch (error) {
-				console.error("Failed to create share link:", error);
-				const message = error instanceof Error ? error.message : "Unknown error";
-				if (message.includes("Unauthorized") || message.includes("null is not an object")) {
-					toast.error("You must be logged in to create share links. Please refresh the page and log in.");
-				} else {
-					toast.error(`Failed to create share link: ${message}`);
-				}
+	const handleCopyShareLink = useCallback(async (item: File | Folder) => {
+		try {
+			const share = await api.createShare({
+				type: isFolder(item) ? "folder" : "file",
+				targetId: item.id,
+				allowDownload: true,
+				allowZip: true,
+				showMetadata: true,
+			});
+			const url = `${window.location.origin}/s/${share.token}`;
+			await navigator.clipboard.writeText(url);
+			toast.success("Share link copied to clipboard");
+		} catch (error) {
+			console.error("Failed to create share link:", error);
+			const message = error instanceof Error ? error.message : "Unknown error";
+			if (message.includes("Unauthorized") || message.includes("null is not an object")) {
+				toast.error(
+					"You must be logged in to create share links. Please refresh the page and log in.",
+				);
+			} else {
+				toast.error(`Failed to create share link: ${message}`);
 			}
-		},
-		[],
-	);
+		}
+	}, []);
 
 	const handleDownloadZip = useCallback(async () => {
 		const fileIds: number[] = [];
+		const folderIds: number[] = [];
+
 		for (const key of selectedIds) {
 			const parsed = parseSelectionKey(key);
 			if (!parsed) continue;
@@ -186,40 +209,31 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			if (parsed.type === "file") {
 				fileIds.push(parsed.id);
 			} else {
-				toast.error("Folder ZIP download is not supported yet");
-				return;
+				folderIds.push(parsed.id);
 			}
 		}
 
-		if (fileIds.length === 0) {
-			toast.error("No files selected for ZIP download");
+		if (fileIds.length === 0 && folderIds.length === 0) {
+			toast.error("No files or folders selected for ZIP download");
 			return;
 		}
 
 		try {
-			const { jobId } = await api.createAuthZipDownload(fileIds);
-
-			const pollStatus = async () => {
-				const status = await api.getAuthZipDownloadStatus(jobId);
-				if (status.status === "completed") {
-					window.location.href = api.getAuthZipDownloadUrl(jobId);
-					toast.success("ZIP download started");
-				} else if (status.status === "error") {
-					toast.error("Failed to create ZIP archive");
-				} else {
-					setTimeout(pollStatus, 2000);
-				}
-			};
-
-			toast.promise(pollStatus(), {
-				loading: "Preparing ZIP archive...",
-				success: "ZIP archive ready",
-				error: "Failed to prepare ZIP",
-			});
+			const itemCount = fileIds.length + folderIds.length;
+			pendingZipToastRef.current = toast.loading(
+				`Preparing ZIP archive (${itemCount} item${itemCount === 1 ? "" : "s"})...`,
+			);
+			await startZipDownload(fileIds, folderIds);
 		} catch (error) {
-			toast.error(`ZIP download failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+			const message = error instanceof Error ? error.message : "Unknown error";
+			if (pendingZipToastRef.current) {
+				toast.error(`ZIP download failed: ${message}`, { id: pendingZipToastRef.current });
+				pendingZipToastRef.current = undefined;
+			} else {
+				toast.error(`ZIP download failed: ${message}`);
+			}
 		}
-	}, [selectedIds]);
+	}, [selectedIds, startZipDownload]);
 
 	const handleContextMenu = useCallback((_item: File | Folder, _event: React.MouseEvent) => {
 		// Context menu is handled by the ContextMenu component

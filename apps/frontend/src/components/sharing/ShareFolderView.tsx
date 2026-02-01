@@ -1,10 +1,10 @@
 import type { File, Folder, ShareSettings } from "@petrel/shared";
 import { FolderOpen, Image, Music } from "lucide-react";
-import { useMemo, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { getPreviewType } from "../viewers/file-preview/utils";
 import { FolderBrowser } from "./FolderBrowser";
 import { PhotoGallery } from "./PhotoGallery";
@@ -52,7 +52,7 @@ export function ShareFolderView({
 
 			try {
 				toast.info("Creating ZIP archive...");
-				const { jobId } = await api.createZipDownload(shareToken, fileIds, password);
+				const { jobId } = await api.createZipDownload(shareToken, fileIds, undefined, password);
 
 				// Poll for completion
 				const pollInterval = setInterval(async () => {

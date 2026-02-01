@@ -4,7 +4,7 @@ import type { BunFile } from "bun";
 import { Elysia, t } from "elysia";
 import sharp from "sharp";
 import { config } from "../../config";
-import { uploadRateLimit } from "../../lib/rate-limit";
+import { uploadRateLimit, zipRateLimit } from "../../lib/rate-limit";
 import {
 	buildFileRelativePath,
 	ensureDirectory,
@@ -27,7 +27,13 @@ import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { metadataService } from "../../services/metadata.service";
 import { videoService } from "../../services/video.service";
-import { createZipArchive, generateJobId, getZipJob, cleanupZip } from "../../services/zip.service";
+import {
+	buildZipDownloadFilename,
+	cleanupZip,
+	createZipArchive,
+	getZipJob,
+	scheduleZipCleanup,
+} from "../../services/zip.service";
 import { authMiddleware, requireAuth } from "../auth";
 import type { ApiResponse, FileListData } from "./types";
 
@@ -883,156 +889,67 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						tags: ["Files"],
 					},
 				},
-			),
-	)
-	.group("", (app) =>
-		app
-			.use(requireAuth)
-			.post(
-				"/folders",
-				async ({ body, set, user }): Promise<ApiResponse<{ id: number }>> => {
-					let normalizedParent: string | null = null;
-					if (body.parentId !== undefined) {
-						const parentId = parseNumberField(body.parentId, set, "parentId");
-						if (parentId === null) {
-							return { data: null, error: "Invalid parent id" };
-						}
-						const resolvedParent = await resolveFolderPathById(parentId, set);
-						if (resolvedParent === null) {
-							return { data: null, error: "Parent folder not found" };
-						}
-						normalizedParent = resolvedParent;
-					} else if (body.parentPath) {
-						normalizedParent = normalizePathSafe(body.parentPath, set);
-						if (normalizedParent === null) {
-							return { data: null, error: "Invalid path" };
-						}
-					}
-
-					const folderName = normalizeNameSafe(body.name, set);
-					if (!folderName) {
-						return { data: null, error: "Invalid folder name" };
-					}
-
-					const created = await folderService.createFolder({
-						name: folderName,
-						parentPath: normalizedParent,
-						ownerId: user.userId,
-					});
-
-					const folderPath = created.path;
-					await ensureDirectory(folderPath);
-
-					return { data: { id: created.id }, error: null };
-				},
-				{
-					body: t.Object({
-						name: t.String({ minLength: 1 }),
-						parentPath: t.Optional(t.String()),
-						parentId: t.Optional(t.Union([t.Number(), t.String()])),
-					}),
-					detail: {
-						summary: "Create folder",
-						description: "Creates a folder and storage path",
-						tags: ["Folders"],
-					},
-				},
 			)
-			.patch(
-				"/folders/:id",
-				async ({ params, body, set }): Promise<ApiResponse<{ id: number }>> => {
-					const folder = await folderService.getById(params.id);
-					if (!folder) {
-						set.status = 404;
-						return { data: null, error: "Folder not found" };
-					}
-					let nextParentId = folder.parentId;
-					if (body.parentId !== undefined) {
-						if (body.parentId === null || body.parentId === "null" || body.parentId === "") {
-							nextParentId = null;
-						} else {
-							const parsedId = parseNumberField(body.parentId, set, "parentId");
-							if (parsedId === null) return { data: null, error: "Invalid parent" };
-							nextParentId = parsedId;
-						}
-					}
-					const nextName = body.name ? normalizeNameSafe(body.name, set) : folder.name;
-					if (!nextName) return { data: null, error: "Invalid name" };
-					const updated = await folderService.updateFolder(params.id, {
-						name: nextName,
-						parentId: nextParentId,
-					});
-					if (!updated) {
-						set.status = 500;
-						return { data: null, error: "Failed" };
-					}
-					if (updated.path !== folder.path) {
-						const currentDiskPath = resolveStoragePath(folder.path);
-						const nextDiskPath = resolveStoragePath(updated.path);
-						const pathParts = updated.path.split("/");
-						if (pathParts.length > 1) {
-							const relativeParentDir = pathParts.slice(0, -1).join("/");
-							await ensureDirectory(relativeParentDir);
-						}
-						await moveFileOnDisk(currentDiskPath, nextDiskPath);
-					}
-					return { data: { id: updated.id }, error: null };
-				},
-				{
-					params: t.Object({ id: t.Number() }),
-					body: t.Object({
-						name: t.Optional(t.String()),
-						parentId: t.Optional(t.Union([t.Number(), t.String(), t.Null()])),
-					}),
-				},
-			)
+			.use(zipRateLimit)
 			.post(
 				"/download-zip",
 				async ({ body, user, set }) => {
+					if (!user) {
+						set.status = 401;
+						return { data: null, error: "Unauthorized" };
+					}
+
 					const fileIds = body.fileIds;
-					if (!fileIds || fileIds.length === 0) {
+					const folderIds = body.folderIds;
+
+					if ((!fileIds || fileIds.length === 0) && (!folderIds || folderIds.length === 0)) {
 						set.status = 400;
-						return { data: null, error: "No files specified" };
+						return { data: null, error: "No files or folders specified" };
 					}
 
-					const files = [];
-					for (const fileId of fileIds) {
-						const file = await fileService.getById(fileId);
-						if (!file) {
-							set.status = 404;
-							return { data: null, error: `File ${fileId} not found` };
-						}
-						files.push(file);
-					}
-
-					const jobId = generateJobId();
-					const result = await createZipArchive(files, `user-${user.userId}`, jobId);
+					const result = await createZipArchive({
+						fileIds,
+						folderIds,
+						userId: user.userId,
+					});
 
 					if (!result.success) {
 						set.status = 400;
 						return { data: null, error: result.error };
 					}
 
-					return { data: { jobId, status: "processing" }, error: null };
+					return { data: { jobId: result.jobId, status: "processing" }, error: null };
 				},
 				{
 					body: t.Object({
-						fileIds: t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 100 }),
+						fileIds: t.Optional(t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 100 })),
+						folderIds: t.Optional(t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 10 })),
 					}),
 					detail: {
 						summary: "Create ZIP download (Authenticated)",
-						description: "Creates a ZIP archive of selected files for the authenticated user",
+						description:
+							"Creates a ZIP archive of selected files and folders for the authenticated user",
 						tags: ["Files"],
 					},
 				},
 			)
 			.get(
-				"/files/download-zip/:jobId",
-				async ({ params, set }) => {
-					const job = getZipJob(params.jobId);
+				"/download-zip/:jobId",
+				async ({ params, query, set, request, user }) => {
+					const job = await getZipJob(params.jobId);
 					if (!job) {
 						set.status = 404;
 						return { data: null, error: "Job not found" };
+					}
+
+					if (!user) {
+						set.status = 401;
+						return { data: null, error: "Unauthorized" };
+					}
+
+					if (job.userId !== user.userId) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
 					}
 
 					if (job.status === "error") {
@@ -1040,7 +957,11 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						return { data: null, error: job.error || "ZIP creation failed" };
 					}
 
-					if (job.status !== "completed" || !job.tempPath) {
+					const wantsJson =
+						query.format === "json" ||
+						(request.headers.get("accept")?.includes("application/json") ?? false);
+
+					if (job.status !== "completed" || !job.tempPath || wantsJson) {
 						return {
 							data: { jobId: params.jobId, status: job.status, progress: job.progress },
 							error: null,
@@ -1053,18 +974,25 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						return { data: null, error: "ZIP file not found" };
 					}
 
+					// Generate filename
+					const filename = buildZipDownloadFilename(query.filename, job.completedAt ?? new Date());
+
 					const headers = (set.headers ??= {} as Record<string, string>);
 					headers["Content-Type"] = "application/zip";
 					headers["Content-Length"] = fileStat.size.toString();
-					headers["Content-Disposition"] = 'attachment; filename="download.zip"';
+					headers["Content-Disposition"] = `attachment; filename="${filename}"`;
 
 					const response = new Response(Bun.file(job.tempPath));
-					void cleanupZip(params.jobId);
+					scheduleZipCleanup(params.jobId);
 					return response;
 				},
 				{
 					params: t.Object({
 						jobId: t.String({ minLength: 1 }),
+					}),
+					query: t.Object({
+						filename: t.Optional(t.String()),
+						format: t.Optional(t.Union([t.Literal("json"), t.Literal("file")])),
 					}),
 					detail: {
 						summary: "Download ZIP file (Authenticated)",
@@ -1073,4 +1001,4 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 					},
 				},
 			),
-		);
+	);

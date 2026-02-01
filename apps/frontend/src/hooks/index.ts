@@ -26,3 +26,4 @@ export {
 	useStreamSubtitles,
 	useStreamTracks,
 } from "./useStream";
+export { useZipDownload } from "./useZipDownload";

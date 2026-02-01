@@ -139,6 +139,13 @@ export class ShareService {
 			.where(eq(shares.id, shareId));
 	}
 
+	async incrementDownloadCount(shareId: number): Promise<void> {
+		await db
+			.update(shares)
+			.set({ downloadCount: sql`${shares.downloadCount} + 1` })
+			.where(eq(shares.id, shareId));
+	}
+
 	async listByUser(userId: number): Promise<ShareWithSettings[]> {
 		const rows = await db.query.shares.findMany({ where: eq(shares.createdBy, userId) });
 		if (rows.length === 0) return [];

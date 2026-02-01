@@ -81,6 +81,24 @@ export const generalRateLimit = new Elysia({ name: "general-rate-limit" }).use(
 );
 
 /**
+ * Rate limiting for ZIP creation endpoints
+ * 5 requests per minute per IP (ZIP creation is resource intensive)
+ */
+export const zipRateLimit = new Elysia({ name: "zip-rate-limit" }).use(
+	rateLimit({
+		duration: 60 * 1000, // 1 minute
+		max: 5,
+		generator: (request) => {
+			const forwarded = request.headers.get("x-forwarded-for");
+			const ip = forwarded?.split(",")[0]?.trim() ?? "unknown";
+			return `zip:${ip}`;
+		},
+		headers: true,
+		skip: (request) => shouldBypassRateLimit(request),
+	}),
+);
+
+/**
  * Create a custom rate limiter with specified limits
  */
 export function createRateLimiter(options: {

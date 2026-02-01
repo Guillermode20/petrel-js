@@ -106,3 +106,29 @@ export const subtitles = sqliteTable("subtitles", {
 	format: text("format").notNull(),
 	title: text("title"),
 });
+
+export const zipJobs = sqliteTable(
+	"zip_jobs",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		jobId: text("job_id").notNull().unique(),
+		status: text("status").notNull().default("pending"), // pending, processing, completed, error, cancelled
+		progress: integer("progress").notNull().default(0),
+		tempPath: text("temp_path"),
+		error: text("error"),
+		fileIds: text("file_ids", { mode: "json" }).$type<number[]>(),
+		folderIds: text("folder_ids", { mode: "json" }).$type<number[]>(),
+		shareToken: text("share_token"),
+		userId: integer("user_id").references(() => users.id),
+		totalSize: integer("total_size").default(0),
+		fileCount: integer("file_count").default(0),
+		createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+		completedAt: integer("completed_at", { mode: "timestamp" }),
+		downloadedAt: integer("downloaded_at", { mode: "timestamp" }),
+	},
+	(table) => ({
+		jobIdIdx: index("zip_jobs_job_id_idx").on(table.jobId),
+		statusIdx: index("zip_jobs_status_idx").on(table.status),
+		createdAtIdx: index("zip_jobs_created_at_idx").on(table.createdAt),
+	}),
+);

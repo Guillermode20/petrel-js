@@ -1,16 +1,16 @@
 import type { File, Folder, ShareSettings } from "@petrel/shared";
 import { ChevronRight, FolderIcon, Home } from "lucide-react";
-import React, { useState, useCallback } from "react";
+import React, { useCallback, useState } from "react";
+import { toast } from "sonner";
 import { FileGrid } from "@/components/file-browser/FileGrid";
 import { FileList } from "@/components/file-browser/FileList";
+import type { SortField, ViewMode } from "@/components/file-browser/types";
+import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { SortField, ViewMode } from "@/components/file-browser/types";
-import { SharedFileContextMenu } from "./SharedFileContextMenu";
-import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
 import { api } from "@/lib/api";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { SharedFileContextMenu } from "./SharedFileContextMenu";
 
 export interface BreadcrumbItem {
 	folder: Folder;
@@ -74,7 +74,7 @@ export function SharedFileBrowser({
 	// Handle selection with modifier key support
 	const handleSelect = (item: File | Folder, event: React.MouseEvent) => {
 		const key = getSelectionKey(item);
-		const index = items.findIndex(i => getSelectionKey(i) === key);
+		const index = items.findIndex((i) => getSelectionKey(i) === key);
 
 		const isCtrlCmd = event.ctrlKey || event.metaKey;
 		const isShift = event.shiftKey;
@@ -114,6 +114,8 @@ export function SharedFileBrowser({
 		if (!settings.allowDownload || !settings.allowZip) return;
 
 		const fileIds: number[] = [];
+		const folderIds: number[] = [];
+
 		for (const key of selectedIds) {
 			const parsed = parseSelectionKey(key);
 			if (!parsed) continue;
@@ -121,23 +123,28 @@ export function SharedFileBrowser({
 			if (parsed.type === "file") {
 				fileIds.push(parsed.id);
 			} else {
-				// For folders, we need to let the backend handle recursive inclusion
-				// or fetch all file IDs within the folder if the backend only accepts files.
-				// The backend routes.ts shows it currently expects fileIds in the body.
-				// TO-DO: Backend should ideally support folderIds in ZIP request.
-				toast.error("Folder ZIP download is not supported yet");
-				return;
+				folderIds.push(parsed.id);
 			}
 		}
 
-		if (fileIds.length === 0) {
-			toast.error("No files selected for ZIP download");
+		if (fileIds.length === 0 && folderIds.length === 0) {
+			toast.error("No files or folders selected for ZIP download");
 			return;
 		}
 
+		// Show what we're downloading
+		const itemCount = fileIds.length + folderIds.length;
+		const itemTypes = [
+			fileIds.length > 0 ? `${fileIds.length} file${fileIds.length !== 1 ? "s" : ""}` : "",
+			folderIds.length > 0 ? `${folderIds.length} folder${folderIds.length !== 1 ? "s" : ""}` : "",
+		]
+			.filter(Boolean)
+			.join(" and ");
+
 		try {
-			const { jobId } = await api.createZipDownload(shareToken, fileIds, password);
-			
+			toast.info(`Creating ZIP with ${itemTypes}...`);
+			const { jobId } = await api.createZipDownload(shareToken, fileIds, folderIds, password);
+
 			// Poll for status
 			const pollStatus = async () => {
 				const status = await api.getZipDownloadStatus(shareToken, jobId, password);
@@ -150,14 +157,16 @@ export function SharedFileBrowser({
 					setTimeout(pollStatus, 2000);
 				}
 			};
-			
+
 			toast.promise(pollStatus(), {
-				loading: "Preparing ZIP archive...",
+				loading: `Preparing ZIP archive (${itemCount} items)...`,
 				success: "ZIP archive ready",
 				error: "Failed to prepare ZIP",
 			});
 		} catch (error) {
-			toast.error(`ZIP download failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+			toast.error(
+				`ZIP download failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
 		}
 	}, [selectedIds, shareToken, password, settings.allowDownload, settings.allowZip]);
 
