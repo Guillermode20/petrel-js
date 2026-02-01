@@ -586,6 +586,6 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 		},
 	);
 
-export const streamRoutes = new Elysia({ prefix: "/api" })
+export const streamRoutes = new Elysia()
 	.use(authenticatedStreamRoutes)
 	.use(shareStreamRoutes);
