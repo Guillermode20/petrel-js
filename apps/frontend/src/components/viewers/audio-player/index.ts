@@ -1,3 +1,4 @@
+export { AudioContextMenu } from "./AudioContextMenu";
 export { AudioPlayer } from "./AudioPlayer";
 export { Playlist } from "./Playlist";
 export type { AudioControls, AudioPlayerProps, AudioPlayerState, PlaylistProps } from "./types";

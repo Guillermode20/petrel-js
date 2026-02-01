@@ -15,6 +15,7 @@ import {
 	ZoomOut,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
@@ -25,6 +26,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ImageContextMenu } from "./ImageContextMenu";
 import type { LightboxProps } from "./types";
 
 /**
@@ -264,19 +266,37 @@ export function Lightbox({
 					</div>
 				</div>
 
-				{/* Main image */}
-				<div className="flex h-full w-full items-center justify-center overflow-auto">
-					<img
-						src={api.getThumbnailUrl(currentImage.id, "large")}
-						alt={currentImage.name}
-						className="max-h-full max-w-full object-contain transition-transform duration-200"
-						style={{ transform: `scale(${zoom})` }}
-						draggable={false}
-						onTouchStart={handleTouchStart}
-						onTouchMove={handleTouchMove}
-						onTouchEnd={handleTouchEnd}
-					/>
-				</div>
+				{/* Main image with context menu */}
+				<ImageContextMenu
+					hasExif={!!metadata?.exif}
+					showingInfo={showInfo}
+					onOpenInNewTab={() => window.open(api.getThumbnailUrl(currentImage.id, "large"), "_blank")}
+					onDownload={() => onDownload?.(currentImage)}
+					onCopyImage={async () => {
+						try {
+							const response = await fetch(api.getThumbnailUrl(currentImage.id, "large"));
+							const blob = await response.blob();
+							await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+							toast.success("Image copied to clipboard");
+						} catch {
+							toast.error("Failed to copy image");
+						}
+					}}
+					onToggleExif={() => setShowInfo((prev) => !prev)}
+				>
+					<div className="flex h-full w-full items-center justify-center overflow-auto">
+						<img
+							src={api.getThumbnailUrl(currentImage.id, "large")}
+							alt={currentImage.name}
+							className="max-h-full max-w-full object-contain transition-transform duration-200"
+							style={{ transform: `scale(${zoom})` }}
+							draggable={false}
+							onTouchStart={handleTouchStart}
+							onTouchMove={handleTouchMove}
+							onTouchEnd={handleTouchEnd}
+						/>
+					</div>
+				</ImageContextMenu>
 
 				{/* Navigation arrows */}
 				{images.length > 1 && (

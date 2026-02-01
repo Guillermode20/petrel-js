@@ -1,6 +1,6 @@
 import type { File } from "@petrel/shared";
 import type { HTMLAttributes } from "react";
-import { forwardRef, useRef, useState } from "react";
+import { forwardRef, useCallback, useRef, useState } from "react";
 import { isFile, isFolder } from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import type { FileItemProps } from "./types";
 import { formatFileSize, getFileIcon, getFolderIcon } from "./utils";
 
 const PRELOAD_DELAY_MS = 250; // 250ms hover before preloading
+const LONG_PRESS_THRESHOLD = 500; // 500ms for long press
 
 /**
  * File card component for grid view

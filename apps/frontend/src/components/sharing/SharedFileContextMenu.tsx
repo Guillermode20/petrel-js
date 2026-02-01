@@ -1,5 +1,5 @@
 import type { ShareSettings } from "@petrel/shared";
-import { Copy, Download, ExternalLink, FileArchive } from "lucide-react";
+import { CheckSquare, Copy, Download, ExternalLink, FileArchive } from "lucide-react";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -13,6 +13,8 @@ import type { FileContextMenuHandlers } from "../file-browser/types";
 
 interface SharedFileContextMenuProps extends FileContextMenuHandlers {
 	settings?: ShareSettings;
+	isSelected?: boolean;
+	onToggleSelection?: () => void;
 }
 
 /**
@@ -25,10 +27,12 @@ export function SharedFileContextMenu({
 	onOpen,
 	onDownload,
 	onDownloadZip,
-}: SharedFileContextMenuProps) {
+	isSelected,
+	onToggleSelection,
+}: SharedFileContextMenuProps): React.ReactNode {
 	const isFileItem = isFile(item);
 
-	const handleCopyLink = () => {
+	const handleCopyLink = (): void => {
 		const url = new URL(window.location.href);
 		navigator.clipboard.writeText(url.toString());
 		toast.success("Share link copied to clipboard");
@@ -40,7 +44,7 @@ export function SharedFileContextMenu({
 			<ContextMenuContent className="w-48">
 				<ContextMenuItem onClick={onOpen}>
 					<ExternalLink className="mr-2 h-4 w-4" />
-					Open
+					{isFileItem ? "Preview" : "Open"}
 				</ContextMenuItem>
 				{isFileItem && settings?.allowDownload && onDownload && (
 					<ContextMenuItem onClick={onDownload}>
@@ -51,8 +55,17 @@ export function SharedFileContextMenu({
 				{settings?.allowDownload && settings?.allowZip && onDownloadZip && (
 					<ContextMenuItem onClick={onDownloadZip}>
 						<FileArchive className="mr-2 h-4 w-4" />
-						Download ZIP
+						Download as ZIP
 					</ContextMenuItem>
+				)}
+				{onToggleSelection && (
+					<>
+						<ContextMenuSeparator />
+						<ContextMenuItem onClick={onToggleSelection}>
+							<CheckSquare className="mr-2 h-4 w-4" />
+							{isSelected ? "Remove from selection" : "Add to selection"}
+						</ContextMenuItem>
+					</>
 				)}
 				<ContextMenuSeparator />
 				<ContextMenuItem onClick={handleCopyLink}>

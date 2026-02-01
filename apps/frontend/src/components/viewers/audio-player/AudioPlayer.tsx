@@ -10,10 +10,13 @@ import {
 	Volume2,
 	VolumeX,
 } from "lucide-react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/components/viewers/video-player/utils";
+import { AudioContextMenu } from "./AudioContextMenu";
 import type { AudioPlayerProps } from "./types";
 import { useAudioPlayer } from "./useAudioPlayer";
 
@@ -39,7 +42,22 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 		scrubbingMessage,
 	} = state;
 
+	const [showMetadata, setShowMetadata] = useState(false);
+
+	const handleDownload = useCallback(() => {
+		window.open(api.getDownloadUrl(file.id), "_blank");
+	}, [file.id]);
+
+	const handleViewMetadata = useCallback(() => {
+		setShowMetadata((prev) => !prev);
+	}, []);
+
 	return (
+		<AudioContextMenu
+			hasMetadata={!!metadata}
+			onDownload={handleDownload}
+			onViewMetadata={handleViewMetadata}
+		>
 		<div
 			className={cn(
 				"flex flex-col items-center gap-6 rounded-lg border border-border bg-card p-6",
@@ -142,6 +160,21 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 					className="flex-1"
 				/>
 			</div>
+
+			{/* Metadata panel */}
+			{showMetadata && metadata && (
+				<div className="w-full rounded-lg border border-border bg-secondary/30 p-3 text-sm">
+					<h4 className="mb-2 font-medium">Track Info</h4>
+					<div className="space-y-1 text-muted-foreground">
+						{metadata.title && <p><span className="text-foreground">Title:</span> {metadata.title}</p>}
+						{metadata.artist && <p><span className="text-foreground">Artist:</span> {metadata.artist}</p>}
+						{metadata.album && <p><span className="text-foreground">Album:</span> {metadata.album}</p>}
+						{metadata.year && <p><span className="text-foreground">Year:</span> {metadata.year}</p>}
+						{metadata.genre && <p><span className="text-foreground">Genre:</span> {metadata.genre}</p>}
+					</div>
+				</div>
+			)}
 		</div>
+		</AudioContextMenu>
 	);
 }

@@ -1,9 +1,12 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { getStreamUrl, useStreamInfo, useStreamSubtitles, useStreamTracks } from "@/hooks";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { VideoPlayerProps } from "./types";
 import { useVideoPlayer } from "./useVideoPlayer";
+import { VideoContextMenu } from "./VideoContextMenu";
 import { VideoControlBar } from "./VideoControls";
 
 /**
@@ -173,53 +176,105 @@ export function VideoPlayer({
 		}
 	}, [state.isPlaying]);
 
+	// Context menu handlers
+	const handlePlaybackRateChange = useCallback(
+		(rate: number) => {
+			controls.setPlaybackRate(rate);
+		},
+		[controls],
+	);
+
+	const handleTogglePip = useCallback(async () => {
+		try {
+			const video = videoRef.current;
+			if (!video) return;
+			if (document.pictureInPictureElement) {
+				await document.exitPictureInPicture();
+			} else {
+				await video.requestPictureInPicture();
+			}
+		} catch (err) {
+			toast.error("Picture-in-picture not supported");
+		}
+	}, [videoRef]);
+
+	const handleDownload = useCallback(() => {
+		window.open(api.getDownloadUrl(fileId), "_blank");
+	}, [fileId]);
+
+	const handleCopyTimestampLink = useCallback(() => {
+		const url = new URL(window.location.href);
+		url.searchParams.set("t", String(Math.floor(state.currentTime)));
+		navigator.clipboard.writeText(url.toString());
+		toast.success("Timestamp link copied");
+	}, [state.currentTime]);
+
+	const contextMenuAudioTracks =
+		audioTracks?.map((t) => ({ id: t.id, language: t.language ?? "Unknown", title: t.title ?? undefined })) ?? [];
+	const contextMenuSubtitleTracks =
+		subtitles?.map((s) => ({ id: s.id, language: s.language, title: s.title ?? undefined })) ?? [];
+
 	return (
-		<div
-			ref={containerRef}
-			className={cn(
-				"group relative aspect-video w-full overflow-hidden rounded-lg bg-black",
-				className,
-			)}
-			onMouseMove={showControlsTemporarily}
-			onMouseLeave={() => state.isPlaying && setShowControls(false)}
+		<VideoContextMenu
+			fileId={fileId}
+			currentTime={state.currentTime}
+			playbackRate={state.playbackRate}
+			audioTracks={contextMenuAudioTracks}
+			subtitleTracks={contextMenuSubtitleTracks}
+			onPlaybackRateChange={handlePlaybackRateChange}
+			onAudioTrackChange={(id) => controls.setAudioTrack(id)}
+			onSubtitleTrackChange={(id) => id !== null && controls.setSubtitleTrack(id)}
+			onTogglePip={handleTogglePip}
+			onDownload={handleDownload}
+			onCopyTimestampLink={handleCopyTimestampLink}
 		>
-			<video
-				ref={videoRef}
-				className="h-full w-full"
-				poster={poster}
-				playsInline
-				onClick={controls.togglePlay}
-			/>
-
-			{/* Controls overlay */}
 			<div
+				ref={containerRef}
 				className={cn(
-					"transition-opacity duration-300",
-					showControls ? "opacity-100" : "opacity-0",
+					"group relative aspect-video w-full overflow-hidden rounded-lg bg-black",
+					className,
 				)}
+				onMouseMove={showControlsTemporarily}
+				onMouseLeave={() => state.isPlaying && setShowControls(false)}
 			>
-				<VideoControlBar state={state} controls={controls} />
+				<video
+					ref={videoRef}
+					className="h-full w-full"
+					poster={poster}
+					playsInline
+					onClick={controls.togglePlay}
+				/>
+
+				{/* Controls overlay */}
+				<div
+					className={cn(
+						"transition-opacity duration-300",
+						showControls ? "opacity-100" : "opacity-0",
+					)}
+				>
+					<VideoControlBar state={state} controls={controls} />
+				</div>
+
+				{/* Loading overlay when stream not ready */}
+				{(!isStreamReady || isStreamInfoLoading) && (
+					<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+						<div className="text-center">
+							<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+							<p className="text-muted-foreground">Preparing stream...</p>
+						</div>
+					</div>
+				)}
+
+				{/* Error overlay */}
+				{state.error && (
+					<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+						<div className="text-center">
+							<p className="text-destructive">Playback error</p>
+							<p className="text-sm text-muted-foreground">{state.error}</p>
+						</div>
+					</div>
+				)}
 			</div>
-
-			{/* Loading overlay when stream not ready */}
-			{(!isStreamReady || isStreamInfoLoading) && (
-				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
-					<div className="text-center">
-						<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-						<p className="text-muted-foreground">Preparing stream...</p>
-					</div>
-				</div>
-			)}
-
-			{/* Error overlay */}
-			{state.error && (
-				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
-					<div className="text-center">
-						<p className="text-destructive">Playback error</p>
-						<p className="text-sm text-muted-foreground">{state.error}</p>
-					</div>
-				</div>
-			)}
-		</div>
+		</VideoContextMenu>
 	);
 }

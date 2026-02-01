@@ -1,4 +1,5 @@
 import type { File, Folder } from "@petrel/shared";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -11,12 +12,14 @@ import {
 	useUpdateFile,
 	useUpdateFolder,
 	useUploadFile,
- 	useZipDownload,
+	useZipDownload,
 } from "@/hooks";
 import { api } from "@/lib/api";
+import { EmptySpaceContextMenu } from "./EmptySpaceContextMenu";
 import { CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
 import { FileGrid } from "./FileGrid";
 import { FileList } from "./FileList";
+import { MultiSelectionContextMenu } from "./MultiSelectionContextMenu";
 import { SearchBar } from "./SearchBar";
 import { SortDropdown } from "./SortDropdown";
 import type { SortField, UploadProgress, ViewMode } from "./types";
@@ -34,6 +37,9 @@ interface FileBrowserProps {
  */
 export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
 
 	// View state
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -372,8 +378,74 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		});
 	}, []);
 
+	// Empty space context menu handlers
+	const handleEmptySpaceUpload = useCallback(() => {
+		fileInputRef.current?.click();
+	}, []);
+
+	const handleEmptySpaceNewFolder = useCallback(() => {
+		setIsCreateFolderOpen(true);
+	}, []);
+
+	const handleRefresh = useCallback(() => {
+		void queryClient.invalidateQueries({ queryKey: ["files"] });
+		toast.success("Refreshed");
+	}, [queryClient]);
+
+	// Multi-selection handlers
+	const handleClearSelection = useCallback(() => {
+		setSelectedIds(new Set());
+	}, []);
+
+	const handleDeleteSelected = useCallback(() => {
+		// For now, delete first selected item (bulk delete needs confirmation dialog update)
+		const firstKey = Array.from(selectedIds)[0];
+		if (!firstKey) return;
+		const parsed = parseSelectionKey(firstKey);
+		if (!parsed) return;
+		const item = sortedItems.find(
+			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
+		);
+		if (item) setDeleteItem(item);
+	}, [selectedIds, sortedItems]);
+
+	const handleShareSelected = useCallback(() => {
+		// Share first selected item (or could create folder share for multiple)
+		const firstKey = Array.from(selectedIds)[0];
+		if (!firstKey) return;
+		const parsed = parseSelectionKey(firstKey);
+		if (!parsed) return;
+		const item = sortedItems.find(
+			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
+		);
+		if (item) setShareItem(item);
+	}, [selectedIds, sortedItems]);
+
+	const handleFileInputChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const files = e.target.files;
+			if (files && files.length > 0) {
+				void handleUpload(files);
+			}
+			// Reset input so same file can be selected again
+			e.target.value = "";
+		},
+		[handleUpload],
+	);
+
+	const hasMultipleSelected = selectedIds.size > 1;
+
 	return (
 		<div className="space-y-4">
+			{/* Hidden file input for context menu upload */}
+			<input
+				ref={fileInputRef}
+				type="file"
+				multiple
+				className="hidden"
+				onChange={handleFileInputChange}
+			/>
+
 			{/* Breadcrumb */}
 			<FolderBreadcrumb segments={breadcrumbSegments} onMove={handleMove} />
 
@@ -386,6 +458,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 					<CreateFolderDialog
 						onCreateFolder={handleCreateFolder}
 						isCreating={createFolderMutation.isPending}
+						open={isCreateFolderOpen}
+						onOpenChange={setIsCreateFolderOpen}
 					/>
 					<SortDropdown sortBy={sortBy} sortOrder={sortOrder} onSortChange={handleSortChange} />
 					<ViewToggle viewMode={viewMode} onViewModeChange={setViewMode} />
@@ -395,45 +469,108 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			{/* Upload bar (persistent) */}
 			<UploadBar onUpload={handleUpload} />
 
-			{/* File list/grid */}
-			{viewMode === "grid" ? (
-				<FileGrid
-					items={sortedItems}
-					selectedIds={selectedIds}
-					onSelect={handleSelect}
-					onOpen={handleOpen}
-					onContextMenu={handleContextMenu}
-					onMove={handleMove}
-					onRename={setRenameItem}
-					onDelete={setDeleteItem}
-					onShare={setShareItem}
-					onDownload={handleDownload}
-					onDownloadZip={handleDownloadZip}
-					onCopyLink={handleCopyLink}
-					onCopyShareLink={handleCopyShareLink}
-					isLoading={isLoading}
-				/>
-			) : (
-				<FileList
-					items={sortedItems}
-					selectedIds={selectedIds}
-					onSelect={handleSelect}
-					onOpen={handleOpen}
-					onContextMenu={handleContextMenu}
-					onMove={handleMove}
-					onRename={setRenameItem}
-					onDelete={setDeleteItem}
-					onShare={setShareItem}
-					onDownload={handleDownload}
-					onDownloadZip={handleDownloadZip}
-					onCopyLink={handleCopyLink}
-					onCopyShareLink={handleCopyShareLink}
-					sortBy={sortBy}
-					sortOrder={sortOrder}
-					onSort={handleSort}
-					isLoading={isLoading}
-				/>
-			)}
+			{/* File list/grid with empty space context menu */}
+			<EmptySpaceContextMenu
+				viewMode={viewMode}
+				onUpload={handleEmptySpaceUpload}
+				onNewFolder={handleEmptySpaceNewFolder}
+				onRefresh={handleRefresh}
+				onViewModeChange={setViewMode}
+			>
+				<div className="min-h-[200px]">
+					{hasMultipleSelected ? (
+						<MultiSelectionContextMenu
+							selectedCount={selectedIds.size}
+							onDownloadZip={handleDownloadZip}
+							onShareSelected={handleShareSelected}
+							onDeleteSelected={handleDeleteSelected}
+							onClearSelection={handleClearSelection}
+						>
+							<div>
+								{viewMode === "grid" ? (
+									<FileGrid
+										items={sortedItems}
+										selectedIds={selectedIds}
+										onSelect={handleSelect}
+										onOpen={handleOpen}
+										onContextMenu={handleContextMenu}
+										onMove={handleMove}
+										onRename={setRenameItem}
+										onDelete={setDeleteItem}
+										onShare={setShareItem}
+										onDownload={handleDownload}
+										onDownloadZip={handleDownloadZip}
+										onCopyLink={handleCopyLink}
+										onCopyShareLink={handleCopyShareLink}
+										isLoading={isLoading}
+									/>
+								) : (
+									<FileList
+										items={sortedItems}
+										selectedIds={selectedIds}
+										onSelect={handleSelect}
+										onOpen={handleOpen}
+										onContextMenu={handleContextMenu}
+										onMove={handleMove}
+										onRename={setRenameItem}
+										onDelete={setDeleteItem}
+										onShare={setShareItem}
+										onDownload={handleDownload}
+										onDownloadZip={handleDownloadZip}
+										onCopyLink={handleCopyLink}
+										onCopyShareLink={handleCopyShareLink}
+										sortBy={sortBy}
+										sortOrder={sortOrder}
+										onSort={handleSort}
+										isLoading={isLoading}
+									/>
+								)}
+							</div>
+						</MultiSelectionContextMenu>
+					) : (
+						<>
+							{viewMode === "grid" ? (
+								<FileGrid
+									items={sortedItems}
+									selectedIds={selectedIds}
+									onSelect={handleSelect}
+									onOpen={handleOpen}
+									onContextMenu={handleContextMenu}
+									onMove={handleMove}
+									onRename={setRenameItem}
+									onDelete={setDeleteItem}
+									onShare={setShareItem}
+									onDownload={handleDownload}
+									onDownloadZip={handleDownloadZip}
+									onCopyLink={handleCopyLink}
+									onCopyShareLink={handleCopyShareLink}
+									isLoading={isLoading}
+								/>
+							) : (
+								<FileList
+									items={sortedItems}
+									selectedIds={selectedIds}
+									onSelect={handleSelect}
+									onOpen={handleOpen}
+									onContextMenu={handleContextMenu}
+									onMove={handleMove}
+									onRename={setRenameItem}
+									onDelete={setDeleteItem}
+									onShare={setShareItem}
+									onDownload={handleDownload}
+									onDownloadZip={handleDownloadZip}
+									onCopyLink={handleCopyLink}
+									onCopyShareLink={handleCopyShareLink}
+									sortBy={sortBy}
+									sortOrder={sortOrder}
+									onSort={handleSort}
+									isLoading={isLoading}
+								/>
+							)}
+						</>
+					)}
+				</div>
+			</EmptySpaceContextMenu>
 
 			{/* Upload progress */}
 			<UploadProgressList

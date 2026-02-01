@@ -15,14 +15,26 @@ import { Input } from "@/components/ui/input";
 interface CreateFolderDialogProps {
 	onCreateFolder: (name: string) => Promise<void>;
 	isCreating?: boolean;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 /**
  * Dialog for creating a new folder
+ * Supports both controlled (open/onOpenChange) and uncontrolled modes
  */
-export function CreateFolderDialog({ onCreateFolder, isCreating }: CreateFolderDialogProps) {
-	const [open, setOpen] = useState(false);
+export function CreateFolderDialog({
+	onCreateFolder,
+	isCreating,
+	open: controlledOpen,
+	onOpenChange: controlledOnOpenChange,
+}: CreateFolderDialogProps) {
+	const [internalOpen, setInternalOpen] = useState(false);
 	const [name, setName] = useState("");
+
+	const isControlled = controlledOpen !== undefined;
+	const open = isControlled ? controlledOpen : internalOpen;
+	const setOpen = isControlled ? controlledOnOpenChange ?? (() => {}) : setInternalOpen;
 
 	const handleCreate = useCallback(async () => {
 		if (!name.trim()) return;
