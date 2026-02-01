@@ -1,5 +1,5 @@
 import type { File, Folder } from "@petrel/shared";
-import { isFile, isFolder } from "@/hooks";
+import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 import { FileCard } from "./FileCard";
 import { FileContextMenu } from "./FileContextMenu";
 import type { FileGridProps } from "./types";
@@ -19,7 +19,10 @@ export function FileGrid({
 	onDownload,
 	onDownloadZip,
 	onCopyLink,
+	onCopyShareLink,
 	isLoading,
+	ContextMenuComponent = FileContextMenu,
+	contextMenuProps = {},
 }: FileGridProps) {
 	const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
 		const dt = e.dataTransfer as any;
@@ -55,10 +58,10 @@ export function FileGrid({
 	return (
 		<div className="grid grid-cols-2 gap-y-4 gap-x-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
 			{items.map((item) => {
-				const selectionKey = `${isFolder(item) ? "folder" : "file"}-${item.id}`;
+				const selectionKey = getSelectionKey(item);
 
 				return (
-					<FileContextMenu
+					<ContextMenuComponent
 						key={selectionKey}
 						item={item}
 						onOpen={() => onOpen(item)}
@@ -67,8 +70,10 @@ export function FileGrid({
 						onShare={() => onShare?.(item)}
 						onDownload={() => onDownload?.(item)}
 						onDownloadZip={onDownloadZip}
-						onMove={() => {}} // Custom move menu could be added later
+						onMove={() => {}}
 						onCopyLink={() => onCopyLink?.(item)}
+						onCopyShareLink={() => onCopyShareLink?.(item)}
+						{...contextMenuProps}
 					>
 						<FileCard
 							item={item}
@@ -78,7 +83,7 @@ export function FileGrid({
 							onDragStart={handleDragStart}
 							onDrop={handleDrop}
 						/>
-					</FileContextMenu>
+					</ContextMenuComponent>
 				);
 			})}
 		</div>

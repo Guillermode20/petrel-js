@@ -4,9 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { buildBreadcrumbSegments, FolderBreadcrumb } from "@/components/navigation";
 import { CreateShareModal } from "@/components/sharing";
+import { isFolder, isFile, parseSelectionKey } from "./utils/selection";
 import {
-	isFile,
-	isFolder,
 	useCreateFolder,
 	useDeleteFile,
 	useFiles,
@@ -151,6 +150,76 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		navigator.clipboard.writeText(url);
 		toast.success("Link copied to clipboard");
 	}, []);
+
+	const handleCopyShareLink = useCallback(
+		async (item: File | Folder) => {
+			try {
+				const share = await api.createShare({
+					type: isFolder(item) ? "folder" : "file",
+					targetId: item.id,
+					allowDownload: true,
+					allowZip: true,
+					showMetadata: true,
+				});
+				const url = `${window.location.origin}/s/${share.token}`;
+				await navigator.clipboard.writeText(url);
+				toast.success("Share link copied to clipboard");
+			} catch (error) {
+				console.error("Failed to create share link:", error);
+				const message = error instanceof Error ? error.message : "Unknown error";
+				if (message.includes("Unauthorized") || message.includes("null is not an object")) {
+					toast.error("You must be logged in to create share links. Please refresh the page and log in.");
+				} else {
+					toast.error(`Failed to create share link: ${message}`);
+				}
+			}
+		},
+		[],
+	);
+
+	const handleDownloadZip = useCallback(async () => {
+		const fileIds: number[] = [];
+		for (const key of selectedIds) {
+			const parsed = parseSelectionKey(key);
+			if (!parsed) continue;
+
+			if (parsed.type === "file") {
+				fileIds.push(parsed.id);
+			} else {
+				toast.error("Folder ZIP download is not supported yet");
+				return;
+			}
+		}
+
+		if (fileIds.length === 0) {
+			toast.error("No files selected for ZIP download");
+			return;
+		}
+
+		try {
+			const { jobId } = await api.createAuthZipDownload(fileIds);
+
+			const pollStatus = async () => {
+				const status = await api.getAuthZipDownloadStatus(jobId);
+				if (status.status === "completed") {
+					window.location.href = api.getAuthZipDownloadUrl(jobId);
+					toast.success("ZIP download started");
+				} else if (status.status === "error") {
+					toast.error("Failed to create ZIP archive");
+				} else {
+					setTimeout(pollStatus, 2000);
+				}
+			};
+
+			toast.promise(pollStatus(), {
+				loading: "Preparing ZIP archive...",
+				success: "ZIP archive ready",
+				error: "Failed to prepare ZIP",
+			});
+		} catch (error) {
+			toast.error(`ZIP download failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	}, [selectedIds]);
 
 	const handleContextMenu = useCallback((_item: File | Folder, _event: React.MouseEvent) => {
 		// Context menu is handled by the ContextMenu component
@@ -325,7 +394,9 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 					onDelete={setDeleteItem}
 					onShare={setShareItem}
 					onDownload={handleDownload}
+					onDownloadZip={handleDownloadZip}
 					onCopyLink={handleCopyLink}
+					onCopyShareLink={handleCopyShareLink}
 					isLoading={isLoading}
 				/>
 			) : (
@@ -340,7 +411,9 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 					onDelete={setDeleteItem}
 					onShare={setShareItem}
 					onDownload={handleDownload}
+					onDownloadZip={handleDownloadZip}
 					onCopyLink={handleCopyLink}
+					onCopyShareLink={handleCopyShareLink}
 					sortBy={sortBy}
 					sortOrder={sortOrder}
 					onSort={handleSort}

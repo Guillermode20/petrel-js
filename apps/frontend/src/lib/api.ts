@@ -75,6 +75,19 @@ class ApiClient {
 			}
 		}
 
+		const contentType = response.headers.get("content-type");
+		if (!contentType?.includes("application/json")) {
+			// Handle non-JSON responses (like 404 errors)
+			const text = await response.text();
+			if (response.status === 404) {
+				throw new Error("Endpoint not found");
+			}
+			if (response.status >= 400) {
+				throw new Error(text || "Request failed");
+			}
+			throw new Error(`Expected JSON response but got: ${text.substring(0, 200)}`);
+		}
+
 		const result = await response.json();
 
 		if (result.error) {
@@ -344,13 +357,16 @@ class ApiClient {
 	}
 
 	// Share-aware URL methods for public share views
-	getShareDownloadUrl(shareToken: string, password?: string): string {
+	getShareDownloadUrl(shareToken: string, password?: string, fileId?: number): string {
 		const params = new URLSearchParams();
 		if (password) {
 			params.set("password", password);
 		}
 		const query = params.toString();
-		return `${API_BASE}/shares/${shareToken}/download${query ? `?${query}` : ""}`;
+		const endpoint = fileId 
+			? `/shares/${shareToken}/download/${fileId}`
+			: `/shares/${shareToken}/download`;
+		return `${API_BASE}${endpoint}${query ? `?${query}` : ""}`;
 	}
 
 	getShareStreamUrl(shareToken: string, fileId: number, password?: string): string {
@@ -504,6 +520,27 @@ class ApiClient {
 		}
 		const query = params.toString();
 		return `${API_BASE}/shares/${shareToken}/download-zip/${jobId}${query ? `?${query}` : ""}`;
+	}
+
+	// Authenticated ZIP download endpoints
+	async createAuthZipDownload(fileIds: number[]): Promise<{ jobId: string; status: string }> {
+		return this.request<{ jobId: string; status: string }>("/files/download-zip", {
+			method: "POST",
+			body: JSON.stringify({ fileIds }),
+		});
+	}
+
+	async getAuthZipDownloadStatus(
+		jobId: string,
+	): Promise<{ jobId: string; status: string; progress?: number }> {
+		return this.request<{ jobId: string; status: string; progress?: number }>(
+			`/files/download-zip/${jobId}`,
+		);
+	}
+
+	getAuthZipDownloadUrl(jobId: string): string {
+		const token = this.accessToken ? `?token=${this.accessToken}` : "";
+		return `${API_BASE}/files/download-zip/${jobId}${token}`;
 	}
 
 	async getMyShares(): Promise<Array<Share & ShareSettings & { content: File | Folder }>> {

@@ -1,5 +1,5 @@
-import type { File, Folder } from "@petrel/shared";
-import { Copy, Download, ExternalLink, FileArchive, FolderInput, Pencil, Share2, Trash2 } from "lucide-react";
+import { isFile } from "./utils/selection";
+import { Copy, Download, ExternalLink, FileArchive, FolderInput, Link, Pencil, Share2, Trash2 } from "lucide-react";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -7,19 +7,10 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { isFile } from "@/hooks";
 
-interface FileContextMenuProps {
-	children: React.ReactNode;
-	item: File | Folder;
-	onOpen: () => void;
-	onDownload: () => void;
-	onRename: () => void;
-	onDelete: () => void;
-	onShare: () => void;
-	onMove: () => void;
-	onCopyLink: () => void;
-	onDownloadZip?: () => void;
+import type { FileContextMenuHandlers } from "./types";
+
+interface FileContextMenuProps extends FileContextMenuHandlers {
 	allowZip?: boolean;
 }
 
@@ -36,6 +27,7 @@ export function FileContextMenu({
 	onShare,
 	onMove,
 	onCopyLink,
+	onCopyShareLink,
 	onDownloadZip,
 	allowZip = true,
 }: FileContextMenuProps) {
@@ -49,7 +41,7 @@ export function FileContextMenu({
 					<ExternalLink className="mr-2 h-4 w-4" />
 					Open
 				</ContextMenuItem>
-				{isFileItem && (
+				{isFileItem && onDownload && (
 					<ContextMenuItem onClick={onDownload}>
 						<Download className="mr-2 h-4 w-4" />
 						Download
@@ -62,28 +54,44 @@ export function FileContextMenu({
 					</ContextMenuItem>
 				)}
 				<ContextMenuSeparator />
-				<ContextMenuItem onClick={onShare}>
-					<Share2 className="mr-2 h-4 w-4" />
-					Share
-				</ContextMenuItem>
-				<ContextMenuItem onClick={onCopyLink}>
-					<Copy className="mr-2 h-4 w-4" />
-					Copy link
-				</ContextMenuItem>
+				{onShare && (
+					<ContextMenuItem onClick={onShare}>
+						<Share2 className="mr-2 h-4 w-4" />
+						Share
+					</ContextMenuItem>
+				)}
+				{onCopyLink && (
+					<ContextMenuItem onClick={onCopyLink}>
+						<Copy className="mr-2 h-4 w-4" />
+						Copy link
+					</ContextMenuItem>
+				)}
+				{onCopyShareLink && (
+					<ContextMenuItem onClick={onCopyShareLink}>
+						<Link className="mr-2 h-4 w-4" />
+						Copy share link
+					</ContextMenuItem>
+				)}
 				<ContextMenuSeparator />
-				<ContextMenuItem onClick={onRename}>
-					<Pencil className="mr-2 h-4 w-4" />
-					Rename
-				</ContextMenuItem>
-				<ContextMenuItem onClick={onMove}>
-					<FolderInput className="mr-2 h-4 w-4" />
-					Move to...
-				</ContextMenuItem>
+				{onRename && (
+					<ContextMenuItem onClick={onRename}>
+						<Pencil className="mr-2 h-4 w-4" />
+						Rename
+					</ContextMenuItem>
+				)}
+				{onMove && (
+					<ContextMenuItem onClick={onMove}>
+						<FolderInput className="mr-2 h-4 w-4" />
+						Move to...
+					</ContextMenuItem>
+				)}
 				<ContextMenuSeparator />
-				<ContextMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
-					<Trash2 className="mr-2 h-4 w-4" />
-					Delete
-				</ContextMenuItem>
+				{onDelete && (
+					<ContextMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+						<Trash2 className="mr-2 h-4 w-4" />
+						Delete
+					</ContextMenuItem>
+				)}
 			</ContextMenuContent>
 		</ContextMenu>
 	);

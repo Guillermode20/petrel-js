@@ -9,7 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { isFile, isFolder } from "@/hooks";
+import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 import { cn } from "@/lib/utils";
 import { FileContextMenu } from "./FileContextMenu";
 import type { FileListProps, SortField } from "./types";
@@ -30,10 +30,13 @@ export function FileList({
 	onDownload,
 	onDownloadZip,
 	onCopyLink,
+	onCopyShareLink,
 	sortBy,
 	sortOrder,
 	onSort,
 	isLoading,
+	ContextMenuComponent = FileContextMenu,
+	contextMenuProps = {},
 }: FileListProps) {
 	const [dragOverId, setDragOverId] = useState<number | null>(null);
 	const SortIcon = sortOrder === "asc" ? ArrowUp : ArrowDown;
@@ -101,11 +104,11 @@ export function FileList({
 				{items.map((item) => {
 					const isFileItem = isFile(item);
 					const Icon = isFileItem ? getFileIcon(item.mimeType) : getFolderIcon();
-					const selectionKey = `${isFileItem ? "file" : "folder"}-${item.id}`;
+					const selectionKey = getSelectionKey(item);
 					const isSelected = selectedIds.has(selectionKey);
 
 					return (
-						<FileContextMenu
+						<ContextMenuComponent
 							key={selectionKey}
 							item={item}
 							onOpen={() => onOpen(item)}
@@ -116,6 +119,8 @@ export function FileList({
 							onDownloadZip={onDownloadZip}
 							onMove={() => {}}
 							onCopyLink={() => onCopyLink?.(item)}
+							onCopyShareLink={() => onCopyShareLink?.(item)}
+							{...contextMenuProps}
 						>
 							<TableRow
 								className={cn(
@@ -149,7 +154,7 @@ export function FileList({
 									{isFileItem ? format(new Date(item.createdAt), "MMM d, yyyy") : "—"}
 								</TableCell>
 							</TableRow>
-						</FileContextMenu>
+						</ContextMenuComponent>
 					);
 				})}
 			</TableBody>

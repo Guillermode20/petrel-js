@@ -9,6 +9,20 @@ export interface FileItemProps {
 	onDrop?: (target: File | Folder, event: React.DragEvent) => void;
 }
 
+export interface FileContextMenuHandlers {
+	item: File | Folder;
+	onOpen: () => void;
+	onRename?: () => void;
+	onDelete?: () => void;
+	onShare?: () => void;
+	onDownload?: () => void;
+	onDownloadZip?: () => void;
+	onMove?: () => void;
+	onCopyLink?: () => void;
+	onCopyShareLink?: () => void;
+	children: React.ReactNode;
+}
+
 export interface FileGridProps {
 	items: Array<File | Folder>;
 	selectedIds: Set<string>;
@@ -22,7 +36,10 @@ export interface FileGridProps {
 	onDownload?: (item: File | Folder) => void;
 	onDownloadZip?: () => void;
 	onCopyLink?: (item: File | Folder) => void;
+	onCopyShareLink?: (item: File | Folder) => void;
 	isLoading?: boolean;
+	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
+	contextMenuProps?: Record<string, unknown>;
 }
 
 export interface FileListProps {
@@ -38,10 +55,13 @@ export interface FileListProps {
 	onDownload?: (item: File | Folder) => void;
 	onDownloadZip?: () => void;
 	onCopyLink?: (item: File | Folder) => void;
+	onCopyShareLink?: (item: File | Folder) => void;
 	sortBy: SortField;
 	sortOrder: "asc" | "desc";
 	onSort: (field: SortField) => void;
 	isLoading?: boolean;
+	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
+	contextMenuProps?: Record<string, unknown>;
 }
 
 export type ViewMode = "grid" | "list";

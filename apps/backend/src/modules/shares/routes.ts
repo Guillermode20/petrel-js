@@ -12,6 +12,7 @@ import type { ApiResponse, ShareContentData, ShareData } from "./types";
 type RouteSet = { status?: number; headers?: Record<string, string> };
 
 const protectedRoutes = new Elysia({ prefix: "/shares" })
+	.use(authMiddleware)
 	.use(requireAuth)
 	.get(
 		"",

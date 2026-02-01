@@ -1,12 +1,16 @@
 import type { File, Folder, ShareSettings } from "@petrel/shared";
 import { ChevronRight, FolderIcon, Home } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { FileGrid } from "@/components/file-browser/FileGrid";
 import { FileList } from "@/components/file-browser/FileList";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SortField, ViewMode } from "@/components/file-browser/types";
+import { SharedFileContextMenu } from "./SharedFileContextMenu";
+import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface BreadcrumbItem {
 	folder: Folder;
@@ -24,7 +28,6 @@ export interface SharedFileBrowserProps {
 	onFolderOpen: (folder: Folder) => void;
 	breadcrumbPath?: BreadcrumbItem[];
 	onBreadcrumbClick?: (index: number) => void;
-	onDownloadZip?: (fileIds: number[]) => void;
 	className?: string;
 }
 
@@ -57,7 +60,6 @@ export function SharedFileBrowser({
 	onFolderOpen,
 	breadcrumbPath = [],
 	onBreadcrumbClick,
-	onDownloadZip,
 	className,
 }: SharedFileBrowserProps): React.ReactNode {
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -71,8 +73,8 @@ export function SharedFileBrowser({
 
 	// Handle selection with modifier key support
 	const handleSelect = (item: File | Folder, event: React.MouseEvent) => {
-		const key = "mimeType" in item ? `file-${item.id}` : `folder-${item.id}`;
-		const index = items.findIndex(i => ("mimeType" in i ? `file-${i.id}` : `folder-${i.id}`) === key);
+		const key = getSelectionKey(item);
+		const index = items.findIndex(i => getSelectionKey(i) === key);
 
 		const isCtrlCmd = event.ctrlKey || event.metaKey;
 		const isShift = event.shiftKey;
@@ -85,7 +87,7 @@ export function SharedFileBrowser({
 			for (let i = start; i <= end; i++) {
 				const item = items[i];
 				if (item) {
-					const itemKey = "mimeType" in item ? `file-${item.id}` : `folder-${item.id}`;
+					const itemKey = getSelectionKey(item);
 					newSelected.add(itemKey);
 				}
 			}
@@ -108,22 +110,56 @@ export function SharedFileBrowser({
 	};
 
 	// Handle ZIP download
-	const handleZipDownload = () => {
+	const handleZipDownload = useCallback(async () => {
 		if (!settings.allowDownload || !settings.allowZip) return;
-		const selectedFiles = Array.from(selectedIds)
-			.map((id) => {
-				const match = id.match(/^(file|folder)-(\d+)$/);
-				if (!match) return null;
-				const [, type, idStr] = match;
-				if (type === "file") {
-					return files.find((f) => f.id === Number(idStr));
+
+		const fileIds: number[] = [];
+		for (const key of selectedIds) {
+			const parsed = parseSelectionKey(key);
+			if (!parsed) continue;
+
+			if (parsed.type === "file") {
+				fileIds.push(parsed.id);
+			} else {
+				// For folders, we need to let the backend handle recursive inclusion
+				// or fetch all file IDs within the folder if the backend only accepts files.
+				// The backend routes.ts shows it currently expects fileIds in the body.
+				// TO-DO: Backend should ideally support folderIds in ZIP request.
+				toast.error("Folder ZIP download is not supported yet");
+				return;
+			}
+		}
+
+		if (fileIds.length === 0) {
+			toast.error("No files selected for ZIP download");
+			return;
+		}
+
+		try {
+			const { jobId } = await api.createZipDownload(shareToken, fileIds, password);
+			
+			// Poll for status
+			const pollStatus = async () => {
+				const status = await api.getZipDownloadStatus(shareToken, jobId, password);
+				if (status.status === "completed") {
+					window.location.href = api.getZipDownloadUrl(shareToken, jobId, password);
+					toast.success("ZIP download started");
+				} else if (status.status === "error") {
+					toast.error("Failed to create ZIP archive");
+				} else {
+					setTimeout(pollStatus, 2000);
 				}
-				return null;
-			})
-			.filter(Boolean) as File[];
-		const fileIds = selectedFiles.map((f) => f.id);
-		onDownloadZip?.(fileIds);
-	};
+			};
+			
+			toast.promise(pollStatus(), {
+				loading: "Preparing ZIP archive...",
+				success: "ZIP archive ready",
+				error: "Failed to prepare ZIP",
+			});
+		} catch (error) {
+			toast.error(`ZIP download failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+		}
+	}, [selectedIds, shareToken, password, settings.allowDownload, settings.allowZip]);
 
 	// Handle sort
 	const handleSort = (field: SortField) => {
@@ -148,14 +184,7 @@ export function SharedFileBrowser({
 	const handleDownload = (item: File | Folder) => {
 		if (!settings.allowDownload) return;
 		if ("mimeType" in item) {
-			const url = new URL(
-				`/api/shares/${shareToken}/download/${item.id}`,
-				window.location.origin,
-			);
-			if (password) {
-				url.searchParams.set("password", password);
-			}
-			window.open(url.toString(), "_blank");
+			window.open(api.getShareDownloadUrl(shareToken, password, item.id), "_blank");
 		}
 	};
 
@@ -216,6 +245,12 @@ export function SharedFileBrowser({
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						isLoading={false}
+						ContextMenuComponent={SharedFileContextMenu}
+						contextMenuProps={{
+							shareToken,
+							password,
+							settings,
+						}}
 					/>
 				) : (
 					<FileList
@@ -231,6 +266,12 @@ export function SharedFileBrowser({
 						sortOrder={sortOrder}
 						onSort={handleSort}
 						isLoading={false}
+						ContextMenuComponent={SharedFileContextMenu}
+						contextMenuProps={{
+							shareToken,
+							password,
+							settings,
+						}}
 					/>
 				)}
 			</div>

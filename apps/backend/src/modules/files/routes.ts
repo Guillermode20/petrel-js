@@ -27,6 +27,7 @@ import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { metadataService } from "../../services/metadata.service";
 import { videoService } from "../../services/video.service";
+import { createZipArchive, generateJobId, getZipJob, cleanupZip } from "../../services/zip.service";
 import { authMiddleware, requireAuth } from "../auth";
 import type { ApiResponse, FileListData } from "./types";
 
@@ -984,5 +985,92 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						parentId: t.Optional(t.Union([t.Number(), t.String(), t.Null()])),
 					}),
 				},
+			)
+			.post(
+				"/download-zip",
+				async ({ body, user, set }) => {
+					const fileIds = body.fileIds;
+					if (!fileIds || fileIds.length === 0) {
+						set.status = 400;
+						return { data: null, error: "No files specified" };
+					}
+
+					const files = [];
+					for (const fileId of fileIds) {
+						const file = await fileService.getById(fileId);
+						if (!file) {
+							set.status = 404;
+							return { data: null, error: `File ${fileId} not found` };
+						}
+						files.push(file);
+					}
+
+					const jobId = generateJobId();
+					const result = await createZipArchive(files, `user-${user.userId}`, jobId);
+
+					if (!result.success) {
+						set.status = 400;
+						return { data: null, error: result.error };
+					}
+
+					return { data: { jobId, status: "processing" }, error: null };
+				},
+				{
+					body: t.Object({
+						fileIds: t.Array(t.Number({ minimum: 1 }), { minItems: 1, maxItems: 100 }),
+					}),
+					detail: {
+						summary: "Create ZIP download (Authenticated)",
+						description: "Creates a ZIP archive of selected files for the authenticated user",
+						tags: ["Files"],
+					},
+				},
+			)
+			.get(
+				"/files/download-zip/:jobId",
+				async ({ params, set }) => {
+					const job = getZipJob(params.jobId);
+					if (!job) {
+						set.status = 404;
+						return { data: null, error: "Job not found" };
+					}
+
+					if (job.status === "error") {
+						set.status = 500;
+						return { data: null, error: job.error || "ZIP creation failed" };
+					}
+
+					if (job.status !== "completed" || !job.tempPath) {
+						return {
+							data: { jobId: params.jobId, status: job.status, progress: job.progress },
+							error: null,
+						};
+					}
+
+					const fileStat = await stat(job.tempPath).catch(() => null);
+					if (!fileStat) {
+						set.status = 404;
+						return { data: null, error: "ZIP file not found" };
+					}
+
+					const headers = (set.headers ??= {} as Record<string, string>);
+					headers["Content-Type"] = "application/zip";
+					headers["Content-Length"] = fileStat.size.toString();
+					headers["Content-Disposition"] = 'attachment; filename="download.zip"';
+
+					const response = new Response(Bun.file(job.tempPath));
+					void cleanupZip(params.jobId);
+					return response;
+				},
+				{
+					params: t.Object({
+						jobId: t.String({ minLength: 1 }),
+					}),
+					detail: {
+						summary: "Download ZIP file (Authenticated)",
+						description: "Downloads the generated ZIP archive for the authenticated user",
+						tags: ["Files"],
+					},
+				},
 			),
-	);
+		);
