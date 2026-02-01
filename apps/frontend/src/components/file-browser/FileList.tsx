@@ -15,7 +15,7 @@ import type { MenuContext } from "@/components/global-context-menu";
 import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 import { cn } from "@/lib/utils";
 import type { FileListProps, SortField } from "./types";
-import { formatFileSize, getFileCategory, getFileIcon, getFolderIcon } from "./utils";
+import { formatFileSize, getFileCategory, getFileIcon, getFolderIcon, getRelativePath } from "./utils";
 
 /**
  * List view for files and folders
@@ -33,6 +33,8 @@ export function FileList({
 	isLoading,
 	contextMenuHandlerId,
 	buildContextMenuContext,
+	currentFolderPath,
+	searchQuery,
 }: FileListProps) {
 	const [dragOverId, setDragOverId] = useState<number | null>(null);
 	const SortIcon = sortOrder === "asc" ? ArrowUp : ArrowDown;
@@ -108,6 +110,9 @@ export function FileList({
 					const Icon = isFileItem ? getFileIcon(item.mimeType) : getFolderIcon();
 					const selectionKey = getSelectionKey(item);
 					const isSelected = selectedIds.has(selectionKey);
+					const relativeFolderPath = searchQuery && isFileItem 
+						? getRelativePath(item.path, currentFolderPath)
+						: "";
 
 					return (
 						<FileListRow
@@ -128,11 +133,18 @@ export function FileList({
 							buildContextMenuContext={buildContextMenuContext}
 						>
 							<TableCell>
-								<div className="flex items-center gap-3">
-									<div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50 group-hover:bg-primary/20 transition-colors">
-										<Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+								<div className="flex flex-col gap-0.5">
+									<div className="flex items-center gap-3">
+										<div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50 group-hover:bg-primary/20 transition-colors">
+											<Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+										</div>
+										<span className="font-medium">{item.name}</span>
 									</div>
-									<span className="font-medium">{item.name}</span>
+									{relativeFolderPath && (
+										<span className="text-xs text-muted-foreground ml-11 truncate" title={relativeFolderPath}>
+											{relativeFolderPath}
+										</span>
+									)}
 								</div>
 							</TableCell>
 							<TableCell className="hidden text-muted-foreground md:table-cell">

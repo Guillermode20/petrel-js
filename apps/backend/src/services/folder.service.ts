@@ -1,5 +1,5 @@
 import type { Folder } from "@petrel/shared";
-import { eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { folders } from "../../db/schema";
 import { normalizeRelativePath } from "../lib/storage";
@@ -29,15 +29,60 @@ export class FolderService {
 		return folder ?? null;
 	}
 
-	async listByParentId(parentId: number | null): Promise<Folder[]> {
-		if (parentId === null) {
-			return await db.query.folders.findMany({
-				where: isNull(folders.parentId),
-			});
+	async listByParentId(parentId: number | null, search?: string, folderPath?: string): Promise<Folder[]> {
+		const conditions = [];
+		
+		// When search is provided, search recursively in subfolders
+		// When search is NOT provided, only search direct children
+		if (search) {
+			// Recursive search: find all folders that match name, regardless of depth
+			if (parentId === null) {
+				// Root folder: search all folders
+				// No parentId constraint needed
+			} else if (folderPath) {
+				// Find all folders that are descendants of the current folder
+				const normalizedPath = normalizeRelativePath(folderPath);
+				if (normalizedPath === "") {
+					// Root: search all folders
+					// No path constraint needed
+				} else {
+					// Current folder or subfolders
+					const pathPattern = `${normalizedPath}/%`;
+					conditions.push(sql`(${folders.path} = ${normalizedPath} OR ${folders.path} LIKE ${pathPattern})`);
+				}
+			} else {
+				// Fallback: if folderPath not provided, get it from parentId
+				const parentFolder = await this.getById(parentId);
+				if (parentFolder) {
+					const normalizedPath = normalizeRelativePath(parentFolder.path);
+					if (normalizedPath === "") {
+						// Root: search all folders
+					} else {
+						const pathPattern = `${normalizedPath}/%`;
+						conditions.push(sql`(${folders.path} = ${normalizedPath} OR ${folders.path} LIKE ${pathPattern})`);
+					}
+				}
+			}
+			
+			const searchPattern = `%${search}%`;
+			conditions.push(sql`lower(${folders.name}) LIKE lower(${searchPattern})`);
+		} else {
+			// Non-recursive: only direct children
+			if (parentId === null) {
+				conditions.push(isNull(folders.parentId));
+			} else {
+				conditions.push(eq(folders.parentId, parentId));
+			}
 		}
 
+		const whereClause = conditions.length === 0 
+			? undefined 
+			: conditions.length > 1 
+				? and(...conditions) 
+				: conditions[0];
+
 		return await db.query.folders.findMany({
-			where: eq(folders.parentId, parentId),
+			where: whereClause,
 		});
 	}
 

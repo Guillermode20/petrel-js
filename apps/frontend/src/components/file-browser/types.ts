@@ -8,6 +8,8 @@ export interface FileItemProps {
 	onDoubleClick?: (item: File | Folder, event?: React.MouseEvent) => void;
 	onDragStart?: (item: File | Folder, event: React.DragEvent) => void;
 	onDrop?: (target: File | Folder, event: React.DragEvent) => void;
+	currentFolderPath?: string | null;
+	searchQuery?: string;
 }
 
 export interface FileContextMenuHandlers {
@@ -43,6 +45,8 @@ export interface FileGridProps {
 	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
 	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
 	contextMenuProps?: Record<string, unknown>;
+	currentFolderPath?: string | null;
+	searchQuery?: string;
 }
 
 export interface FileListProps {
@@ -67,6 +71,8 @@ export interface FileListProps {
 	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
 	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
 	contextMenuProps?: Record<string, unknown>;
+	currentFolderPath?: string | null;
+	searchQuery?: string;
 }
 
 export type ViewMode = "grid" | "list";

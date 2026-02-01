@@ -348,17 +348,19 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 				offset: query.offset,
 			});
 
+			const searchQuery = query.search?.trim() || undefined;
+
 			const [fileResult, parentFolder] = await Promise.all([
-				fileService.listByPath(folderPath, limit, offset),
+				fileService.listByPath(folderPath, limit, offset, searchQuery),
 				folderPath ? folderService.getFolderByPath(folderPath) : Promise.resolve(null),
 			]);
 
 			const [folders, parentChain] = await Promise.all([
 				parentFolder
-					? folderService.listByParentId(parentFolder.id)
+					? folderService.listByParentId(parentFolder.id, searchQuery, folderPath)
 					: folderPath
 						? Promise.resolve([])
-						: folderService.listByParentId(null),
+						: folderService.listByParentId(null, searchQuery, folderPath),
 				folderService.getParentChain(parentFolder?.id ?? null),
 			]);
 
@@ -383,6 +385,7 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 				folderId: t.Optional(t.Union([t.Number(), t.String()])),
 				limit: t.Optional(t.Number()),
 				offset: t.Optional(t.Number()),
+				search: t.Optional(t.String()),
 			}),
 			detail: {
 				summary: "List files and folders",

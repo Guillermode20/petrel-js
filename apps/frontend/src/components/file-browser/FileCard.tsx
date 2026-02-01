@@ -5,7 +5,7 @@ import { isFile, isFolder } from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { FileItemProps } from "./types";
-import { formatFileSize, getFileIcon, getFolderIcon } from "./utils";
+import { formatFileSize, getFileIcon, getFolderIcon, getRelativePath } from "./utils";
 
 const PRELOAD_DELAY_MS = 250; // 250ms hover before preloading
 const LONG_PRESS_THRESHOLD = 500; // 500ms for long press
@@ -17,7 +17,7 @@ export const FileCard = forwardRef<
 	HTMLDivElement,
 	FileItemProps & { className?: string } & HTMLAttributes<HTMLDivElement>
 >(function FileCard(
-	{ item, isSelected, onSelect, onDoubleClick, onDragStart, onDrop, className, ...triggerProps },
+	{ item, isSelected, onSelect, onDoubleClick, onDragStart, onDrop, className, currentFolderPath, searchQuery, ...triggerProps },
 	ref,
 ) {
 		const [isDragOver, setIsDragOver] = useState(false);
@@ -27,6 +27,11 @@ export const FileCard = forwardRef<
 		const Icon = isFileItem ? getFileIcon((item as File).mimeType) : getFolderIcon();
 		const showThumbnail = isFileItem && (item as File).mimeType.startsWith("image/");
 		const isVideoFile = isFileItem && (item as File).mimeType.startsWith("video/");
+		
+		// Calculate relative folder path for display when searching
+		const relativeFolderPath = searchQuery && isFileItem 
+			? getRelativePath(item.path, currentFolderPath)
+			: "";
 
 		const handleDragOver = (e: React.DragEvent) => {
 			if (!isFolderItem) return;
@@ -133,6 +138,11 @@ export const FileCard = forwardRef<
 					<p className="truncate text-xs font-medium text-foreground" title={item.name}>
 						{item.name}
 					</p>
+					{relativeFolderPath && (
+						<p className="truncate text-[10px] text-muted-foreground" title={relativeFolderPath}>
+							{relativeFolderPath}
+						</p>
+					)}
 					{isFileItem && (
 						<p className="text-[10px] text-muted-foreground">{formatFileSize((item as File).size)}</p>
 					)}

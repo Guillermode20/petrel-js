@@ -18,6 +18,8 @@ export function FileGrid({
 	onContextMenu,
 	contextMenuHandlerId,
 	buildContextMenuContext,
+	currentFolderPath,
+	searchQuery,
 }: FileGridProps) {
 	const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
 		const dt = e.dataTransfer;
@@ -71,6 +73,8 @@ export function FileGrid({
 						onDrop={handleDrop}
 						contextMenuHandlerId={contextMenuHandlerId}
 						buildContextMenuContext={buildContextMenuContext}
+						currentFolderPath={currentFolderPath}
+						searchQuery={searchQuery}
 					/>
 				);
 			})}
@@ -90,6 +94,8 @@ interface FileGridItemProps {
 	onDrop: (target: File | Folder, e: React.DragEvent) => void;
 	contextMenuHandlerId?: string;
 	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+	currentFolderPath?: string | null;
+	searchQuery?: string;
 }
 
 function buildMenuContext(
@@ -124,6 +130,8 @@ function FileGridItem({
 	onDrop,
 	contextMenuHandlerId,
 	buildContextMenuContext,
+	currentFolderPath,
+	searchQuery,
 }: FileGridItemProps) {
 	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
 		buildMenuContext(item, items, selectedIds, buildContextMenuContext),
@@ -139,6 +147,8 @@ function FileGridItem({
 			onDragStart={onDragStart}
 			onDrop={onDrop}
 			onContextMenu={(e) => onContextMenu(item, e)}
+			currentFolderPath={currentFolderPath}
+			searchQuery={searchQuery}
 			{...longPressHandlers}
 		/>
 	);

@@ -660,6 +660,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 						onCopyShareLink={handleCopyShareLink}
 						isLoading={isLoading}
 						contextMenuHandlerId={contextMenuHandlerId}
+						currentFolderPath={data?.currentFolder?.path ?? null}
+						searchQuery={searchQuery}
 					/>
 				) : (
 					<FileList
@@ -681,6 +683,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 						onSort={handleSort}
 						isLoading={isLoading}
 						contextMenuHandlerId={contextMenuHandlerId}
+						currentFolderPath={data?.currentFolder?.path ?? null}
+						searchQuery={searchQuery}
 					/>
 				)}
 			</div>

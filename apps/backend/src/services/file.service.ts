@@ -51,11 +51,34 @@ export class FileService {
 		};
 	}
 
-	async listByPath(folderPath: string, limit: number, offset: number): Promise<FileListResult> {
+	async listByPath(folderPath: string, limit: number, offset: number, search?: string): Promise<FileListResult> {
 		const normalizedPath = normalizeRelativePath(folderPath);
 
+		const conditions = [];
+		
+		// When search is provided, search recursively in subfolders
+		// When search is NOT provided, only search in current folder
+		if (search) {
+			// Recursive: files in current folder OR any subfolder
+			if (normalizedPath === "") {
+				// Root folder: search all files
+				conditions.push(sql`1 = 1`);
+			} else {
+				// Current folder or subfolders
+				const pathPattern = `${normalizedPath}/%`;
+				conditions.push(sql`(${files.path} = ${normalizedPath} OR ${files.path} LIKE ${pathPattern})`);
+			}
+			const searchPattern = `%${search}%`;
+			conditions.push(sql`lower(${files.name}) LIKE lower(${searchPattern})`);
+		} else {
+			// Non-recursive: only files in current folder
+			conditions.push(eq(files.path, normalizedPath));
+		}
+		
+		const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
+
 		const fileRows = await db.query.files.findMany({
-			where: eq(files.path, normalizedPath),
+			where: whereClause,
 			limit,
 			offset,
 		});
@@ -63,7 +86,7 @@ export class FileService {
 		const countRows = await db
 			.select({ count: sql<number>`count(*)` })
 			.from(files)
-			.where(eq(files.path, normalizedPath));
+			.where(whereClause);
 
 		return {
 			files: fileRows.map((row) => this.mapFileRow(row)),
