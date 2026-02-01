@@ -303,10 +303,29 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 
 	const handleFileBrowserContextMenuAction = useCallback<ContextMenuActionHandler>(
 		async (action: string, context: MenuContext, data?: unknown) => {
+			console.log("[FileBrowser] Context menu action received:", { action, contextType: context.type, data });
 			if (context.type === "file" || context.type === "folder") {
 				const item = context.item;
 				if (action === "open") return handleOpen(item);
 				if (action === "download") return handleDownload(item);
+				if (action === "download-zip") {
+					// Download folder as ZIP
+					if (isFolder(item)) {
+						try {
+							pendingZipToastRef.current = toast.loading("Preparing ZIP archive...");
+							await startZipDownload([], [item.id]);
+						} catch (error) {
+							const message = error instanceof Error ? error.message : "Unknown error";
+							if (pendingZipToastRef.current) {
+								toast.error(`ZIP download failed: ${message}`, { id: pendingZipToastRef.current });
+								pendingZipToastRef.current = undefined;
+							} else {
+								toast.error(`ZIP download failed: ${message}`);
+							}
+						}
+					}
+					return;
+				}
 				if (action === "clipboard-copy") {
 					setClipboardItems([toClipboardItem(item)]);
 					toast.success("Copied");
@@ -384,6 +403,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			setClipboardItems,
 			updateFolderMutation,
 			updateMutation,
+			startZipDownload,
 		],
 	);
 

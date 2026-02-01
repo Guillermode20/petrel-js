@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Download, FileQuestion, Share2, X } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CreateShareModal } from "@/components/sharing";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AudioPlayer } from "../audio-player";
@@ -16,6 +17,7 @@ import { getPreviewType, getPreviewTypeLabel } from "./utils";
  */
 export function FilePreview({ file, files, onNavigate, onClose, className }: FilePreviewProps) {
 	const previewType = getPreviewType(file);
+	const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
 	// Find current position if files array is provided
 	const currentIndex = files?.findIndex((f) => f.id === file.id) ?? -1;
@@ -136,7 +138,7 @@ export function FilePreview({ file, files, onNavigate, onClose, className }: Fil
 					<Button variant="ghost" size="icon" onClick={handleDownload}>
 						<Download className="h-4 w-4" />
 					</Button>
-					<Button variant="ghost" size="icon" disabled>
+					<Button variant="ghost" size="icon" onClick={() => setIsShareModalOpen(true)}>
 						<Share2 className="h-4 w-4" />
 					</Button>
 					{onClose && (
@@ -183,6 +185,14 @@ export function FilePreview({ file, files, onNavigate, onClose, className }: Fil
 					</span>
 				</div>
 			)}
+
+			<CreateShareModal
+				type="file"
+				targetId={file.id}
+				targetName={file.name}
+				isOpen={isShareModalOpen}
+				onClose={() => setIsShareModalOpen(false)}
+			/>
 		</div>
 	);
 }
