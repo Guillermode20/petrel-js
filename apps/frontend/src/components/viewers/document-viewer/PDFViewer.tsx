@@ -13,6 +13,7 @@ import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/
 import type { ContextMenuActionHandler, FileContext } from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PageBar } from "@/components/navigation/PageBar";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { PDFViewerProps, PDFViewerState } from "./types";
@@ -232,14 +233,31 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 	}
 
 	return (
-		<div className={cn("flex flex-col", className)} {...longPressHandlers}>
-			{/* Toolbar */}
-			<div className="flex items-center justify-between border-b border-border bg-card p-2">
+		<div className={cn("flex h-full flex-col", className)} {...longPressHandlers}>
+			{/* PDF canvas */}
+			<div
+				ref={containerRef}
+				className="flex-1 overflow-auto bg-muted/50 p-4"
+			>
+				<div className="flex min-h-full items-start justify-center">
+					{state.isLoading ? (
+						<div className="flex h-64 items-center justify-center">
+							<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+						</div>
+					) : (
+						<canvas ref={canvasRef} className="shadow-lg" style={{ background: "white" }} />
+					)}
+				</div>
+			</div>
+
+			{/* Page Bar */}
+			<PageBar>
 				{/* Page navigation */}
 				<div className="flex items-center gap-2">
 					<Button
 						variant="ghost"
 						size="icon"
+						className="h-8 w-8"
 						onClick={() => goToPage(state.currentPage - 1)}
 						disabled={state.currentPage <= 1 || state.isLoading}
 					>
@@ -251,15 +269,16 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 							type="text"
 							value={pageInputValue}
 							onChange={handlePageInputChange}
-							className="h-8 w-12 text-center"
+							className="h-8 w-10 text-center text-xs"
 							disabled={state.isLoading}
 						/>
-						<span className="text-sm text-muted-foreground">/ {state.totalPages}</span>
+						<span className="text-xs text-muted-foreground">/ {state.totalPages}</span>
 					</form>
 
 					<Button
 						variant="ghost"
 						size="icon"
+						className="h-8 w-8"
 						onClick={() => goToPage(state.currentPage + 1)}
 						disabled={state.currentPage >= state.totalPages || state.isLoading}
 					>
@@ -272,44 +291,38 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 					<Button
 						variant="ghost"
 						size="icon"
+						className="h-8 w-8"
 						onClick={zoomOut}
 						disabled={state.scale <= MIN_SCALE || state.isLoading}
 					>
 						<ZoomOut className="h-4 w-4" />
 					</Button>
 
-					<span className="w-12 text-center text-sm text-muted-foreground">
+					<span className="w-10 text-center text-xs text-muted-foreground">
 						{Math.round(state.scale * 100)}%
 					</span>
 
 					<Button
 						variant="ghost"
 						size="icon"
+						className="h-8 w-8"
 						onClick={zoomIn}
 						disabled={state.scale >= MAX_SCALE || state.isLoading}
 					>
 						<ZoomIn className="h-4 w-4" />
 					</Button>
 
-					<Button variant="ghost" size="icon" onClick={rotate} disabled={state.isLoading}>
+					<Button
+						variant="ghost"
+						size="icon"
+						className="h-8 w-8"
+						onClick={rotate}
+						disabled={state.isLoading}
+					>
 						<RotateCw className="h-4 w-4" />
 					</Button>
 				</div>
-			</div>
-
-			{/* PDF canvas */}
-			<div
-				ref={containerRef}
-				className="flex flex-1 items-start justify-center overflow-auto bg-muted/50 p-4"
-			>
-				{state.isLoading ? (
-					<div className="flex h-64 items-center justify-center">
-						<Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-					</div>
-				) : (
-					<canvas ref={canvasRef} className="shadow-lg" style={{ background: "white" }} />
-				)}
-			</div>
+			</PageBar>
 		</div>
 	);
 }

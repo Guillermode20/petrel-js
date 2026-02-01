@@ -121,7 +121,7 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 			await navigator.clipboard.writeText(code);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
-		} catch (_err) {}
+		} catch (_err) { }
 	}
 
 	async function handleSave(): Promise<void> {
@@ -217,7 +217,10 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 	const language = getLanguageFromFilename(file.name);
 
 	return (
-		<div className={cn("flex flex-col overflow-hidden rounded-lg border border-border", className)} {...longPressHandlers}>
+		<div
+			className={cn("flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card", className)}
+			{...longPressHandlers}
+		>
 			{/* Header */}
 			<div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
 				<div className="flex items-center gap-3">

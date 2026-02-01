@@ -87,7 +87,12 @@ export function ShareLayout({
 			)}
 
 			{/* Main content */}
-			<main className="flex flex-1 flex-col">{children}</main>
+			<main className="flex flex-1 flex-col overflow-hidden">
+				<div className="flex-1 overflow-auto">
+					{children}
+				</div>
+				<div id="bottom-bar-portal" />
+			</main>
 
 			{/* Footer */}
 			<footer className="flex items-center justify-center border-t border-border py-4">

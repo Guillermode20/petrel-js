@@ -8,6 +8,7 @@ import type { SortField, ViewMode } from "@/components/file-browser/types";
 import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
 import { Button } from "@/components/ui/button";
+import { PageBar } from "@/components/navigation/PageBar";
 import { useContextMenuActions, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
 import type { ContextMenuActionHandler, ShareFolderContext } from "@/components/global-context-menu";
 import { api } from "@/lib/api";
@@ -265,6 +266,13 @@ export function SharedFileBrowser({
 		[buildShareFolderContext, contextMenuHandlerId, openContextMenu],
 	);
 
+	const selectionStats = useMemo(() => {
+		const selectedItems = items.filter((item) => selectedIds.has(getSelectionKey(item)));
+		const count = selectedItems.length;
+		const size = selectedItems.reduce((acc, item) => ("mimeType" in item ? acc + item.size : acc), 0);
+		return { count, size };
+	}, [selectedIds, items]);
+
 	return (
 		<div className={cn("flex flex-1 flex-col", className)}>
 			{/* Toolbar with breadcrumbs */}
@@ -318,7 +326,7 @@ export function SharedFileBrowser({
 						onSelect={handleSelect}
 						onOpen={handleOpen}
 						onContextMenu={handleItemContextMenu}
-						onMove={() => {}}
+						onMove={() => { }}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						isLoading={false}
@@ -332,7 +340,7 @@ export function SharedFileBrowser({
 						onSelect={handleSelect}
 						onOpen={handleOpen}
 						onContextMenu={handleItemContextMenu}
-						onMove={() => {}}
+						onMove={() => { }}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						sortBy={sortBy}
@@ -344,6 +352,27 @@ export function SharedFileBrowser({
 					/>
 				)}
 			</div>
+
+			<PageBar>
+				<div className="flex items-center gap-4">
+					{selectionStats.count > 0 ? (
+						<div className="flex items-center gap-2">
+							<span className="text-sm font-medium text-primary">
+								{selectionStats.count} selected
+							</span>
+							{selectionStats.size > 0 && (
+								<span className="text-xs text-muted-foreground">
+									({(selectionStats.size / 1024 / 1024).toFixed(1)} MB)
+								</span>
+							)}
+						</div>
+					) : (
+						<div className="text-xs text-muted-foreground">
+							{items.length} items
+						</div>
+					)}
+				</div>
+			</PageBar>
 		</div>
 	);
 }

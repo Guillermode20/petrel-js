@@ -34,6 +34,8 @@ import type { SortField, UploadProgress, ViewMode } from "./types";
 import { UploadBar, UploadProgressList } from "./UploadZone";
 import { isFile, isFolder, parseSelectionKey } from "./utils/selection";
 import { ViewToggle } from "./ViewToggle";
+import { PageBar } from "@/components/navigation/PageBar";
+import { Pagination } from "@/components/ui/pagination";
 
 interface FileBrowserProps {
 	folderId?: number;
@@ -58,6 +60,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+	const [page, setPage] = useState(1);
+	const [limit] = useState(40);
 
 	// Dialog state
 	const [renameItem, setRenameItem] = useState<File | Folder | null>(null);
@@ -75,6 +79,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	// Queries
 	const { data, isLoading } = useFiles({
 		folderId,
+		page,
+		limit,
 		sort: sortBy,
 		order: sortOrder,
 		search: searchQuery || undefined,
@@ -84,6 +90,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	useEffect(() => {
 		setSelectedIds(new Set());
 		clearClipboard();
+		setPage(1);
 	}, [clearClipboard, folderId]);
 
 	const updateMutation = useUpdateFile();
@@ -119,6 +126,14 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		const files = data.items.filter(isFile);
 		return [...folders, ...files];
 	}, [data?.items]);
+
+	// Calculate selection stats
+	const selectionStats = useMemo(() => {
+		const selectedItems = sortedItems.filter((item) => selectedIds.has(getSelectionKey(item)));
+		const count = selectedItems.length;
+		const size = selectedItems.reduce((acc, item) => (isFile(item) ? acc + item.size : acc), 0);
+		return { count, size };
+	}, [selectedIds, sortedItems, getSelectionKey]);
 
 	// Breadcrumb segments
 	const breadcrumbSegments = useMemo(
@@ -715,6 +730,40 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 				onCancel={handleCancelUpload}
 				onDismiss={handleDismissUpload}
 			/>
+
+			{/* Page Bar */}
+			<PageBar>
+				<div className="flex items-center gap-4">
+					{selectionStats.count > 0 ? (
+						<div className="flex items-center gap-2">
+							<span className="text-sm font-medium text-primary">
+								{selectionStats.count} selected
+							</span>
+							{selectionStats.size > 0 && (
+								<span className="text-xs text-muted-foreground">
+									({(selectionStats.size / 1024 / 1024).toFixed(1)} MB)
+								</span>
+							)}
+						</div>
+					) : (
+						<div className="text-xs text-muted-foreground">
+							{data?.pagination && (
+								<>
+									Showing {data.items.length} of {data.pagination.total} items
+								</>
+							)}
+						</div>
+					)}
+				</div>
+
+				{data?.pagination && data.pagination.total > data.pagination.limit && (
+					<Pagination
+						currentPage={page}
+						totalPages={Math.ceil(data.pagination.total / data.pagination.limit)}
+						onPageChange={setPage}
+					/>
+				)}
+			</PageBar>
 
 			{/* Dialogs */}
 			<RenameDialog

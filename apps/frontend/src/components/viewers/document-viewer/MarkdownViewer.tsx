@@ -136,7 +136,7 @@ export function MarkdownViewer({ file, className }: MarkdownViewerProps) {
 	return (
 		<div
 			className={cn(
-				"flex flex-col overflow-hidden rounded-lg border border-border bg-card",
+				"flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card",
 				className,
 			)}
 			{...longPressHandlers}

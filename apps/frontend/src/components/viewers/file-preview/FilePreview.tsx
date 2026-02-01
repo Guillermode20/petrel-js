@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Download, FileQuestion, Share2, X } from "lu
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CreateShareModal } from "@/components/sharing";
+import { PageBar } from "@/components/navigation/PageBar";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AudioPlayer } from "../audio-player";
@@ -90,22 +91,22 @@ export function FilePreview({ file, files, onNavigate, onClose, className }: Fil
 
 			case "code":
 				return (
-					<div className="flex h-full items-start justify-center overflow-auto p-4">
-						<CodeViewer file={file} className="w-full max-w-4xl" />
+					<div className="h-full w-full p-4">
+						<CodeViewer file={file} className="h-full w-full" />
 					</div>
 				);
 
 			case "markdown":
 				return (
-					<div className="flex h-full items-start justify-center overflow-auto p-4">
-						<MarkdownViewer file={file} className="w-full max-w-4xl" />
+					<div className="h-full w-full p-4">
+						<MarkdownViewer file={file} className="h-full w-full" />
 					</div>
 				);
 
 			case "text":
 				return (
-					<div className="flex h-full items-start justify-center overflow-auto p-4">
-						<CodeViewer file={file} className="w-full max-w-4xl" />
+					<div className="h-full w-full p-4">
+						<CodeViewer file={file} className="h-full w-full" />
 					</div>
 				);
 			default:
@@ -178,13 +179,17 @@ export function FilePreview({ file, files, onNavigate, onClose, className }: Fil
 			</div>
 
 			{/* Footer with file info */}
-			{files && files.length > 1 && (
-				<div className="flex items-center justify-center border-t border-border py-2">
-					<span className="text-sm text-muted-foreground">
-						{currentIndex + 1} / {files.length}
-					</span>
+			<PageBar>
+				<div className="flex-1" />
+				<div className="flex items-center justify-center">
+					{files && files.length > 1 && (
+						<span className="text-sm text-muted-foreground">
+							{currentIndex + 1} / {files.length}
+						</span>
+					)}
 				</div>
-			)}
+				<div className="flex-1" />
+			</PageBar>
 
 			<CreateShareModal
 				type="file"

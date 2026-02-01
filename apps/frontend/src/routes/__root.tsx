@@ -41,14 +41,17 @@ function RootComponent() {
 	}
 
 	return (
-		<div className="min-h-screen bg-background text-foreground">
+		<div className="flex min-h-screen flex-col bg-background text-foreground">
 			<Header />
-			<div className="flex h-[calc(100vh-3.5rem)]">
+			<div className="flex flex-1 overflow-hidden">
 				<Sidebar />
-				<main className="flex-1 overflow-auto">
-					<div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-6">
-						<Outlet />
+				<main className="flex flex-1 flex-col overflow-hidden">
+					<div className="flex-1 overflow-auto">
+						<div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-6">
+							<Outlet />
+						</div>
 					</div>
+					<div id="bottom-bar-portal" />
 				</main>
 			</div>
 			<GlobalContextMenu onAction={handleContextMenuAction} />
