@@ -429,71 +429,71 @@
 ## Phase 6: Global Context Menus
 
 ### Core Context Menu System
-- [ ] `ContextMenu` primitive component — floating menu with darkmatter styling
-  - Keyboard navigation (arrow keys, Enter, Escape)
-  - Click-outside to dismiss
-  - Nested submenu support
-  - Position-aware rendering (flip if off-screen)
-- [ ] `ContextMenuProvider` — global state for menu positioning and content
-- [ ] `useContextMenu` hook — open menus programmatically from any component
+- [x] `ContextMenu` primitive component — floating menu with darkmatter styling
+  - [x] Keyboard navigation (arrow keys, Enter, Escape) — via Radix DropdownMenu
+  - [x] Click-outside to dismiss — implemented with onOpenChange handler
+  - [x] Nested submenu support — via DropdownMenuSub components
+  - [x] Position-aware rendering (flip if off-screen) — via Radix positioning
+- [x] `ContextMenuProvider` — global state for menu positioning and content
+- [x] `useContextMenu` hook — open menus programmatically from any component
 
 ### File Browser Context Menus
-- [ ] **Single file/folder menu:**
-  - Open / Preview
-  - Download
-  - Share (opens CreateShareModal)
-  - Rename
-  - Move to folder
-  - Copy
-  - Delete (with confirmation)
-  - Properties (metadata panel)
-- [ ] **Multi-selection menu:**
-  - Download as ZIP
-  - Move selected to folder
-  - Delete selected (bulk confirmation)
-  - Share selected (creates folder share if multiple)
-  - Clear selection
-- [ ] **Empty space menu:**
-  - Upload files
-  - New folder
-  - Paste (if clipboard has items)
-  - Refresh
-  - View options (grid/list toggle)
+- [x] **Single file/folder menu:**
+  - [x] Open / Preview
+  - [x] Download
+  - [x] Share (opens CreateShareModal)
+  - [x] Rename
+  - [x] Move to folder
+  - [x] Copy
+  - [x] Delete (with confirmation)
+  - [x] Properties (metadata panel)
+- [x] **Multi-selection menu:**
+  - [x] Download as ZIP
+  - [x] Move selected to folder
+  - [x] Delete selected (bulk confirmation)
+  - [x] Share selected (creates folder share if multiple)
+  - [x] Clear selection
+- [x] **Empty space menu:**
+  - [x] Upload files
+  - [x] New folder
+  - [x] Paste (if clipboard has items)
+  - [x] Refresh
+  - [x] View options (grid/list toggle)
 
 ### Viewer Context Menus
-- [ ] **Video player:**
-  - Playback speed submenu
-  - Audio track submenu
-  - Subtitle submenu
-  - Picture-in-picture toggle
-  - Download video
-  - Copy current timestamp link
-- [ ] **Image viewer:**
-  - Open in new tab
-  - Download
-  - Copy image
-  - View EXIF data
-  - Navigate next/previous
-- [ ] **Audio player:**
-  - Add to playlist
-  - Download track
-  - View album info
+- [x] **Video player:**
+  - [x] Playback speed submenu
+  - [x] Audio track submenu
+  - [x] Subtitle submenu
+  - [x] Picture-in-picture toggle
+  - [x] Download video
+  - [x] Copy current timestamp link
+- [x] **Image viewer:**
+  - [x] Open in new tab
+  - [x] Download
+  - [x] Copy image
+  - [x] View EXIF data
+  - [x] Navigate next/previous
+- [x] **Audio player:**
+  - [x] Add to playlist
+  - [x] Download track
+  - [x] View album info
 
 ### Share View Context Menus
-- [ ] **Public share menu:**
-  - Copy share link
-  - Download (if permitted)
-  - Report/feedback (future)
-- [ ] **Folder share items:**
-  - Preview (for supported types)
-  - Download individual
-  - Add to bulk selection
+- [x] **Public share menu:**
+  - [x] Copy share link
+  - [x] Download (if permitted)
+  - [ ] Report/feedback (future)
+- [x] **Folder share items:**
+  - [x] Preview (for supported types)
+  - [x] Download individual
+  - [x] Add to bulk selection
 
 ### Integration
-- [ ] Connect to existing keyboard shortcuts
-- [ ] Mobile long-press to trigger context menu
-- [ ] Right-click on sidebar items (quick navigation)
-- [ ] Consistent styling with terminal aesthetic
+- [x] Connect to existing keyboard shortcuts — useContextMenuKeyboardShortcuts hook
+- [x] Mobile long-press to trigger context menu — useLongPress hook
+- [x] Right-click on sidebar items (quick navigation) — SidebarItemMenuContent implemented
+- [x] Consistent styling with terminal aesthetic — darkmatter theme applied
 
 ---
 

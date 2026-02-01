@@ -1,12 +1,13 @@
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, VideoPlayerContext } from "@/components/global-context-menu";
 import { getStreamUrl, useStreamInfo, useStreamSubtitles, useStreamTracks } from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { VideoPlayerProps } from "./types";
 import { useVideoPlayer } from "./useVideoPlayer";
-import { VideoContextMenu } from "./VideoContextMenu";
 import { VideoControlBar } from "./VideoControls";
 
 /**
@@ -176,14 +177,6 @@ export function VideoPlayer({
 		}
 	}, [state.isPlaying]);
 
-	// Context menu handlers
-	const handlePlaybackRateChange = useCallback(
-		(rate: number) => {
-			controls.setPlaybackRate(rate);
-		},
-		[controls],
-	);
-
 	const handleTogglePip = useCallback(async () => {
 		try {
 			const video = videoRef.current;
@@ -214,67 +207,113 @@ export function VideoPlayer({
 	const contextMenuSubtitleTracks =
 		subtitles?.map((s) => ({ id: s.id, language: s.language, title: s.title ?? undefined })) ?? [];
 
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, data?: unknown) => {
+			if (context.type !== "video-player") return;
+
+			if (action === "set-playback-speed" && typeof data === "number") {
+				controls.setPlaybackRate(data);
+				return;
+			}
+
+			if (action === "set-audio-track" && typeof data === "number") {
+				controls.setAudioTrack(data);
+				return;
+			}
+
+			if (action === "set-subtitle-track") {
+				if (data === null) {
+					controls.setSubtitleTrack(-1);
+					return;
+				}
+				if (typeof data === "number") {
+					controls.setSubtitleTrack(data);
+				}
+				return;
+			}
+
+			if (action === "toggle-pip") return void handleTogglePip();
+			if (action === "download-video") return void handleDownload();
+			if (action === "copy-timestamp-link") return void handleCopyTimestampLink();
+		},
+		[controls, handleCopyTimestampLink, handleDownload, handleTogglePip],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+
+	const contextMenuContext = useMemo<VideoPlayerContext>(() => {
+		return {
+			type: "video-player",
+			fileId,
+			currentTime: state.currentTime,
+			duration: state.duration,
+			playbackRate: state.playbackRate,
+			audioTracks: contextMenuAudioTracks,
+			subtitleTracks: contextMenuSubtitleTracks,
+			selectedAudioTrack: state.audioTrack,
+			selectedSubtitleTrack: state.subtitleTrack >= 0 ? state.subtitleTrack : undefined,
+		};
+	}, [
+		contextMenuAudioTracks,
+		contextMenuSubtitleTracks,
+		fileId,
+		state.audioTrack,
+		state.currentTime,
+		state.duration,
+		state.playbackRate,
+		state.subtitleTrack,
+	]);
+
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+		contextMenuContext,
+		contextMenuHandlerId,
+	);
+
 	return (
-		<VideoContextMenu
-			fileId={fileId}
-			currentTime={state.currentTime}
-			playbackRate={state.playbackRate}
-			audioTracks={contextMenuAudioTracks}
-			subtitleTracks={contextMenuSubtitleTracks}
-			onPlaybackRateChange={handlePlaybackRateChange}
-			onAudioTrackChange={(id) => controls.setAudioTrack(id)}
-			onSubtitleTrackChange={(id) => id !== null && controls.setSubtitleTrack(id)}
-			onTogglePip={handleTogglePip}
-			onDownload={handleDownload}
-			onCopyTimestampLink={handleCopyTimestampLink}
+		<div
+			ref={containerRef}
+			className={cn("group relative aspect-video w-full overflow-hidden rounded-lg bg-black", className)}
+			onMouseMove={showControlsTemporarily}
+			onMouseLeave={() => state.isPlaying && setShowControls(false)}
+			{...longPressHandlers}
 		>
+			<video
+				ref={videoRef}
+				className="h-full w-full"
+				poster={poster}
+				playsInline
+				onClick={controls.togglePlay}
+			/>
+
+			{/* Controls overlay */}
 			<div
-				ref={containerRef}
 				className={cn(
-					"group relative aspect-video w-full overflow-hidden rounded-lg bg-black",
-					className,
+					"transition-opacity duration-300",
+					showControls ? "opacity-100" : "opacity-0",
 				)}
-				onMouseMove={showControlsTemporarily}
-				onMouseLeave={() => state.isPlaying && setShowControls(false)}
 			>
-				<video
-					ref={videoRef}
-					className="h-full w-full"
-					poster={poster}
-					playsInline
-					onClick={controls.togglePlay}
-				/>
-
-				{/* Controls overlay */}
-				<div
-					className={cn(
-						"transition-opacity duration-300",
-						showControls ? "opacity-100" : "opacity-0",
-					)}
-				>
-					<VideoControlBar state={state} controls={controls} />
-				</div>
-
-				{/* Loading overlay when stream not ready */}
-				{(!isStreamReady || isStreamInfoLoading) && (
-					<div className="absolute inset-0 flex items-center justify-center bg-black/80">
-						<div className="text-center">
-							<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-							<p className="text-muted-foreground">Preparing stream...</p>
-						</div>
-					</div>
-				)}
-
-				{/* Error overlay */}
-				{state.error && (
-					<div className="absolute inset-0 flex items-center justify-center bg-black/80">
-						<div className="text-center">
-							<p className="text-destructive">Playback error</p>
-							<p className="text-sm text-muted-foreground">{state.error}</p>
-						</div>
-					</div>
-				)}
+				<VideoControlBar state={state} controls={controls} />
 			</div>
-		</VideoContextMenu>
+
+			{/* Loading overlay when stream not ready */}
+			{(!isStreamReady || isStreamInfoLoading) && (
+				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+					<div className="text-center">
+						<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+						<p className="text-muted-foreground">Preparing stream...</p>
+					</div>
+				</div>
+			)}
+
+			{/* Error overlay */}
+			{state.error && (
+				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+					<div className="text-center">
+						<p className="text-destructive">Playback error</p>
+						<p className="text-sm text-muted-foreground">{state.error}</p>
+					</div>
+				</div>
+			)}
+		</div>
 	);
 }

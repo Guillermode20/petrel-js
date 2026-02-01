@@ -4,7 +4,7 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "sonner";
 
-import { ContextMenuProvider } from "./components/global-context-menu";
+import { ContextMenuClipboardProvider, ContextMenuProvider } from "./components/global-context-menu";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
@@ -47,19 +47,21 @@ if (rootElement && !rootElement.innerHTML) {
 		<StrictMode>
 			<QueryClientProvider client={queryClient}>
 				<ContextMenuProvider>
-					<RouterProvider router={router} />
-					<Toaster
-						position="bottom-right"
-						theme="dark"
-						toastOptions={{
-							style: {
-								background: "hsl(240 6% 6%)",
-								border: "1px solid hsl(240 4% 16%)",
-								color: "hsl(0 0% 97%)",
-								fontFamily: "JetBrains Mono, IBM Plex Mono, monospace",
-							},
-						}}
-					/>
+					<ContextMenuClipboardProvider>
+						<RouterProvider router={router} />
+						<Toaster
+							position="bottom-right"
+							theme="dark"
+							toastOptions={{
+								style: {
+									background: "hsl(240 6% 6%)",
+									border: "1px solid hsl(240 4% 16%)",
+									color: "hsl(0 0% 97%)",
+									fontFamily: "JetBrains Mono, IBM Plex Mono, monospace",
+								},
+							}}
+						/>
+					</ContextMenuClipboardProvider>
 				</ContextMenuProvider>
 			</QueryClientProvider>
 		</StrictMode>,

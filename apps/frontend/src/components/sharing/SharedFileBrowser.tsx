@@ -8,9 +8,10 @@ import type { SortField, ViewMode } from "@/components/file-browser/types";
 import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
 import { Button } from "@/components/ui/button";
+import { useContextMenuActions, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, ShareFolderContext } from "@/components/global-context-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { SharedFileContextMenu } from "./SharedFileContextMenu";
 
 export interface BreadcrumbItem {
 	folder: Folder;
@@ -62,6 +63,7 @@ export function SharedFileBrowser({
 	onBreadcrumbClick,
 	className,
 }: SharedFileBrowserProps): React.ReactNode {
+	const { open: openContextMenu } = useContextMenuActions();
 	const [viewMode, setViewMode] = useState<ViewMode>("grid");
 	const [sortBy, setSortBy] = useState<SortField>("name");
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -181,21 +183,87 @@ export function SharedFileBrowser({
 	};
 
 	// Handle file opening
-	const handleOpen = (item: File | Folder) => {
-		if ("mimeType" in item) {
-			onFileOpen(item);
-		} else {
-			onFolderOpen(item);
-		}
-	};
+	const handleOpen = useCallback(
+		(item: File | Folder) => {
+			if ("mimeType" in item) {
+				onFileOpen(item);
+			} else {
+				onFolderOpen(item);
+			}
+		},
+		[onFileOpen, onFolderOpen],
+	);
 
 	// Handle download (only if allowed)
-	const handleDownload = (item: File | Folder) => {
-		if (!settings.allowDownload) return;
-		if ("mimeType" in item) {
-			window.open(api.getShareDownloadUrl(shareToken, password, item.id), "_blank");
-		}
-	};
+	const handleDownload = useCallback(
+		(item: File | Folder) => {
+			if (!settings.allowDownload) return;
+			if ("mimeType" in item) {
+				window.open(api.getShareDownloadUrl(shareToken, password, item.id), "_blank");
+			}
+		},
+		[password, settings.allowDownload, shareToken],
+	);
+
+	const handleShareContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, _data?: unknown) => {
+			if (context.type !== "share-folder") return;
+			void _data;
+
+			if (action === "open") {
+				handleOpen(context.item);
+				return;
+			}
+			if (action === "download") {
+				handleDownload(context.item);
+				return;
+			}
+			if (action === "download-zip") {
+				await handleZipDownload();
+				return;
+			}
+			if (action === "copy-share-link") {
+				await navigator.clipboard.writeText(`${window.location.origin}/s/${shareToken}`);
+				toast.success("Share link copied to clipboard");
+				return;
+			}
+			if (action === "toggle-selection") {
+				const key = getSelectionKey(context.item);
+				setSelectedIds((prev) => {
+					const next = new Set(prev);
+					if (next.has(key)) next.delete(key);
+					else next.add(key);
+					return next;
+				});
+			}
+		},
+		[handleDownload, handleOpen, handleZipDownload, shareToken],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleShareContextMenuAction);
+
+	const buildShareFolderContext = useCallback(
+		(item: File | Folder): ShareFolderContext => {
+			return {
+				type: "share-folder",
+				item,
+				allowDownload: settings.allowDownload,
+				allowZip: settings.allowZip,
+				shareToken,
+				isSelected: selectedIds.has(getSelectionKey(item)),
+			};
+		},
+		[selectedIds, settings.allowDownload, settings.allowZip, shareToken],
+	);
+
+	const handleItemContextMenu = useCallback(
+		(item: File | Folder, event: React.MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			openContextMenu({ x: event.clientX, y: event.clientY }, buildShareFolderContext(item), contextMenuHandlerId);
+		},
+		[buildShareFolderContext, contextMenuHandlerId, openContextMenu],
+	);
 
 	return (
 		<div className={cn("flex flex-1 flex-col", className)}>
@@ -249,17 +317,13 @@ export function SharedFileBrowser({
 						selectedIds={selectedIds}
 						onSelect={handleSelect}
 						onOpen={handleOpen}
-						onContextMenu={() => {}}
+						onContextMenu={handleItemContextMenu}
 						onMove={() => {}}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						isLoading={false}
-						ContextMenuComponent={SharedFileContextMenu}
-						contextMenuProps={{
-							shareToken,
-							password,
-							settings,
-						}}
+						contextMenuHandlerId={contextMenuHandlerId}
+						buildContextMenuContext={(item: File | Folder) => buildShareFolderContext(item)}
 					/>
 				) : (
 					<FileList
@@ -267,7 +331,7 @@ export function SharedFileBrowser({
 						selectedIds={selectedIds}
 						onSelect={handleSelect}
 						onOpen={handleOpen}
-						onContextMenu={() => {}}
+						onContextMenu={handleItemContextMenu}
 						onMove={() => {}}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
@@ -275,12 +339,8 @@ export function SharedFileBrowser({
 						sortOrder={sortOrder}
 						onSort={handleSort}
 						isLoading={false}
-						ContextMenuComponent={SharedFileContextMenu}
-						contextMenuProps={{
-							shareToken,
-							password,
-							settings,
-						}}
+						contextMenuHandlerId={contextMenuHandlerId}
+						buildContextMenuContext={(item: File | Folder) => buildShareFolderContext(item)}
 					/>
 				)}
 			</div>

@@ -13,10 +13,11 @@ import {
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { AudioPlayerContext, ContextMenuActionHandler } from "@/components/global-context-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { formatDuration } from "@/components/viewers/video-player/utils";
-import { AudioContextMenu } from "./AudioContextMenu";
 import type { AudioPlayerProps } from "./types";
 import { useAudioPlayer } from "./useAudioPlayer";
 
@@ -52,17 +53,37 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 		setShowMetadata((prev) => !prev);
 	}, []);
 
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, data?: unknown) => {
+			if (context.type !== "audio-player") return;
+			void data;
+
+			if (action === "download-track") return void handleDownload();
+			if (action === "view-metadata") return void handleViewMetadata();
+			if (action === "add-to-playlist") return;
+		},
+		[handleDownload, handleViewMetadata],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+	const contextMenuContext: AudioPlayerContext = {
+		type: "audio-player",
+		file,
+		hasMetadata: !!metadata,
+	};
+
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+		contextMenuContext,
+		contextMenuHandlerId,
+	);
+
 	return (
-		<AudioContextMenu
-			hasMetadata={!!metadata}
-			onDownload={handleDownload}
-			onViewMetadata={handleViewMetadata}
-		>
 		<div
 			className={cn(
 				"flex flex-col items-center gap-6 rounded-lg border border-border bg-card p-6",
 				className,
 			)}
+			{...longPressHandlers}
 		>
 			{/* Album art placeholder */}
 			<div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg bg-secondary">
@@ -175,6 +196,5 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 				</div>
 			)}
 		</div>
-		</AudioContextMenu>
 	);
 }

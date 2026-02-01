@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { LoginForm } from "../components/auth/LoginForm";
+import { GlobalContextMenu, useGlobalContextMenuOnAction } from "../components/global-context-menu";
 import { Header } from "../components/Header";
 import { Sidebar } from "../components/navigation/Sidebar";
 import { useAuth } from "../hooks/useAuth";
@@ -15,10 +16,16 @@ function RootComponent() {
 	const { isAuthenticated, isLoading } = useAuth();
 	const routerState = useRouterState();
 	const pathname = routerState.location.pathname;
+	const handleContextMenuAction = useGlobalContextMenuOnAction();
 
 	// Public routes bypass auth check
 	if (isPublicRoute(pathname)) {
-		return <Outlet />;
+		return (
+			<>
+				<Outlet />
+				<GlobalContextMenu onAction={handleContextMenuAction} />
+			</>
+		);
 	}
 
 	if (isLoading) {
@@ -44,6 +51,7 @@ function RootComponent() {
 					</div>
 				</main>
 			</div>
+			<GlobalContextMenu onAction={handleContextMenuAction} />
 		</div>
 	);
 }

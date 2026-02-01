@@ -54,7 +54,8 @@ export type ContextMenuType =
 	| "image-viewer"
 	| "audio-player"
 	| "share-file"
-	| "share-folder";
+	| "share-folder"
+	| "sidebar-item";
 
 /**
  * Context data passed to menu builders
@@ -118,6 +119,13 @@ export interface ShareFolderContext {
 	allowDownload: boolean;
 	allowZip: boolean;
 	shareToken: string;
+	isSelected?: boolean;
+}
+
+export interface SidebarItemContext {
+	type: "sidebar-item";
+	label: string;
+	href: string;
 }
 
 /**
@@ -132,7 +140,8 @@ export type MenuContext =
 	| ImageViewerContext
 	| AudioPlayerContext
 	| ShareFileContext
-	| ShareFolderContext;
+	| ShareFolderContext
+	| SidebarItemContext;
 
 /**
  * State for the global context menu
@@ -141,12 +150,30 @@ export interface ContextMenuState {
 	isOpen: boolean;
 	position: ContextMenuPosition;
 	context: MenuContext | null;
+	handlerId: string | null;
 }
 
 /**
  * Actions for the context menu provider
  */
 export interface ContextMenuActions {
-	open: (position: ContextMenuPosition, context: MenuContext) => void;
+	open: (position: ContextMenuPosition, context: MenuContext, handlerId?: string) => void;
 	close: () => void;
+}
+
+export type ContextMenuActionHandler = (
+	action: string,
+	context: MenuContext,
+	data?: unknown,
+) => void | Promise<void>;
+
+export interface ContextMenuActionRegistry {
+	register: (handler: ContextMenuActionHandler) => string;
+	unregister: (handlerId: string) => void;
+	dispatch: (
+		handlerId: string,
+		action: string,
+		context: MenuContext,
+		data?: unknown,
+	) => Promise<boolean>;
 }

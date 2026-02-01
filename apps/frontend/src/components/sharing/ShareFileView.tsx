@@ -1,6 +1,9 @@
 import type { File, ShareSettings } from "@petrel/shared";
 import { Download, Eye, FileIcon, HardDrive } from "lucide-react";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, ShareFileContext } from "@/components/global-context-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { SmartViewer } from "./SmartViewer";
@@ -29,7 +32,7 @@ export function ShareFileView({
 	settings,
 	className,
 }: ShareFileViewProps): React.ReactNode {
-	function handleDownload(): void {
+	const handleDownload = useCallback((): void => {
 		const url = api.getShareDownloadUrl(shareToken, password);
 		const link = document.createElement("a");
 		link.href = url;
@@ -37,10 +40,40 @@ export function ShareFileView({
 		document.body.appendChild(link);
 		link.click();
 		document.body.removeChild(link);
-	}
+	}, [file.name, password, shareToken]);
+
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, _data?: unknown) => {
+			if (context.type !== "share-file") return;
+			void _data;
+
+			if (action === "copy-share-link") {
+				await navigator.clipboard.writeText(`${window.location.origin}/s/${shareToken}`);
+				return;
+			}
+			if (action === "download") {
+				if (settings.allowDownload) {
+					handleDownload();
+				}
+			}
+		},
+		[handleDownload, settings.allowDownload, shareToken],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+	const contextMenuContext: ShareFileContext = {
+		type: "share-file",
+		file,
+		allowDownload: settings.allowDownload,
+		shareToken,
+	};
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+		contextMenuContext,
+		contextMenuHandlerId,
+	);
 
 	return (
-		<div className={cn("flex flex-1 flex-col", className)}>
+		<div className={cn("flex flex-1 flex-col", className)} {...longPressHandlers}>
 			{/* Toolbar */}
 			<div className="flex items-center justify-between border-b border-border px-4 py-2">
 				<FileInfo file={file} showMetadata={settings.showMetadata} />

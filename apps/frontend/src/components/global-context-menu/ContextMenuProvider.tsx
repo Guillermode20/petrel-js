@@ -1,5 +1,7 @@
-import { createContext, useCallback, useState, type ReactNode } from "react";
+import { createContext, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
+	ContextMenuActionRegistry,
+	ContextMenuActionHandler,
 	ContextMenuActions,
 	ContextMenuPosition,
 	ContextMenuState,
@@ -16,8 +18,17 @@ export const ContextMenuStateContext = createContext<ContextMenuState | null>(nu
  */
 export const ContextMenuActionsContext = createContext<ContextMenuActions | null>(null);
 
+export const ContextMenuActionRegistryContext = createContext<ContextMenuActionRegistry | null>(null);
+
 interface ContextMenuProviderProps {
 	children: ReactNode;
+}
+
+function createHandlerId(): string {
+	if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+		return crypto.randomUUID();
+	}
+	return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 /**
@@ -31,13 +42,17 @@ export function ContextMenuProvider({ children }: ContextMenuProviderProps): Rea
 		isOpen: false,
 		position: { x: 0, y: 0 },
 		context: null,
+		handlerId: null,
 	});
 
-	const open = useCallback((position: ContextMenuPosition, context: MenuContext) => {
+	const handlersRef = useRef<Map<string, ContextMenuActionHandler>>(new Map());
+
+	const open = useCallback((position: ContextMenuPosition, context: MenuContext, handlerId?: string) => {
 		setState({
 			isOpen: true,
 			position,
 			context,
+			handlerId: handlerId ?? null,
 		});
 	}, []);
 
@@ -53,11 +68,32 @@ export function ContextMenuProvider({ children }: ContextMenuProviderProps): Rea
 		close,
 	};
 
+	const registry = useMemo<ContextMenuActionRegistry>(() => {
+		return {
+			register: (handler: ContextMenuActionHandler) => {
+				const id = createHandlerId();
+				handlersRef.current.set(id, handler);
+				return id;
+			},
+			unregister: (handlerId: string) => {
+				handlersRef.current.delete(handlerId);
+			},
+			dispatch: async (handlerId: string, action: string, context: MenuContext, data?: unknown) => {
+				const handler = handlersRef.current.get(handlerId);
+				if (!handler) return false;
+				await handler(action, context, data);
+				return true;
+			},
+		};
+	}, []);
+
 	return (
-		<ContextMenuActionsContext.Provider value={actions}>
-			<ContextMenuStateContext.Provider value={state}>
-				{children}
-			</ContextMenuStateContext.Provider>
-		</ContextMenuActionsContext.Provider>
+		<ContextMenuActionRegistryContext.Provider value={registry}>
+			<ContextMenuActionsContext.Provider value={actions}>
+				<ContextMenuStateContext.Provider value={state}>
+					{children}
+				</ContextMenuStateContext.Provider>
+			</ContextMenuActionsContext.Provider>
+		</ContextMenuActionRegistryContext.Provider>
 	);
 }

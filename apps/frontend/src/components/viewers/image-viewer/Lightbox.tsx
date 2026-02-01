@@ -24,9 +24,10 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, ImageViewerContext } from "@/components/global-context-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { ImageContextMenu } from "./ImageContextMenu";
 import type { LightboxProps } from "./types";
 
 /**
@@ -49,6 +50,7 @@ export function Lightbox({
 
 	const currentImage = images[currentIndex];
 	const metadata = currentImage?.metadata as ImageMetadata | undefined;
+	if (!currentImage) return null;
 
 	// Reset state when opening
 	useEffect(() => {
@@ -81,6 +83,57 @@ export function Lightbox({
 		setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 		setZoom(1);
 	}, [images.length]);
+
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context, _data?: unknown) => {
+			if (context.type !== "image-viewer") return;
+
+			if (action === "navigate-prev") {
+				goToPrevious();
+				return;
+			}
+			if (action === "navigate-next") {
+				goToNext();
+				return;
+			}
+			if (action === "open-new-tab") {
+				window.open(api.getThumbnailUrl(currentImage.id, "large"), "_blank");
+				return;
+			}
+			if (action === "download-image") {
+				onDownload?.(currentImage);
+				return;
+			}
+			if (action === "copy-image") {
+				try {
+					const response = await fetch(api.getThumbnailUrl(currentImage.id, "large"));
+					const blob = await response.blob();
+					await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+					toast.success("Image copied to clipboard");
+				} catch {
+					toast.error("Failed to copy image");
+				}
+				return;
+			}
+			if (action === "toggle-exif") {
+				setShowInfo((prev) => !prev);
+			}
+		},
+		[currentImage, goToNext, goToPrevious, onDownload],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
+	const contextMenuContext: ImageViewerContext = {
+		type: "image-viewer",
+		file: currentImage,
+		hasExif: !!metadata?.exif,
+		showingInfo: showInfo,
+	};
+
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+		contextMenuContext,
+		contextMenuHandlerId,
+	);
 
 	const handleZoomIn = useCallback(() => {
 		setZoom((prev) => Math.min(prev + 0.5, 4));
@@ -266,37 +319,19 @@ export function Lightbox({
 					</div>
 				</div>
 
-				{/* Main image with context menu */}
-				<ImageContextMenu
-					hasExif={!!metadata?.exif}
-					showingInfo={showInfo}
-					onOpenInNewTab={() => window.open(api.getThumbnailUrl(currentImage.id, "large"), "_blank")}
-					onDownload={() => onDownload?.(currentImage)}
-					onCopyImage={async () => {
-						try {
-							const response = await fetch(api.getThumbnailUrl(currentImage.id, "large"));
-							const blob = await response.blob();
-							await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-							toast.success("Image copied to clipboard");
-						} catch {
-							toast.error("Failed to copy image");
-						}
-					}}
-					onToggleExif={() => setShowInfo((prev) => !prev)}
-				>
-					<div className="flex h-full w-full items-center justify-center overflow-auto">
-						<img
-							src={api.getThumbnailUrl(currentImage.id, "large")}
-							alt={currentImage.name}
-							className="max-h-full max-w-full object-contain transition-transform duration-200"
-							style={{ transform: `scale(${zoom})` }}
-							draggable={false}
-							onTouchStart={handleTouchStart}
-							onTouchMove={handleTouchMove}
-							onTouchEnd={handleTouchEnd}
-						/>
-					</div>
-				</ImageContextMenu>
+				{/* Main image (global context menu) */}
+				<div className="flex h-full w-full items-center justify-center overflow-auto" {...longPressHandlers}>
+					<img
+						src={api.getThumbnailUrl(currentImage.id, "large")}
+						alt={currentImage.name}
+						className="max-h-full max-w-full object-contain transition-transform duration-200"
+						style={{ transform: `scale(${zoom})` }}
+						draggable={false}
+						onTouchStart={handleTouchStart}
+						onTouchMove={handleTouchMove}
+						onTouchEnd={handleTouchEnd}
+					/>
+				</div>
 
 				{/* Navigation arrows */}
 				{images.length > 1 && (

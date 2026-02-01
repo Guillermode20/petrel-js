@@ -1,4 +1,5 @@
 import type { File, Folder } from "@petrel/shared";
+import type { MenuContext } from "@/components/global-context-menu";
 
 export interface FileItemProps {
 	item: File | Folder;
@@ -38,6 +39,8 @@ export interface FileGridProps {
 	onCopyLink?: (item: File | Folder) => void;
 	onCopyShareLink?: (item: File | Folder) => void;
 	isLoading?: boolean;
+	contextMenuHandlerId?: string;
+	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
 	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
 	contextMenuProps?: Record<string, unknown>;
 }
@@ -60,6 +63,8 @@ export interface FileListProps {
 	sortOrder: "asc" | "desc";
 	onSort: (field: SortField) => void;
 	isLoading?: boolean;
+	contextMenuHandlerId?: string;
+	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
 	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
 	contextMenuProps?: Record<string, unknown>;
 }

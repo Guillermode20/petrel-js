@@ -1,10 +1,13 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Files, Menu, Settings, Share2 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, SidebarItemContext } from "@/components/global-context-menu";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface NavItem {
 	label: string;
@@ -22,11 +25,58 @@ interface SidebarProps {
 	className?: string;
 }
 
+interface SidebarNavItemProps {
+	item: NavItem;
+	isActive: boolean;
+	onClick?: () => void;
+	contextMenuHandlerId: string;
+}
+
+function SidebarNavItem({ item, isActive, onClick, contextMenuHandlerId }: SidebarNavItemProps) {
+	const context: SidebarItemContext = {
+		type: "sidebar-item",
+		label: item.label,
+		href: item.href,
+	};
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(context, contextMenuHandlerId);
+
+	return (
+		<Link
+			to={item.href}
+			onClick={onClick}
+			className={cn(
+				"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+				isActive
+					? "bg-primary text-primary-foreground"
+					: "text-muted-foreground hover:bg-secondary hover:text-foreground",
+			)}
+			{...longPressHandlers}
+		>
+			<item.icon className="h-4 w-4" />
+			{item.label}
+		</Link>
+	);
+}
+
 /**
  * Sidebar navigation component for desktop view
  */
 export function Sidebar({ className }: SidebarProps) {
 	const location = useLocation();
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(async (action, context, _data) => {
+		if (context.type !== "sidebar-item") return;
+		void _data;
+
+		if (action === "open-new-tab") {
+			window.open(`${window.location.origin}${context.href}`, "_blank");
+			return;
+		}
+		if (action === "copy-link") {
+			await navigator.clipboard.writeText(`${window.location.origin}${context.href}`);
+			toast.success("Link copied to clipboard");
+		}
+	}, []);
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
 
 	return (
 		<aside
@@ -38,19 +88,12 @@ export function Sidebar({ className }: SidebarProps) {
 						const isActive =
 							location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
 						return (
-							<Link
+							<SidebarNavItem
 								key={item.href}
-								to={item.href}
-								className={cn(
-									"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-									isActive
-										? "bg-primary text-primary-foreground"
-										: "text-muted-foreground hover:bg-secondary hover:text-foreground",
-								)}
-							>
-								<item.icon className="h-4 w-4" />
-								{item.label}
-							</Link>
+								item={item}
+								isActive={isActive}
+								contextMenuHandlerId={contextMenuHandlerId}
+							/>
 						);
 					})}
 				</nav>
@@ -65,6 +108,20 @@ export function Sidebar({ className }: SidebarProps) {
 export function MobileSidebar() {
 	const [open, setOpen] = useState(false);
 	const location = useLocation();
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(async (action, context, _data) => {
+		if (context.type !== "sidebar-item") return;
+		void _data;
+
+		if (action === "open-new-tab") {
+			window.open(`${window.location.origin}${context.href}`, "_blank");
+			return;
+		}
+		if (action === "copy-link") {
+			await navigator.clipboard.writeText(`${window.location.origin}${context.href}`);
+			toast.success("Link copied to clipboard");
+		}
+	}, []);
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>
@@ -91,20 +148,13 @@ export function MobileSidebar() {
 							const isActive =
 								location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
 							return (
-								<Link
+								<SidebarNavItem
 									key={item.href}
-									to={item.href}
+									item={item}
+									isActive={isActive}
 									onClick={() => setOpen(false)}
-									className={cn(
-										"flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-										isActive
-											? "bg-primary text-primary-foreground"
-											: "text-muted-foreground hover:bg-secondary hover:text-foreground",
-									)}
-								>
-									<item.icon className="h-4 w-4" />
-									{item.label}
-								</Link>
+									contextMenuHandlerId={contextMenuHandlerId}
+								/>
 							);
 						})}
 					</nav>

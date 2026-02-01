@@ -4,6 +4,15 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { buildBreadcrumbSegments, FolderBreadcrumb } from "@/components/navigation";
+import {
+	useContextMenuActions,
+	useContextMenuKeyboardShortcuts,
+	useRegisterContextMenuActionHandler,
+	toClipboardItem,
+	useContextMenuClipboardActions,
+	useContextMenuClipboardState,
+} from "@/components/global-context-menu";
+import type { ContextMenuActionHandler, MenuContext } from "@/components/global-context-menu";
 import { CreateShareModal } from "@/components/sharing";
 import {
 	useCreateFolder,
@@ -15,11 +24,10 @@ import {
 	useZipDownload,
 } from "@/hooks";
 import { api } from "@/lib/api";
-import { EmptySpaceContextMenu } from "./EmptySpaceContextMenu";
 import { CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
 import { FileGrid } from "./FileGrid";
 import { FileList } from "./FileList";
-import { MultiSelectionContextMenu } from "./MultiSelectionContextMenu";
+import { FileProperties } from "./FileProperties";
 import { SearchBar } from "./SearchBar";
 import { SortDropdown } from "./SortDropdown";
 import type { SortField, UploadProgress, ViewMode } from "./types";
@@ -38,6 +46,9 @@ interface FileBrowserProps {
 export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const { open: openContextMenu } = useContextMenuActions();
+	const { items: clipboardItems } = useContextMenuClipboardState();
+	const { clear: clearClipboard, setItems: setClipboardItems } = useContextMenuClipboardActions();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
 
@@ -52,6 +63,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	const [renameItem, setRenameItem] = useState<File | Folder | null>(null);
 	const [deleteItem, setDeleteItem] = useState<File | Folder | null>(null);
 	const [shareItem, setShareItem] = useState<File | Folder | null>(null);
+	const [propertiesItem, setPropertiesItem] = useState<File | Folder | null>(null);
 
 	// Upload state
 	const [uploads, setUploads] = useState<UploadProgress[]>([]);
@@ -71,7 +83,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	// Clear selection when folder changes
 	useEffect(() => {
 		setSelectedIds(new Set());
-	}, []);
+		clearClipboard();
+	}, [clearClipboard, folderId]);
 
 	const updateMutation = useUpdateFile();
 	const updateFolderMutation = useUpdateFolder();
@@ -241,9 +254,211 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		}
 	}, [selectedIds, startZipDownload]);
 
-	const handleContextMenu = useCallback((_item: File | Folder, _event: React.MouseEvent) => {
-		// Context menu is handled by the ContextMenu component
+	// Empty space context menu handlers
+	const handleEmptySpaceUpload = useCallback(() => {
+		fileInputRef.current?.click();
 	}, []);
+
+	const handleEmptySpaceNewFolder = useCallback(() => {
+		setIsCreateFolderOpen(true);
+	}, []);
+
+	const handleRefresh = useCallback(() => {
+		void queryClient.invalidateQueries({ queryKey: ["files"] });
+		toast.success("Refreshed");
+	}, [queryClient]);
+
+	// Multi-selection handlers
+	const handleClearSelection = useCallback(() => {
+		setSelectedIds(new Set());
+	}, []);
+
+	const handleDeleteSelected = useCallback(() => {
+		// For now, delete first selected item (bulk delete needs confirmation dialog update)
+		const firstKey = Array.from(selectedIds)[0];
+		if (!firstKey) return;
+		const parsed = parseSelectionKey(firstKey);
+		if (!parsed) return;
+		const item = sortedItems.find(
+			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
+		);
+		if (item) setDeleteItem(item);
+	}, [selectedIds, sortedItems]);
+
+	const handleShareSelected = useCallback(() => {
+		// Share first selected item (or could create folder share for multiple)
+		const firstKey = Array.from(selectedIds)[0];
+		if (!firstKey) return;
+		const parsed = parseSelectionKey(firstKey);
+		if (!parsed) return;
+		const item = sortedItems.find(
+			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
+		);
+		if (item) setShareItem(item);
+	}, [selectedIds, sortedItems]);
+
+	function getSelectedItemsForContextMenu(items: Array<File | Folder>): Array<File | Folder> {
+		return items.filter((i) => selectedIds.has(getSelectionKey(i)));
+	}
+
+	const handleFileBrowserContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action: string, context: MenuContext, data?: unknown) => {
+			if (context.type === "file" || context.type === "folder") {
+				const item = context.item;
+				if (action === "open") return handleOpen(item);
+				if (action === "download") return handleDownload(item);
+				if (action === "clipboard-copy") {
+					setClipboardItems([toClipboardItem(item)]);
+					toast.success("Copied");
+					return;
+				}
+				if (action === "share") return void setShareItem(item);
+				if (action === "rename") return void setRenameItem(item);
+				if (action === "delete") return void setDeleteItem(item);
+				if (action === "copy-link") return handleCopyLink(item);
+				if (action === "copy-share-link") return void handleCopyShareLink(item);
+				if (action === "properties") return void setPropertiesItem(item);
+				return;
+			}
+
+			if (context.type === "multi-selection") {
+				if (action === "download-zip-selected") return void handleDownloadZip();
+				if (action === "clipboard-copy-selected") {
+					setClipboardItems(context.items.map(toClipboardItem));
+					toast.success("Copied selection");
+					return;
+				}
+				if (action === "share-selected") return void handleShareSelected();
+				if (action === "delete-selected") return void handleDeleteSelected();
+				if (action === "clear-selection") return void handleClearSelection();
+				if (action === "move-selected") return;
+				return;
+			}
+
+			if (context.type === "empty-space") {
+				if (action === "upload") return void handleEmptySpaceUpload();
+				if (action === "new-folder") return void handleEmptySpaceNewFolder();
+				if (action === "refresh") return void handleRefresh();
+				if (action === "view-grid") return void setViewMode("grid");
+				if (action === "view-list") return void setViewMode("list");
+				if (action === "paste") {
+					if (clipboardItems.length === 0) return;
+					const targetFolderId = context.folderId ?? null;
+					for (const clipboardItem of clipboardItems) {
+						if (clipboardItem.kind === "folder") {
+							await updateFolderMutation.mutateAsync({
+								id: clipboardItem.id,
+								data: { parentId: targetFolderId },
+							});
+						} else {
+							await updateMutation.mutateAsync({
+								id: clipboardItem.id,
+								data: { folderId: targetFolderId },
+							});
+						}
+					}
+					clearClipboard();
+					toast.success("Pasted");
+					return;
+				}
+				return;
+			}
+
+			// other contexts are handled by viewers / share views
+			void data;
+		},
+		[
+			handleClearSelection,
+			handleCopyLink,
+			handleCopyShareLink,
+			handleDeleteSelected,
+			handleDownload,
+			handleDownloadZip,
+			handleEmptySpaceNewFolder,
+			handleEmptySpaceUpload,
+			handleOpen,
+			handleRefresh,
+			handleShareSelected,
+			clipboardItems,
+			clearClipboard,
+			setClipboardItems,
+			updateFolderMutation,
+			updateMutation,
+		],
+	);
+
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleFileBrowserContextMenuAction);
+
+	const buildMenuContextForItem = useCallback(
+		(item: File | Folder): MenuContext => {
+			if (selectedIds.size > 1) {
+				return {
+					type: "multi-selection",
+					items: getSelectedItemsForContextMenu(sortedItems),
+					selectedIds,
+				};
+			}
+
+			if (isFolder(item)) return { type: "folder", item };
+			return { type: "file", item };
+		},
+		[selectedIds, sortedItems],
+	);
+
+	const handleContextMenu = useCallback(
+		(item: File | Folder, event: React.MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			openContextMenu(
+				{ x: event.clientX, y: event.clientY },
+				buildMenuContextForItem(item),
+				contextMenuHandlerId,
+			);
+		},
+		[buildMenuContextForItem, contextMenuHandlerId, openContextMenu],
+	);
+
+	const handleBackgroundContextMenu = useCallback(
+		(event: React.MouseEvent) => {
+			event.preventDefault();
+			openContextMenu(
+				{ x: event.clientX, y: event.clientY },
+				selectedIds.size > 1
+					? { type: "multi-selection", items: getSelectedItemsForContextMenu(sortedItems), selectedIds }
+					: { type: "empty-space", folderId },
+				contextMenuHandlerId,
+			);
+		},
+		[contextMenuHandlerId, folderId, openContextMenu, selectedIds, sortedItems],
+	);
+
+	useContextMenuKeyboardShortcuts({
+		getContext: () => {
+			if (selectedIds.size === 0) return null;
+
+			if (selectedIds.size > 1) {
+				return {
+					context: {
+						type: "multi-selection",
+						items: getSelectedItemsForContextMenu(sortedItems),
+						selectedIds,
+					},
+					handlerId: contextMenuHandlerId,
+				};
+			}
+
+			const firstKey = selectedIds.values().next().value as string | undefined;
+			if (!firstKey) return null;
+
+			const item = sortedItems.find((i) => getSelectionKey(i) === firstKey);
+			if (!item) return null;
+
+			return {
+				context: isFolder(item) ? { type: "folder", item } : { type: "file", item },
+				handlerId: contextMenuHandlerId,
+			};
+		},
+	});
 
 	const handleSortChange = useCallback((newSortBy: SortField, newSortOrder: "asc" | "desc") => {
 		setSortBy(newSortBy);
@@ -378,49 +593,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		});
 	}, []);
 
-	// Empty space context menu handlers
-	const handleEmptySpaceUpload = useCallback(() => {
-		fileInputRef.current?.click();
-	}, []);
-
-	const handleEmptySpaceNewFolder = useCallback(() => {
-		setIsCreateFolderOpen(true);
-	}, []);
-
-	const handleRefresh = useCallback(() => {
-		void queryClient.invalidateQueries({ queryKey: ["files"] });
-		toast.success("Refreshed");
-	}, [queryClient]);
-
-	// Multi-selection handlers
-	const handleClearSelection = useCallback(() => {
-		setSelectedIds(new Set());
-	}, []);
-
-	const handleDeleteSelected = useCallback(() => {
-		// For now, delete first selected item (bulk delete needs confirmation dialog update)
-		const firstKey = Array.from(selectedIds)[0];
-		if (!firstKey) return;
-		const parsed = parseSelectionKey(firstKey);
-		if (!parsed) return;
-		const item = sortedItems.find(
-			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
-		);
-		if (item) setDeleteItem(item);
-	}, [selectedIds, sortedItems]);
-
-	const handleShareSelected = useCallback(() => {
-		// Share first selected item (or could create folder share for multiple)
-		const firstKey = Array.from(selectedIds)[0];
-		if (!firstKey) return;
-		const parsed = parseSelectionKey(firstKey);
-		if (!parsed) return;
-		const item = sortedItems.find(
-			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
-		);
-		if (item) setShareItem(item);
-	}, [selectedIds, sortedItems]);
-
 	const handleFileInputChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
 			const files = e.target.files;
@@ -469,108 +641,49 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			{/* Upload bar (persistent) */}
 			<UploadBar onUpload={handleUpload} />
 
-			{/* File list/grid with empty space context menu */}
-			<EmptySpaceContextMenu
-				viewMode={viewMode}
-				onUpload={handleEmptySpaceUpload}
-				onNewFolder={handleEmptySpaceNewFolder}
-				onRefresh={handleRefresh}
-				onViewModeChange={setViewMode}
-			>
-				<div className="min-h-[200px]">
-					{hasMultipleSelected ? (
-						<MultiSelectionContextMenu
-							selectedCount={selectedIds.size}
-							onDownloadZip={handleDownloadZip}
-							onShareSelected={handleShareSelected}
-							onDeleteSelected={handleDeleteSelected}
-							onClearSelection={handleClearSelection}
-						>
-							<div>
-								{viewMode === "grid" ? (
-									<FileGrid
-										items={sortedItems}
-										selectedIds={selectedIds}
-										onSelect={handleSelect}
-										onOpen={handleOpen}
-										onContextMenu={handleContextMenu}
-										onMove={handleMove}
-										onRename={setRenameItem}
-										onDelete={setDeleteItem}
-										onShare={setShareItem}
-										onDownload={handleDownload}
-										onDownloadZip={handleDownloadZip}
-										onCopyLink={handleCopyLink}
-										onCopyShareLink={handleCopyShareLink}
-										isLoading={isLoading}
-									/>
-								) : (
-									<FileList
-										items={sortedItems}
-										selectedIds={selectedIds}
-										onSelect={handleSelect}
-										onOpen={handleOpen}
-										onContextMenu={handleContextMenu}
-										onMove={handleMove}
-										onRename={setRenameItem}
-										onDelete={setDeleteItem}
-										onShare={setShareItem}
-										onDownload={handleDownload}
-										onDownloadZip={handleDownloadZip}
-										onCopyLink={handleCopyLink}
-										onCopyShareLink={handleCopyShareLink}
-										sortBy={sortBy}
-										sortOrder={sortOrder}
-										onSort={handleSort}
-										isLoading={isLoading}
-									/>
-								)}
-							</div>
-						</MultiSelectionContextMenu>
-					) : (
-						<>
-							{viewMode === "grid" ? (
-								<FileGrid
-									items={sortedItems}
-									selectedIds={selectedIds}
-									onSelect={handleSelect}
-									onOpen={handleOpen}
-									onContextMenu={handleContextMenu}
-									onMove={handleMove}
-									onRename={setRenameItem}
-									onDelete={setDeleteItem}
-									onShare={setShareItem}
-									onDownload={handleDownload}
-									onDownloadZip={handleDownloadZip}
-									onCopyLink={handleCopyLink}
-									onCopyShareLink={handleCopyShareLink}
-									isLoading={isLoading}
-								/>
-							) : (
-								<FileList
-									items={sortedItems}
-									selectedIds={selectedIds}
-									onSelect={handleSelect}
-									onOpen={handleOpen}
-									onContextMenu={handleContextMenu}
-									onMove={handleMove}
-									onRename={setRenameItem}
-									onDelete={setDeleteItem}
-									onShare={setShareItem}
-									onDownload={handleDownload}
-									onDownloadZip={handleDownloadZip}
-									onCopyLink={handleCopyLink}
-									onCopyShareLink={handleCopyShareLink}
-									sortBy={sortBy}
-									sortOrder={sortOrder}
-									onSort={handleSort}
-									isLoading={isLoading}
-								/>
-							)}
-						</>
-					)}
-				</div>
-			</EmptySpaceContextMenu>
+			{/* File list/grid (global context menu) */}
+			<div className="min-h-[200px]" onContextMenu={handleBackgroundContextMenu}>
+				{viewMode === "grid" ? (
+					<FileGrid
+						items={sortedItems}
+						selectedIds={selectedIds}
+						onSelect={handleSelect}
+						onOpen={handleOpen}
+						onContextMenu={handleContextMenu}
+						onMove={handleMove}
+						onRename={setRenameItem}
+						onDelete={setDeleteItem}
+						onShare={setShareItem}
+						onDownload={handleDownload}
+						onDownloadZip={handleDownloadZip}
+						onCopyLink={handleCopyLink}
+						onCopyShareLink={handleCopyShareLink}
+						isLoading={isLoading}
+						contextMenuHandlerId={contextMenuHandlerId}
+					/>
+				) : (
+					<FileList
+						items={sortedItems}
+						selectedIds={selectedIds}
+						onSelect={handleSelect}
+						onOpen={handleOpen}
+						onContextMenu={handleContextMenu}
+						onMove={handleMove}
+						onRename={setRenameItem}
+						onDelete={setDeleteItem}
+						onShare={setShareItem}
+						onDownload={handleDownload}
+						onDownloadZip={handleDownloadZip}
+						onCopyLink={handleCopyLink}
+						onCopyShareLink={handleCopyShareLink}
+						sortBy={sortBy}
+						sortOrder={sortOrder}
+						onSort={handleSort}
+						isLoading={isLoading}
+						contextMenuHandlerId={contextMenuHandlerId}
+					/>
+				)}
+			</div>
 
 			{/* Upload progress */}
 			<UploadProgressList
@@ -604,6 +717,14 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 					targetName={shareItem.name}
 					isOpen={!!shareItem}
 					onClose={() => setShareItem(null)}
+				/>
+			)}
+
+			{propertiesItem && (
+				<FileProperties
+					open={!!propertiesItem}
+					onOpenChange={(open) => !open && setPropertiesItem(null)}
+					item={propertiesItem}
 				/>
 			)}
 		</div>

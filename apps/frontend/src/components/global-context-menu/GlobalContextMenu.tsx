@@ -1,4 +1,7 @@
 import {
+	ArrowLeft,
+	ArrowRight,
+	ClipboardPaste,
 	Copy,
 	Download,
 	ExternalLink,
@@ -9,6 +12,7 @@ import {
 	Info,
 	Link,
 	List,
+	ListPlus,
 	Music,
 	Pencil,
 	PictureInPicture,
@@ -19,17 +23,20 @@ import {
 	Upload,
 	Video,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import {
-	ContextMenuContent,
-	ContextMenuItem,
-	ContextMenuSeparator,
-	ContextMenuSub,
-	ContextMenuSubContent,
-	ContextMenuSubTrigger,
-	ContextMenuShortcut,
-} from "@/components/ui/context-menu";
-import { useContextMenuState } from "./useContextMenu";
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuShortcut,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useContextMenuActions, useContextMenuState } from "./useContextMenu";
+import { useContextMenuClipboardState } from "./clipboard";
 import type {
 	AudioPlayerContext,
 	EmptySpaceContext,
@@ -40,8 +47,73 @@ import type {
 	MultiSelectionContext,
 	ShareFileContext,
 	ShareFolderContext,
+	SidebarItemContext,
 	VideoPlayerContext,
 } from "./types";
+
+interface GlobalContextMenuProps {
+	onAction: (action: string, data?: unknown) => void;
+}
+
+interface MenuPlacement {
+	align: "start" | "end";
+	side: "top" | "bottom";
+}
+
+function getMenuPlacement(x: number, y: number): MenuPlacement {
+	const viewportWidth = window.innerWidth;
+	const viewportHeight = window.innerHeight;
+
+	const estimatedMenuWidth = 220;
+	const estimatedMenuHeight = 300;
+
+	return {
+		align: x > viewportWidth - estimatedMenuWidth ? "end" : "start",
+		side: y > viewportHeight - estimatedMenuHeight ? "top" : "bottom",
+	};
+}
+
+/**
+ * GlobalContextMenu - renders a programmatically-opened menu anchored to screen coordinates.
+ *
+ * Uses Radix DropdownMenu under the hood (for keyboard nav, focus management, submenus),
+ * anchored to an invisible fixed-position trigger.
+ */
+export function GlobalContextMenu({ onAction }: GlobalContextMenuProps): ReactNode {
+	const { isOpen, position, context } = useContextMenuState();
+	const { close } = useContextMenuActions();
+
+	const placement = useMemo<MenuPlacement>(() => {
+		if (!isOpen) return { align: "start", side: "bottom" };
+		return getMenuPlacement(position.x, position.y);
+	}, [isOpen, position.x, position.y]);
+
+	if (!context) return null;
+
+	return (
+		<DropdownMenu open={isOpen} onOpenChange={(open) => !open && close()}>
+			<DropdownMenuTrigger asChild>
+				<button
+					type="button"
+					aria-hidden="true"
+					tabIndex={-1}
+					className="fixed z-50 h-px w-px opacity-0"
+					style={{ left: position.x, top: position.y }}
+				/>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align={placement.align}
+				side={placement.side}
+				sideOffset={6}
+				collisionPadding={8}
+				className="w-[13.5rem]"
+				onCloseAutoFocus={(e) => e.preventDefault()}
+			>
+				<GlobalContextMenuContent onAction={onAction} />
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+}
 
 interface GlobalContextMenuContentProps {
 	onAction: (action: string, data?: unknown) => void;
@@ -74,6 +146,8 @@ export function GlobalContextMenuContent({ onAction }: GlobalContextMenuContentP
 			return <ShareFileMenuContent context={context} onAction={onAction} />;
 		case "share-folder":
 			return <ShareFolderMenuContent context={context} onAction={onAction} />;
+		case "sidebar-item":
+			return <SidebarItemMenuContent context={context} onAction={onAction} />;
 		default:
 			return null;
 	}
@@ -86,95 +160,107 @@ interface MenuContentProps<T extends MenuContext> {
 
 function FileMenuContent({ context, onAction }: MenuContentProps<FileContext>): ReactNode {
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("open", context.item)}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("open", context.item)}>
 				<ExternalLink className="mr-2 h-4 w-4" />
 				Open
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("download", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("download", context.item)}>
 				<Download className="mr-2 h-4 w-4" />
 				Download
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("share", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("clipboard-copy", context.item)}>
+				<Copy className="mr-2 h-4 w-4" />
+				Copy
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("share", context.item)}>
 				<Share2 className="mr-2 h-4 w-4" />
 				Share
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("copy-link", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-link", context.item)}>
 				<Copy className="mr-2 h-4 w-4" />
 				Copy link
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("copy-share-link", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-share-link", context.item)}>
 				<Link className="mr-2 h-4 w-4" />
 				Copy share link
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("rename", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("rename", context.item)}>
 				<Pencil className="mr-2 h-4 w-4" />
 				Rename
-				<ContextMenuShortcut>F2</ContextMenuShortcut>
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("move", context.item)}>
+				<DropdownMenuShortcut>F2</DropdownMenuShortcut>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("move", context.item)}>
 				<FolderInput className="mr-2 h-4 w-4" />
 				Move to...
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("properties", context.item)}>
+				<Info className="mr-2 h-4 w-4" />
+				Properties
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem
 				onClick={() => onAction("delete", context.item)}
 				variant="destructive"
 			>
 				<Trash2 className="mr-2 h-4 w-4" />
 				Delete
-				<ContextMenuShortcut>Del</ContextMenuShortcut>
-			</ContextMenuItem>
-		</ContextMenuContent>
+				<DropdownMenuShortcut>Del</DropdownMenuShortcut>
+			</DropdownMenuItem>
+		</>
 	);
 }
 
 function FolderMenuContent({ context, onAction }: MenuContentProps<FolderContext>): ReactNode {
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("open", context.item)}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("open", context.item)}>
 				<ExternalLink className="mr-2 h-4 w-4" />
 				Open
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("download-zip", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("download-zip", context.item)}>
 				<FileArchive className="mr-2 h-4 w-4" />
 				Download as ZIP
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("share", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("clipboard-copy", context.item)}>
+				<Copy className="mr-2 h-4 w-4" />
+				Copy
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("share", context.item)}>
 				<Share2 className="mr-2 h-4 w-4" />
 				Share
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("copy-link", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-link", context.item)}>
 				<Copy className="mr-2 h-4 w-4" />
 				Copy link
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("copy-share-link", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-share-link", context.item)}>
 				<Link className="mr-2 h-4 w-4" />
 				Copy share link
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("rename", context.item)}>
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("rename", context.item)}>
 				<Pencil className="mr-2 h-4 w-4" />
 				Rename
-				<ContextMenuShortcut>F2</ContextMenuShortcut>
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("move", context.item)}>
+				<DropdownMenuShortcut>F2</DropdownMenuShortcut>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("move", context.item)}>
 				<FolderInput className="mr-2 h-4 w-4" />
 				Move to...
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem
 				onClick={() => onAction("delete", context.item)}
 				variant="destructive"
 			>
 				<Trash2 className="mr-2 h-4 w-4" />
 				Delete
-				<ContextMenuShortcut>Del</ContextMenuShortcut>
-			</ContextMenuItem>
-		</ContextMenuContent>
+				<DropdownMenuShortcut>Del</DropdownMenuShortcut>
+			</DropdownMenuItem>
+		</>
 	);
 }
 
@@ -185,72 +271,83 @@ function MultiSelectionMenuContent({
 	const count = context.selectedIds.size;
 
 	return (
-		<ContextMenuContent className="w-52">
-			<ContextMenuItem onClick={() => onAction("download-zip-selected")}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("download-zip-selected")}>
 				<FileArchive className="mr-2 h-4 w-4" />
 				Download as ZIP ({count})
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("share-selected")}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("clipboard-copy-selected")}>
+				<Copy className="mr-2 h-4 w-4" />
+				Copy selected ({count})
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("share-selected")}>
 				<Share2 className="mr-2 h-4 w-4" />
 				Share selected
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("move-selected")}>
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("move-selected")}>
 				<FolderInput className="mr-2 h-4 w-4" />
 				Move selected to...
-			</ContextMenuItem>
-			<ContextMenuItem
+			</DropdownMenuItem>
+			<DropdownMenuItem
 				onClick={() => onAction("delete-selected")}
 				variant="destructive"
 			>
 				<Trash2 className="mr-2 h-4 w-4" />
 				Delete selected ({count})
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("clear-selection")}>
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("clear-selection")}>
 				Clear selection
-			</ContextMenuItem>
-		</ContextMenuContent>
+			</DropdownMenuItem>
+		</>
 	);
 }
 
 function EmptySpaceMenuContent({
 	onAction,
 }: MenuContentProps<EmptySpaceContext>): ReactNode {
+	const { items } = useContextMenuClipboardState();
+	const hasClipboardItems = items.length > 0;
+
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("upload")}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("upload")}>
 				<Upload className="mr-2 h-4 w-4" />
 				Upload files
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("new-folder")}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("new-folder")}>
 				<FolderPlus className="mr-2 h-4 w-4" />
 				New folder
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("refresh")}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("paste")} disabled={!hasClipboardItems}>
+				<ClipboardPaste className="mr-2 h-4 w-4" />
+				Paste
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("refresh")}>
 				<RefreshCw className="mr-2 h-4 w-4" />
 				Refresh
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuSub>
-				<ContextMenuSubTrigger>
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuSub>
+				<DropdownMenuSubTrigger>
 					<Grid className="mr-2 h-4 w-4" />
 					View
-				</ContextMenuSubTrigger>
-				<ContextMenuSubContent>
-					<ContextMenuItem onClick={() => onAction("view-grid")}>
+				</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent>
+					<DropdownMenuItem onClick={() => onAction("view-grid")}>
 						<Grid className="mr-2 h-4 w-4" />
 						Grid view
-					</ContextMenuItem>
-					<ContextMenuItem onClick={() => onAction("view-list")}>
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={() => onAction("view-list")}>
 						<List className="mr-2 h-4 w-4" />
 						List view
-					</ContextMenuItem>
-				</ContextMenuSubContent>
-			</ContextMenuSub>
-		</ContextMenuContent>
+					</DropdownMenuItem>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
+		</>
 	);
 }
 
@@ -261,87 +358,87 @@ function VideoPlayerMenuContent({
 	onAction,
 }: MenuContentProps<VideoPlayerContext>): ReactNode {
 	return (
-		<ContextMenuContent className="w-52">
-			<ContextMenuSub>
-				<ContextMenuSubTrigger>
+		<>
+			<DropdownMenuSub>
+				<DropdownMenuSubTrigger>
 					<Timer className="mr-2 h-4 w-4" />
 					Playback speed
 					<span className="ml-auto text-xs text-muted-foreground">
 						{context.playbackRate}x
 					</span>
-				</ContextMenuSubTrigger>
-				<ContextMenuSubContent>
+				</DropdownMenuSubTrigger>
+				<DropdownMenuSubContent>
 					{PLAYBACK_SPEEDS.map((speed) => (
-						<ContextMenuItem
+						<DropdownMenuItem
 							key={speed}
 							onClick={() => onAction("set-playback-speed", speed)}
 						>
 							{speed === context.playbackRate && "✓ "}
 							{speed}x
-						</ContextMenuItem>
+						</DropdownMenuItem>
 					))}
-				</ContextMenuSubContent>
-			</ContextMenuSub>
+				</DropdownMenuSubContent>
+			</DropdownMenuSub>
 
 			{context.audioTracks.length > 1 && (
-				<ContextMenuSub>
-					<ContextMenuSubTrigger>
+				<DropdownMenuSub>
+					<DropdownMenuSubTrigger>
 						<Music className="mr-2 h-4 w-4" />
 						Audio track
-					</ContextMenuSubTrigger>
-					<ContextMenuSubContent>
+					</DropdownMenuSubTrigger>
+					<DropdownMenuSubContent>
 						{context.audioTracks.map((track) => (
-							<ContextMenuItem
+							<DropdownMenuItem
 								key={track.id}
 								onClick={() => onAction("set-audio-track", track.id)}
 							>
 								{track.id === context.selectedAudioTrack && "✓ "}
 								{track.title ?? track.language}
-							</ContextMenuItem>
+							</DropdownMenuItem>
 						))}
-					</ContextMenuSubContent>
-				</ContextMenuSub>
+					</DropdownMenuSubContent>
+				</DropdownMenuSub>
 			)}
 
 			{context.subtitleTracks.length > 0 && (
-				<ContextMenuSub>
-					<ContextMenuSubTrigger>
+				<DropdownMenuSub>
+					<DropdownMenuSubTrigger>
 						<Video className="mr-2 h-4 w-4" />
 						Subtitles
-					</ContextMenuSubTrigger>
-					<ContextMenuSubContent>
-						<ContextMenuItem onClick={() => onAction("set-subtitle-track", null)}>
+					</DropdownMenuSubTrigger>
+					<DropdownMenuSubContent>
+						<DropdownMenuItem onClick={() => onAction("set-subtitle-track", null)}>
 							{context.selectedSubtitleTrack === undefined && "✓ "}
 							Off
-						</ContextMenuItem>
+						</DropdownMenuItem>
 						{context.subtitleTracks.map((track) => (
-							<ContextMenuItem
+							<DropdownMenuItem
 								key={track.id}
 								onClick={() => onAction("set-subtitle-track", track.id)}
 							>
 								{track.id === context.selectedSubtitleTrack && "✓ "}
 								{track.title ?? track.language}
-							</ContextMenuItem>
+							</DropdownMenuItem>
 						))}
-					</ContextMenuSubContent>
-				</ContextMenuSub>
+					</DropdownMenuSubContent>
+				</DropdownMenuSub>
 			)}
 
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("toggle-pip")}>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("toggle-pip")}>
 				<PictureInPicture className="mr-2 h-4 w-4" />
 				Picture-in-picture
-			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("download-video")}>
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("download-video")}>
 				<Download className="mr-2 h-4 w-4" />
 				Download video
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("copy-timestamp-link")}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-timestamp-link")}>
 				<Link className="mr-2 h-4 w-4" />
 				Copy timestamp link
-			</ContextMenuItem>
-		</ContextMenuContent>
+			</DropdownMenuItem>
+		</>
 	);
 }
 
@@ -350,30 +447,39 @@ function ImageViewerMenuContent({
 	onAction,
 }: MenuContentProps<ImageViewerContext>): ReactNode {
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("open-new-tab")}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("navigate-prev")}>
+				<ArrowLeft className="mr-2 h-4 w-4" />
+				Previous
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("navigate-next")}>
+				<ArrowRight className="mr-2 h-4 w-4" />
+				Next
+			</DropdownMenuItem>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("open-new-tab")}>
 				<ExternalLink className="mr-2 h-4 w-4" />
 				Open in new tab
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("download-image")}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("download-image")}>
 				<Download className="mr-2 h-4 w-4" />
 				Download
-			</ContextMenuItem>
-			<ContextMenuItem onClick={() => onAction("copy-image")}>
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-image")}>
 				<Copy className="mr-2 h-4 w-4" />
 				Copy image
-			</ContextMenuItem>
+			</DropdownMenuItem>
 			{context.hasExif && (
 				<>
-					<ContextMenuSeparator />
-					<ContextMenuItem onClick={() => onAction("toggle-exif")}>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => onAction("toggle-exif")}>
 						<Info className="mr-2 h-4 w-4" />
 						{context.showingInfo ? "Hide" : "View"} EXIF data
-						<ContextMenuShortcut>I</ContextMenuShortcut>
-					</ContextMenuItem>
+						<DropdownMenuShortcut>I</DropdownMenuShortcut>
+					</DropdownMenuItem>
 				</>
 			)}
-		</ContextMenuContent>
+		</>
 	);
 }
 
@@ -382,21 +488,25 @@ function AudioPlayerMenuContent({
 	onAction,
 }: MenuContentProps<AudioPlayerContext>): ReactNode {
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("download-track")}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("add-to-playlist")}>
+				<ListPlus className="mr-2 h-4 w-4" />
+				Add to playlist
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("download-track")}>
 				<Download className="mr-2 h-4 w-4" />
 				Download track
-			</ContextMenuItem>
+			</DropdownMenuItem>
 			{context.hasMetadata && (
 				<>
-					<ContextMenuSeparator />
-					<ContextMenuItem onClick={() => onAction("view-metadata")}>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => onAction("view-metadata")}>
 						<Info className="mr-2 h-4 w-4" />
 						View track info
-					</ContextMenuItem>
+					</DropdownMenuItem>
 				</>
 			)}
-		</ContextMenuContent>
+		</>
 	);
 }
 
@@ -405,18 +515,18 @@ function ShareFileMenuContent({
 	onAction,
 }: MenuContentProps<ShareFileContext>): ReactNode {
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("copy-share-link")}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("copy-share-link")}>
 				<Copy className="mr-2 h-4 w-4" />
 				Copy share link
-			</ContextMenuItem>
+			</DropdownMenuItem>
 			{context.allowDownload && (
-				<ContextMenuItem onClick={() => onAction("download")}>
+				<DropdownMenuItem onClick={() => onAction("download")}>
 					<Download className="mr-2 h-4 w-4" />
 					Download
-				</ContextMenuItem>
+				</DropdownMenuItem>
 			)}
-		</ContextMenuContent>
+		</>
 	);
 }
 
@@ -427,28 +537,51 @@ function ShareFolderMenuContent({
 	const isFile = "mimeType" in context.item;
 
 	return (
-		<ContextMenuContent className="w-48">
-			<ContextMenuItem onClick={() => onAction("open", context.item)}>
+		<>
+			<DropdownMenuItem onClick={() => onAction("open", context.item)}>
 				<ExternalLink className="mr-2 h-4 w-4" />
 				{isFile ? "Preview" : "Open"}
-			</ContextMenuItem>
+			</DropdownMenuItem>
 			{context.allowDownload && isFile && (
-				<ContextMenuItem onClick={() => onAction("download", context.item)}>
+				<DropdownMenuItem onClick={() => onAction("download", context.item)}>
 					<Download className="mr-2 h-4 w-4" />
 					Download
-				</ContextMenuItem>
+				</DropdownMenuItem>
+			)}
+			{isFile && (
+				<DropdownMenuItem onClick={() => onAction("toggle-selection", context.item)}>
+					{context.isSelected ? "Remove from selection" : "Add to selection"}
+				</DropdownMenuItem>
 			)}
 			{context.allowDownload && context.allowZip && (
-				<ContextMenuItem onClick={() => onAction("download-zip", context.item)}>
+				<DropdownMenuItem onClick={() => onAction("download-zip", context.item)}>
 					<FileArchive className="mr-2 h-4 w-4" />
 					Download as ZIP
-				</ContextMenuItem>
+				</DropdownMenuItem>
 			)}
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={() => onAction("copy-share-link")}>
+			<DropdownMenuSeparator />
+			<DropdownMenuItem onClick={() => onAction("copy-share-link")}>
 				<Copy className="mr-2 h-4 w-4" />
 				Copy share link
-			</ContextMenuItem>
-		</ContextMenuContent>
+			</DropdownMenuItem>
+		</>
+	);
+}
+
+function SidebarItemMenuContent({
+	context,
+	onAction,
+}: MenuContentProps<SidebarItemContext>): ReactNode {
+	return (
+		<>
+			<DropdownMenuItem onClick={() => onAction("open-new-tab", context)}>
+				<ExternalLink className="mr-2 h-4 w-4" />
+				Open in new tab
+			</DropdownMenuItem>
+			<DropdownMenuItem onClick={() => onAction("copy-link", context)}>
+				<Link className="mr-2 h-4 w-4" />
+				Copy link
+			</DropdownMenuItem>
+		</>
 	);
 }

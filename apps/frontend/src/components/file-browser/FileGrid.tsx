@@ -1,7 +1,8 @@
 import type { File, Folder } from "@petrel/shared";
 import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 import { FileCard } from "./FileCard";
-import { FileContextMenu } from "./FileContextMenu";
+import { useLongPress } from "@/components/global-context-menu";
+import type { MenuContext } from "@/components/global-context-menu";
 import type { FileGridProps } from "./types";
 
 /**
@@ -13,35 +14,31 @@ export function FileGrid({
 	onSelect,
 	onOpen,
 	onMove,
-	onRename,
-	onDelete,
-	onShare,
-	onDownload,
-	onDownloadZip,
-	onCopyLink,
-	onCopyShareLink,
 	isLoading,
-	ContextMenuComponent = FileContextMenu,
-	contextMenuProps = {},
+	onContextMenu,
+	contextMenuHandlerId,
+	buildContextMenuContext,
 }: FileGridProps) {
 	const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
-		const dt = e.dataTransfer as any;
-		dt?.setData(
-			"text/plain",
-			JSON.stringify({ id: item.id, type: isFile(item) ? "file" : "folder" }),
-		);
-		dt && (dt.effectAllowed = "move");
+		const dt = e.dataTransfer;
+		dt.setData("text/plain", JSON.stringify({ id: item.id, type: isFile(item) ? "file" : "folder" }));
+		dt.effectAllowed = "move";
 	};
 
 	const handleDrop = (target: File | Folder, e: React.DragEvent) => {
 		if (!isFolder(target)) return;
 		e.preventDefault?.();
 		try {
-			const dt = e.dataTransfer as any;
-			const data = JSON.parse(dt?.getData("text/plain") || "{}");
+			const data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}") as {
+				id?: number;
+				type?: "file" | "folder";
+			};
 			if (data.id === target.id && data.type === "folder") return;
-			onMove(data, target.id);
-		} catch (_err) {}
+			if (typeof data.id !== "number" || (data.type !== "file" && data.type !== "folder")) return;
+			onMove({ id: data.id, type: data.type }, target.id);
+		} catch {
+			// ignore invalid drag payload
+		}
 	};
 
 	if (!isLoading && items.length === 0) {
@@ -61,31 +58,88 @@ export function FileGrid({
 				const selectionKey = getSelectionKey(item);
 
 				return (
-					<ContextMenuComponent
+					<FileGridItem
 						key={selectionKey}
 						item={item}
-						onOpen={() => onOpen(item)}
-						onRename={() => onRename?.(item)}
-						onDelete={() => onDelete?.(item)}
-						onShare={() => onShare?.(item)}
-						onDownload={() => onDownload?.(item)}
-						onDownloadZip={onDownloadZip}
-						onMove={() => {}}
-						onCopyLink={() => onCopyLink?.(item)}
-						onCopyShareLink={() => onCopyShareLink?.(item)}
-						{...contextMenuProps}
-					>
-						<FileCard
-							item={item}
-							isSelected={selectedIds.has(selectionKey)}
-							onSelect={onSelect}
-							onDoubleClick={(item: File | Folder) => onOpen(item)}
-							onDragStart={handleDragStart}
-							onDrop={handleDrop}
-						/>
-					</ContextMenuComponent>
+						items={items}
+						selectedIds={selectedIds}
+						isSelected={selectedIds.has(selectionKey)}
+						onSelect={onSelect}
+						onOpen={onOpen}
+						onContextMenu={onContextMenu}
+						onDragStart={handleDragStart}
+						onDrop={handleDrop}
+						contextMenuHandlerId={contextMenuHandlerId}
+						buildContextMenuContext={buildContextMenuContext}
+					/>
 				);
 			})}
 		</div>
+	);
+}
+
+interface FileGridItemProps {
+	item: File | Folder;
+	items: Array<File | Folder>;
+	selectedIds: Set<string>;
+	isSelected: boolean;
+	onSelect: (item: File | Folder, event: React.MouseEvent) => void;
+	onOpen: (item: File | Folder) => void;
+	onContextMenu: (item: File | Folder, event: React.MouseEvent) => void;
+	onDragStart: (item: File | Folder, e: React.DragEvent) => void;
+	onDrop: (target: File | Folder, e: React.DragEvent) => void;
+	contextMenuHandlerId?: string;
+	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+}
+
+function buildMenuContext(
+	item: File | Folder,
+	items: Array<File | Folder>,
+	selectedIds: Set<string>,
+	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext,
+): MenuContext {
+	if (buildContextMenuContext) {
+		return buildContextMenuContext(item, items, selectedIds);
+	}
+	if (selectedIds.size > 1) {
+		const selectedItems = items.filter((i) => selectedIds.has(getSelectionKey(i)));
+		return { type: "multi-selection", items: selectedItems, selectedIds };
+	}
+
+	if (isFolder(item)) {
+		return { type: "folder", item };
+	}
+	return { type: "file", item };
+}
+
+function FileGridItem({
+	item,
+	items,
+	selectedIds,
+	isSelected,
+	onSelect,
+	onOpen,
+	onContextMenu,
+	onDragStart,
+	onDrop,
+	contextMenuHandlerId,
+	buildContextMenuContext,
+}: FileGridItemProps) {
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+		buildMenuContext(item, items, selectedIds, buildContextMenuContext),
+		contextMenuHandlerId,
+	);
+
+	return (
+		<FileCard
+			item={item}
+			isSelected={isSelected}
+			onSelect={onSelect}
+			onDoubleClick={(i: File | Folder) => onOpen(i)}
+			onDragStart={onDragStart}
+			onDrop={onDrop}
+			onContextMenu={(e) => onContextMenu(item, e)}
+			{...longPressHandlers}
+		/>
 	);
 }

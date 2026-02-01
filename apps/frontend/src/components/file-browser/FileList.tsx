@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useState } from "react";
+import type { File, Folder } from "@petrel/shared";
 import {
 	Table,
 	TableBody,
@@ -9,9 +10,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { useLongPress } from "@/components/global-context-menu";
+import type { MenuContext } from "@/components/global-context-menu";
 import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 import { cn } from "@/lib/utils";
-import { FileContextMenu } from "./FileContextMenu";
 import type { FileListProps, SortField } from "./types";
 import { formatFileSize, getFileCategory, getFileIcon, getFolderIcon } from "./utils";
 
@@ -24,24 +26,18 @@ export function FileList({
 	onSelect,
 	onOpen,
 	onMove,
-	onRename,
-	onDelete,
-	onShare,
-	onDownload,
-	onDownloadZip,
-	onCopyLink,
-	onCopyShareLink,
+	onContextMenu,
 	sortBy,
 	sortOrder,
 	onSort,
 	isLoading,
-	ContextMenuComponent = FileContextMenu,
-	contextMenuProps = {},
+	contextMenuHandlerId,
+	buildContextMenuContext,
 }: FileListProps) {
 	const [dragOverId, setDragOverId] = useState<number | null>(null);
 	const SortIcon = sortOrder === "asc" ? ArrowUp : ArrowDown;
 
-	const handleDragStart = (item: any, e: React.DragEvent) => {
+	const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
 		e.dataTransfer.setData(
 			"text/plain",
 			JSON.stringify({ id: item.id, type: isFile(item) ? "file" : "folder" }),
@@ -49,26 +45,27 @@ export function FileList({
 		e.dataTransfer.effectAllowed = "move";
 	};
 
-	const handleDragOver = (item: any, e: React.DragEvent) => {
+	const handleDragOver = (item: File | Folder, e: React.DragEvent) => {
 		if (!isFolder(item)) return;
 		e.preventDefault();
 		setDragOverId(item.id);
 	};
 
-	const handleDrop = (target: any, e: React.DragEvent) => {
+	const handleDrop = (target: File | Folder, e: React.DragEvent) => {
 		if (!isFolder(target)) return;
 		e.preventDefault();
 		setDragOverId(null);
 		try {
-			const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+			const data = JSON.parse(e.dataTransfer.getData("text/plain") || "{}") as {
+				id?: number;
+				type?: "file" | "folder";
+			};
 			if (data.id === target.id && data.type === "folder") return;
-			onMove(data, target.id);
-		} catch (_err) {}
-	};
-
-	const handleContextMenu = (item: any, e: React.MouseEvent) => {
-		// Select the item before context menu opens
-		onSelect(item, e);
+			if (typeof data.id !== "number" || (data.type !== "file" && data.type !== "folder")) return;
+			onMove({ id: data.id, type: data.type }, target.id);
+		} catch {
+			// ignore invalid drag payload
+		}
 	};
 
 	const renderSortableHeader = (field: SortField, label: string) => (
@@ -113,57 +110,127 @@ export function FileList({
 					const isSelected = selectedIds.has(selectionKey);
 
 					return (
-						<ContextMenuComponent
+						<FileListRow
 							key={selectionKey}
 							item={item}
-							onOpen={() => onOpen(item)}
-							onRename={() => onRename?.(item)}
-							onDelete={() => onDelete?.(item)}
-							onShare={() => onShare?.(item)}
-							onDownload={() => onDownload?.(item)}
-							onDownloadZip={onDownloadZip}
-							onMove={() => {}}
-							onCopyLink={() => onCopyLink?.(item)}
-							onCopyShareLink={() => onCopyShareLink?.(item)}
-							{...contextMenuProps}
+							items={items}
+							selectedIds={selectedIds}
+							isSelected={isSelected}
+							isDragOver={dragOverId === item.id}
+							onSelect={onSelect}
+							onOpen={onOpen}
+							onContextMenu={onContextMenu}
+							onDragStart={handleDragStart}
+							onDragOver={handleDragOver}
+							onDragLeave={() => setDragOverId(null)}
+							onDrop={handleDrop}
+							contextMenuHandlerId={contextMenuHandlerId}
+							buildContextMenuContext={buildContextMenuContext}
 						>
-							<TableRow
-								className={cn(
-									"cursor-pointer group",
-									isSelected && "bg-primary/10",
-									dragOverId === item.id && "bg-primary/20 ring-2 ring-primary ring-inset",
-								)}
-								onClick={(e) => onSelect(item, e)}
-								onDoubleClick={() => onOpen(item)}
-								onContextMenu={(e) => handleContextMenu(item, e)}
-								draggable
-								onDragStart={(e) => handleDragStart(item, e)}
-								onDragOver={(e) => handleDragOver(item, e)}
-								onDragLeave={() => setDragOverId(null)}
-								onDrop={(e) => handleDrop(item, e)}
-							>
-								<TableCell>
-									<div className="flex items-center gap-3">
-										<div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50 group-hover:bg-primary/20 transition-colors">
-											<Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-										</div>
-										<span className="font-medium">{item.name}</span>
+							<TableCell>
+								<div className="flex items-center gap-3">
+									<div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50 group-hover:bg-primary/20 transition-colors">
+										<Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
 									</div>
-								</TableCell>
-								<TableCell className="hidden text-muted-foreground md:table-cell">
-									{isFileItem ? getFileCategory(item.mimeType) : "Folder"}
-								</TableCell>
-								<TableCell className="hidden text-muted-foreground sm:table-cell">
-									{isFileItem ? formatFileSize(item.size) : "—"}
-								</TableCell>
-								<TableCell className="hidden text-muted-foreground lg:table-cell">
-									{isFileItem ? format(new Date(item.createdAt), "MMM d, yyyy") : "—"}
-								</TableCell>
-							</TableRow>
-						</ContextMenuComponent>
+									<span className="font-medium">{item.name}</span>
+								</div>
+							</TableCell>
+							<TableCell className="hidden text-muted-foreground md:table-cell">
+								{isFileItem ? getFileCategory(item.mimeType) : "Folder"}
+							</TableCell>
+							<TableCell className="hidden text-muted-foreground sm:table-cell">
+								{isFileItem ? formatFileSize(item.size) : "—"}
+							</TableCell>
+							<TableCell className="hidden text-muted-foreground lg:table-cell">
+								{isFileItem ? format(new Date(item.createdAt), "MMM d, yyyy") : "—"}
+							</TableCell>
+						</FileListRow>
 					);
 				})}
 			</TableBody>
 		</Table>
+	);
+}
+
+interface FileListRowProps {
+	children: React.ReactNode;
+	item: File | Folder;
+	items: Array<File | Folder>;
+	selectedIds: Set<string>;
+	isSelected: boolean;
+	isDragOver: boolean;
+	onSelect: (item: File | Folder, event: React.MouseEvent) => void;
+	onOpen: (item: File | Folder) => void;
+	onContextMenu: (item: File | Folder, event: React.MouseEvent) => void;
+	onDragStart: (item: File | Folder, e: React.DragEvent) => void;
+	onDragOver: (item: File | Folder, e: React.DragEvent) => void;
+	onDragLeave: () => void;
+	onDrop: (target: File | Folder, e: React.DragEvent) => void;
+	contextMenuHandlerId?: string;
+	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+}
+
+function buildMenuContext(
+	item: File | Folder,
+	items: Array<File | Folder>,
+	selectedIds: Set<string>,
+	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext,
+): MenuContext {
+	if (buildContextMenuContext) {
+		return buildContextMenuContext(item, items, selectedIds);
+	}
+	if (selectedIds.size > 1) {
+		const selectedItems = items.filter((i) => selectedIds.has(getSelectionKey(i)));
+		return { type: "multi-selection", items: selectedItems, selectedIds };
+	}
+
+	if (isFolder(item)) {
+		return { type: "folder", item };
+	}
+	return { type: "file", item };
+}
+
+function FileListRow({
+	children,
+	item,
+	items,
+	selectedIds,
+	isSelected,
+	isDragOver,
+	onSelect,
+	onOpen,
+	onContextMenu,
+	onDragStart,
+	onDragOver,
+	onDragLeave,
+	onDrop,
+	contextMenuHandlerId,
+	buildContextMenuContext,
+}: FileListRowProps) {
+	const { onContextMenu: _onContextMenu, ...longPressHandlers } = useLongPress(
+		buildMenuContext(item, items, selectedIds, buildContextMenuContext),
+		contextMenuHandlerId,
+	);
+
+	return (
+		<TableRow
+			className={cn(
+				"cursor-pointer group",
+				isSelected && "bg-primary/10",
+				isDragOver && "bg-primary/20 ring-2 ring-primary ring-inset",
+			)}
+			onClick={(e) => onSelect(item, e)}
+			onDoubleClick={() => onOpen(item)}
+			onContextMenuCapture={(e) => onSelect(item, e)}
+			onContextMenu={(e) => onContextMenu(item, e)}
+			draggable
+			onDragStart={(e) => onDragStart(item, e)}
+			onDragOver={(e) => onDragOver(item, e)}
+			onDragLeave={onDragLeave}
+			onDrop={(e) => onDrop(item, e)}
+			{...longPressHandlers}
+		>
+			{children}
+		</TableRow>
 	);
 }

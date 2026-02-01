@@ -43,7 +43,7 @@ const LONG_PRESS_THRESHOLD = 500;
  *
  * Returns handlers to attach to elements for touch-based context menu triggering.
  */
-export function useLongPress(context: MenuContext) {
+export function useLongPress(context: MenuContext, handlerId?: string) {
 	const actions = useContextMenuActions();
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const positionRef = useRef<ContextMenuPosition>({ x: 0, y: 0 });
@@ -55,10 +55,10 @@ export function useLongPress(context: MenuContext) {
 			positionRef.current = { x: touch.clientX, y: touch.clientY };
 
 			timerRef.current = setTimeout(() => {
-				actions.open(positionRef.current, context);
+				actions.open(positionRef.current, context, handlerId);
 			}, LONG_PRESS_THRESHOLD);
 		},
-		[actions, context],
+		[actions, context, handlerId],
 	);
 
 	const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -86,9 +86,9 @@ export function useLongPress(context: MenuContext) {
 	const handleContextMenu = useCallback(
 		(e: React.MouseEvent) => {
 			e.preventDefault();
-			actions.open({ x: e.clientX, y: e.clientY }, context);
+			actions.open({ x: e.clientX, y: e.clientY }, context, handlerId);
 		},
-		[actions, context],
+		[actions, context, handlerId],
 	);
 
 	return {

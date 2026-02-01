@@ -1,5 +1,14 @@
 export { ContextMenuProvider } from "./ContextMenuProvider";
+export { GlobalContextMenu } from "./GlobalContextMenu";
 export { GlobalContextMenuContent } from "./GlobalContextMenu";
+export { useGlobalContextMenuOnAction, useRegisterContextMenuActionHandler } from "./action-handlers";
+export { useContextMenuKeyboardShortcuts } from "./useKeyboardShortcuts";
+export {
+	ContextMenuClipboardProvider,
+	toClipboardItem,
+	useContextMenuClipboardActions,
+	useContextMenuClipboardState,
+} from "./clipboard";
 export {
 	useContextMenu,
 	useContextMenuActions,
@@ -9,6 +18,8 @@ export {
 export type {
 	AudioPlayerContext,
 	ContextMenuActions,
+	ContextMenuActionHandler,
+	ContextMenuActionRegistry,
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuPosition,
@@ -21,6 +32,7 @@ export type {
 	ImageViewerContext,
 	MenuContext,
 	MultiSelectionContext,
+	SidebarItemContext,
 	ShareFileContext,
 	ShareFolderContext,
 	VideoPlayerContext,
