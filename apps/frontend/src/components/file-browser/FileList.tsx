@@ -66,6 +66,11 @@ export function FileList({
 		} catch (_err) {}
 	};
 
+	const handleContextMenu = (item: any, e: React.MouseEvent) => {
+		// Select the item before context menu opens
+		onSelect(item, e);
+	};
+
 	const renderSortableHeader = (field: SortField, label: string) => (
 		<button className="flex items-center gap-1 hover:text-foreground" onClick={() => onSort(field)}>
 			{label}
@@ -130,6 +135,7 @@ export function FileList({
 								)}
 								onClick={(e) => onSelect(item, e)}
 								onDoubleClick={() => onOpen(item)}
+								onContextMenu={(e) => handleContextMenu(item, e)}
 								draggable
 								onDragStart={(e) => handleDragStart(item, e)}
 								onDragOver={(e) => handleDragOver(item, e)}

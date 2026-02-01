@@ -1,4 +1,5 @@
 import type { File } from "@petrel/shared";
+import type { HTMLAttributes } from "react";
 import { forwardRef, useRef, useState } from "react";
 import { isFile, isFolder } from "@/hooks";
 import { api } from "@/lib/api";
@@ -11,11 +12,13 @@ const PRELOAD_DELAY_MS = 250; // 250ms hover before preloading
 /**
  * File card component for grid view
  */
-export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?: string }>(
-	function FileCard(
-		{ item, isSelected, onSelect, onDoubleClick, onDragStart, onDrop, className, ...props },
-		ref,
-	) {
+export const FileCard = forwardRef<
+	HTMLDivElement,
+	FileItemProps & { className?: string } & HTMLAttributes<HTMLDivElement>
+>(function FileCard(
+	{ item, isSelected, onSelect, onDoubleClick, onDragStart, onDrop, className, ...triggerProps },
+	ref,
+) {
 		const [isDragOver, setIsDragOver] = useState(false);
 		const preloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 		const isFileItem = isFile(item);
@@ -83,6 +86,11 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 			onDoubleClick?.(item);
 		};
 
+		const handleContextMenuCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+			// Select the item before the context menu trigger runs
+			onSelect?.(item, e);
+		};
+
 		return (
 			<div
 				ref={ref}
@@ -91,8 +99,9 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 				onDragOver={handleDragOver}
 				onDragLeave={handleDragLeave}
 				onDrop={handleDrop}
+				onContextMenuCapture={handleContextMenuCapture}
 				className={cn(
-					"group relative flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-transparent p-3 transition-colors",
+					"group relative flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border border-transparent p-2 transition-colors",
 					"hover:bg-secondary/50",
 					isSelected && "border-primary bg-primary/10",
 					isDragOver && "bg-primary/20 scale-105 border-primary duration-75",
@@ -102,10 +111,10 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 				onDoubleClick={handleDoubleClickWithCleanup}
 				onMouseEnter={handleMouseEnter}
 				onMouseLeave={handleMouseLeave}
-				{...props}
+				{...triggerProps}
 			>
 				{/* Thumbnail or icon */}
-				<div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-md bg-secondary/30">
+				<div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-secondary/30">
 					{showThumbnail ? (
 						<img
 							src={api.getThumbnailUrl((item as File).id, "small")}
@@ -114,22 +123,22 @@ export const FileCard = forwardRef<HTMLDivElement, FileItemProps & { className?:
 							loading="lazy"
 						/>
 					) : (
-						<Icon className="h-10 w-10 text-foreground/80 group-hover:text-foreground" />
+						<Icon className="h-8 w-8 text-foreground/80 group-hover:text-foreground" />
 					)}
 				</div>
 
 				{/* File name */}
 				<div className="w-full text-center">
-					<p className="truncate text-sm font-medium text-foreground" title={item.name}>
+					<p className="truncate text-xs font-medium text-foreground" title={item.name}>
 						{item.name}
 					</p>
 					{isFileItem && (
-						<p className="text-xs text-muted-foreground">{formatFileSize((item as File).size)}</p>
+						<p className="text-[10px] text-muted-foreground">{formatFileSize((item as File).size)}</p>
 					)}
 				</div>
 
 				{/* Selection indicator */}
-				{isSelected && <div className="absolute right-2 top-2 h-3 w-3 rounded-full bg-primary" />}
+				{isSelected && <div className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />}
 			</div>
 		);
 	},
