@@ -26,18 +26,8 @@ export function CopyLinkButton({ shareToken, className }: CopyLinkButtonProps) {
 	}
 
 	return (
-		<Button variant="outline" size="sm" onClick={handleCopy} className={cn("gap-2", className)}>
-			{copied ? (
-				<>
-					<Check className="h-4 w-4" />
-					Copied!
-				</>
-			) : (
-				<>
-					<Copy className="h-4 w-4" />
-					Copy Link
-				</>
-			)}
+		<Button variant="ghost" size="icon" className={cn("h-8 w-8", className)} onClick={handleCopy}>
+			{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
 		</Button>
 	);
 }

@@ -1,4 +1,6 @@
-import type { Share } from "@petrel/shared";
+import type { File, Folder, Share, ShareSettings } from "@petrel/shared";
+
+export type ShareWithContent = Share & ShareSettings & { content: File | Folder };
 
 export interface CreateShareModalProps {
 	type: "file" | "folder";
@@ -10,7 +12,7 @@ export interface CreateShareModalProps {
 }
 
 export interface ShareTableProps {
-	shares: Share[];
+	shares: ShareWithContent[];
 	isLoading?: boolean;
 	onDelete?: (shareId: number) => void;
 	className?: string;
