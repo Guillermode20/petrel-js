@@ -43,7 +43,7 @@ export function PasswordPrompt({
 			<div className="w-full max-w-sm rounded-lg border border-border bg-card p-6">
 				{/* Header */}
 				<div className="mb-6 flex flex-col items-center gap-3 text-center">
-					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary">
+					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
 						<Lock className="h-6 w-6 text-muted-foreground" />
 					</div>
 					<div>

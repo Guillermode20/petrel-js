@@ -103,7 +103,7 @@ function ThumbnailItem({
 	return (
 		<button
 			onClick={onClick}
-			className="group relative aspect-square overflow-hidden rounded-lg bg-secondary transition-transform hover:scale-[1.02]"
+			className="group relative aspect-square overflow-hidden rounded-lg bg-muted transition-transform hover:scale-[1.02]"
 		>
 			<img
 				src={api.getShareThumbnailUrl(shareToken, file.id, "medium", password)}
@@ -111,7 +111,7 @@ function ThumbnailItem({
 				className="h-full w-full object-cover"
 				loading="lazy"
 			/>
-			<div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/20" />
+			<div className="absolute inset-0 bg-foreground/0 transition-colors group-hover:bg-foreground/10" />
 		</button>
 	);
 }
@@ -192,15 +192,15 @@ function Lightbox({
 	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex flex-col bg-black/95">
+		<div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-md">
 			{/* Header */}
-			<div className="flex items-center justify-between px-4 py-2">
-				<span className="text-sm text-white/80">
+			<div className="flex items-center justify-between px-4 py-2 bg-gradient-to-b from-background/50 to-transparent">
+				<span className="text-sm text-foreground/80">
 					{currentIndex + 1} / {files.length}
 				</span>
 
 				<div className="flex items-center gap-2">
-					<span className="text-sm text-white/80">{currentFile.name}</span>
+					<span className="text-sm text-foreground/80">{currentFile.name}</span>
 				</div>
 
 				<div className="flex items-center gap-1">
@@ -208,18 +208,18 @@ function Lightbox({
 						variant="ghost"
 						size="icon"
 						onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-						className="text-white hover:bg-white/10"
+						className="text-foreground hover:bg-foreground/10"
 					>
 						<ZoomOut className="h-4 w-4" />
 					</Button>
-					<span className="min-w-[3rem] text-center text-sm text-white/80">
+					<span className="min-w-[3rem] text-center text-sm text-foreground/80">
 						{Math.round(zoom * 100)}%
 					</span>
 					<Button
 						variant="ghost"
 						size="icon"
 						onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
-						className="text-white hover:bg-white/10"
+						className="text-foreground hover:bg-foreground/10"
 					>
 						<ZoomIn className="h-4 w-4" />
 					</Button>
@@ -229,7 +229,7 @@ function Lightbox({
 							variant="ghost"
 							size="icon"
 							onClick={handleDownload}
-							className="text-white hover:bg-white/10"
+							className="text-foreground hover:bg-foreground/10"
 						>
 							<Download className="h-4 w-4" />
 						</Button>
@@ -239,7 +239,7 @@ function Lightbox({
 						variant="ghost"
 						size="icon"
 						onClick={onClose}
-						className="text-white hover:bg-white/10"
+						className="text-foreground hover:bg-foreground/10"
 					>
 						<X className="h-4 w-4" />
 					</Button>
@@ -260,7 +260,7 @@ function Lightbox({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="absolute left-4 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-black/50 text-white hover:bg-black/70"
+						className="absolute left-4 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-background/50 text-foreground backdrop-blur-sm hover:bg-background/70"
 						onClick={() => onNavigate("prev")}
 					>
 						<ChevronLeft className="h-6 w-6" />
@@ -271,7 +271,7 @@ function Lightbox({
 					<Button
 						variant="ghost"
 						size="icon"
-						className="absolute right-4 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-black/50 text-white hover:bg-black/70"
+						className="absolute right-4 top-1/2 h-12 w-12 -translate-y-1/2 rounded-full bg-background/50 text-foreground backdrop-blur-sm hover:bg-background/70"
 						onClick={() => onNavigate("next")}
 					>
 						<ChevronRight className="h-6 w-6" />

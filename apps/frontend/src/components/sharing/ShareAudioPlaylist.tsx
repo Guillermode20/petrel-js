@@ -212,7 +212,7 @@ export function ShareAudioPlaylist({
 			{/* Player card */}
 			<div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 lg:w-80">
 				{/* Album art */}
-				<div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg bg-secondary">
+				<div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg bg-muted">
 					{audioMeta?.albumArt && currentFile ? (
 						<img
 							src={api.getShareThumbnailUrl(shareToken, currentFile.id, "medium", password)}
@@ -337,8 +337,8 @@ export function ShareAudioPlaylist({
 									key={file.id}
 									onClick={() => selectTrack(index)}
 									className={cn(
-										"group flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50",
-										isCurrent && "bg-secondary",
+										"group flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50",
+										isCurrent && "bg-muted",
 									)}
 								>
 									{/* Track number / playing indicator */}
@@ -355,7 +355,7 @@ export function ShareAudioPlaylist({
 									</div>
 
 									{/* Thumbnail */}
-									<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary">
+									<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
 										{meta?.albumArt ? (
 											<img
 												src={api.getShareThumbnailUrl(shareToken, file.id, "small", password)}

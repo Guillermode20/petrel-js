@@ -64,7 +64,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 	if (transcodeJob?.status === "processing") {
 		return (
 			<div
-				className={cn("absolute inset-0 flex items-center justify-center bg-black/80", className)}
+				className={cn("absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm", className)}
 			>
 				<div className="flex flex-col items-center gap-4 text-center">
 					<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -81,15 +81,15 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 	return (
 		<div
 			className={cn(
-				"absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 transition-opacity",
+				"absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background/90 to-transparent p-4 transition-opacity",
 				className,
 			)}
 		>
 			{/* Seek bar */}
-			<div className="group relative mb-2 h-1 w-full cursor-pointer rounded bg-white/20">
+			<div className="group relative mb-2 h-1 w-full cursor-pointer rounded bg-foreground/20">
 				{/* Buffered progress */}
 				<div
-					className="absolute h-full rounded bg-white/30"
+					className="absolute h-full rounded bg-foreground/30"
 					style={{ width: `${bufferedProgress}%` }}
 				/>
 				{/* Playback progress */}
@@ -111,7 +111,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 					<Button
 						variant="ghost"
 						size="icon"
-						className="h-8 w-8 text-white hover:bg-white/20 hover:text-white"
+						className="h-8 w-8 text-foreground hover:bg-foreground/10"
 						onClick={controls.togglePlay}
 					>
 						{isBuffering ? (
@@ -128,7 +128,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-8 w-8 text-white hover:bg-white/20 hover:text-white"
+							className="h-8 w-8 text-foreground hover:bg-foreground/10"
 							onClick={controls.toggleMute}
 						>
 							{isMuted || volume === 0 ? (
@@ -148,7 +148,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 					</div>
 
 					{/* Time display */}
-					<span className="text-xs text-white">
+					<span className="text-xs text-foreground">
 						{formatDuration(currentTime)} / {formatDuration(duration)}
 					</span>
 				</div>
@@ -163,7 +163,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 									variant="ghost"
 									size="icon"
 									className={cn(
-										"h-8 w-8 text-white hover:bg-white/20 hover:text-white",
+										"h-8 w-8 text-foreground hover:bg-foreground/10",
 										subtitleTrack >= 0 && "text-primary",
 									)}
 								>
@@ -193,7 +193,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 							<Button
 								variant="ghost"
 								size="icon"
-								className="h-8 w-8 text-white hover:bg-white/20 hover:text-white"
+								className="h-8 w-8 text-foreground hover:bg-foreground/10"
 							>
 								<Settings className="h-5 w-5" />
 							</Button>
@@ -260,7 +260,7 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 					<Button
 						variant="ghost"
 						size="icon"
-						className="h-8 w-8 text-white hover:bg-white/20 hover:text-white"
+						className="h-8 w-8 text-foreground hover:bg-foreground/10"
 						onClick={controls.toggleFullscreen}
 					>
 						{isFullscreen ? <Minimize className="h-5 w-5" /> : <Maximize className="h-5 w-5" />}

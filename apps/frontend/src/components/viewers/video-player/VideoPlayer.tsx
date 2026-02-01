@@ -272,7 +272,7 @@ export function VideoPlayer({
 	return (
 		<div
 			ref={containerRef}
-			className={cn("group relative aspect-video w-full overflow-hidden rounded-lg bg-black", className)}
+			className={cn("group relative aspect-video w-full overflow-hidden rounded-lg bg-background", className)}
 			onMouseMove={showControlsTemporarily}
 			onMouseLeave={() => state.isPlaying && setShowControls(false)}
 			{...longPressHandlers}
@@ -297,7 +297,7 @@ export function VideoPlayer({
 
 			{/* Loading overlay when stream not ready */}
 			{(!isStreamReady || isStreamInfoLoading) && (
-				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+				<div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm">
 					<div className="text-center">
 						<Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
 						<p className="text-muted-foreground">Preparing stream...</p>
@@ -307,7 +307,7 @@ export function VideoPlayer({
 
 			{/* Error overlay */}
 			{state.error && (
-				<div className="absolute inset-0 flex items-center justify-center bg-black/80">
+				<div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm">
 					<div className="text-center">
 						<p className="text-destructive">Playback error</p>
 						<p className="text-sm text-muted-foreground">{state.error}</p>

@@ -195,7 +195,7 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 			<div className="flex items-center justify-between border-b border-border bg-card px-4 py-2">
 				<div className="flex items-center gap-3">
 					<span className="text-sm font-medium">{file.name}</span>
-					<span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+					<span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 						{language}
 					</span>
 					<span className="text-xs text-muted-foreground">{lineCount} lines</span>
@@ -273,7 +273,7 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 					placeholder="Start typing..."
 				/>
 			) : (
-				<ScrollArea className="flex-1 bg-[#0d1117]">
+				<ScrollArea className="flex-1 bg-background">
 					<div
 						className="p-4 text-sm [&_pre]:!bg-transparent [&_code]:font-mono"
 						dangerouslySetInnerHTML={{ __html: highlightedHtml }}

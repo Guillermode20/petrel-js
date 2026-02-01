@@ -42,8 +42,8 @@ export function Playlist({
 								key={file.id}
 								onClick={() => onTrackSelect(index)}
 								className={cn(
-									"flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/50",
-									isCurrent && "bg-secondary",
+									"flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50",
+									isCurrent && "bg-muted",
 								)}
 							>
 								{/* Track number / playing indicator */}
@@ -60,7 +60,7 @@ export function Playlist({
 								</div>
 
 								{/* Thumbnail */}
-								<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-secondary">
+								<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
 									{hasAlbumArt ? (
 										<img
 											src={api.getThumbnailUrl(file.id, "small")}

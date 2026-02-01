@@ -127,7 +127,7 @@ export function FilePreview({ file, files, onNavigate, onClose, className }: Fil
 			<div className="flex items-center justify-between border-b border-border px-4 py-2">
 				<div className="flex items-center gap-3">
 					<span className="font-medium">{file.name}</span>
-					<span className="rounded bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+					<span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
 						{getPreviewTypeLabel(previewType)}
 					</span>
 				</div>

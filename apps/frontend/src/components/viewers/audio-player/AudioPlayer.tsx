@@ -86,7 +86,7 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 			{...longPressHandlers}
 		>
 			{/* Album art placeholder */}
-			<div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg bg-secondary">
+			<div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg bg-muted">
 				<Music className="h-16 w-16 text-muted-foreground" />
 			</div>
 

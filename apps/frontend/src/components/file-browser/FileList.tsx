@@ -135,7 +135,7 @@ export function FileList({
 							<TableCell>
 								<div className="flex flex-col gap-0.5">
 									<div className="flex items-center gap-3">
-										<div className="flex h-8 w-8 items-center justify-center rounded bg-secondary/50 group-hover:bg-primary/20 transition-colors">
+										<div className="flex h-8 w-8 items-center justify-center rounded bg-muted/50 group-hover:bg-primary/20 transition-colors">
 											<Icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
 										</div>
 										<span className="font-medium">{item.name}</span>

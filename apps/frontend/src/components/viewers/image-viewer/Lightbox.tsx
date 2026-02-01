@@ -218,10 +218,10 @@ export function Lightbox({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-none h-screen w-screen p-0 border-none bg-black/95">
+			<DialogContent className="max-w-none h-screen w-screen p-0 border-none bg-background/95 backdrop-blur-md">
 				{/* Top bar */}
-				<div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-black/50 to-transparent">
-					<div className="text-sm text-white">
+				<div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between p-4 bg-gradient-to-b from-background/50 to-transparent">
+					<div className="text-sm text-foreground">
 						{currentIndex + 1} / {images.length}
 					</div>
 					<div className="flex items-center gap-1">
@@ -231,8 +231,8 @@ export function Lightbox({
 									variant="ghost"
 									size="icon"
 									className={cn(
-										"h-8 w-8 text-white hover:bg-white/20",
-										isSlideshow && "bg-white/20",
+										"h-8 w-8 text-foreground hover:bg-foreground/10",
+										isSlideshow && "bg-foreground/10",
 									)}
 									onClick={() => setIsSlideshow((prev) => !prev)}
 								>
@@ -258,7 +258,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-8 w-8 text-white hover:bg-white/20"
+							className="h-8 w-8 text-foreground hover:bg-foreground/10"
 							onClick={handleZoomOut}
 						>
 							<ZoomOut className="h-4 w-4" />
@@ -266,7 +266,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-8 w-8 text-white hover:bg-white/20"
+							className="h-8 w-8 text-foreground hover:bg-foreground/10"
 							onClick={handleResetZoom}
 						>
 							<RotateCw className="h-4 w-4" />
@@ -274,7 +274,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-8 w-8 text-white hover:bg-white/20"
+							className="h-8 w-8 text-foreground hover:bg-foreground/10"
 							onClick={handleZoomIn}
 						>
 							<ZoomIn className="h-4 w-4" />
@@ -282,7 +282,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className={cn("h-8 w-8 text-white hover:bg-white/20", showInfo && "bg-white/20")}
+							className={cn("h-8 w-8 text-foreground hover:bg-foreground/10", showInfo && "bg-foreground/10")}
 							onClick={() => setShowInfo((prev) => !prev)}
 						>
 							<Info className="h-4 w-4" />
@@ -292,7 +292,7 @@ export function Lightbox({
 								<Button
 									variant="ghost"
 									size="icon"
-									className="h-8 w-8 text-white hover:bg-white/20"
+									className="h-8 w-8 text-foreground hover:bg-foreground/10"
 									onClick={() => onDownload(currentImage)}
 								>
 									<Download className="h-4 w-4" />
@@ -300,7 +300,7 @@ export function Lightbox({
 								<Button
 									variant="ghost"
 									size="icon"
-									className="h-8 w-8 text-white hover:bg-white/20"
+									className="h-8 w-8 text-foreground hover:bg-foreground/10"
 									onClick={() => onDownload(images)}
 									title="Download all as ZIP"
 								>
@@ -311,7 +311,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="h-8 w-8 text-white hover:bg-white/20"
+							className="h-8 w-8 text-foreground hover:bg-foreground/10"
 							onClick={() => onOpenChange(false)}
 						>
 							<X className="h-4 w-4" />
@@ -339,7 +339,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 text-white hover:bg-white/20"
+							className="absolute left-4 top-1/2 -translate-y-1/2 h-12 w-12 text-foreground hover:bg-foreground/10"
 							onClick={goToPrevious}
 						>
 							<ChevronLeft className="h-8 w-8" />
@@ -347,7 +347,7 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 text-white hover:bg-white/20"
+							className="absolute right-4 top-1/2 -translate-y-1/2 h-12 w-12 text-foreground hover:bg-foreground/10"
 							onClick={goToNext}
 						>
 							<ChevronRight className="h-8 w-8" />
@@ -357,7 +357,7 @@ export function Lightbox({
 
 				{/* EXIF info panel */}
 				{showInfo && metadata && (
-					<div className="absolute bottom-0 left-0 right-0 bg-black/80 p-4 text-sm text-white">
+					<div className="absolute bottom-0 left-0 right-0 bg-background/90 p-4 text-sm text-foreground backdrop-blur-md">
 						<div className="mx-auto max-w-2xl">
 							<h3 className="mb-2 font-medium">{currentImage.name}</h3>
 							<div className="grid grid-cols-2 gap-x-8 gap-y-1 md:grid-cols-4">

@@ -277,7 +277,7 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 			{/* PDF canvas */}
 			<div
 				ref={containerRef}
-				className="flex flex-1 items-start justify-center overflow-auto bg-secondary/50 p-4"
+				className="flex flex-1 items-start justify-center overflow-auto bg-muted/50 p-4"
 			>
 				{state.isLoading ? (
 					<div className="flex h-64 items-center justify-center">

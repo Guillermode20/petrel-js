@@ -165,7 +165,7 @@ export function MarkdownViewer({ file, className }: MarkdownViewerProps) {
 				/>
 			) : (
 				<ScrollArea className="flex-1">
-					<div className="prose prose-invert prose-pink max-w-none p-6">
+					<div className="prose prose-invert prose-amber max-w-none p-6">
 						<ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
 							{content}
 						</ReactMarkdown>
