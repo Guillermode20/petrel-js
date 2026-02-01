@@ -507,33 +507,58 @@ Before submitting generated code:
 ### Colors
 
 ```css
-/* Primary palette - darkmatter theme from tweakcn.com */
---background: 240 6% 6%;           /* #0f0f10 - deep dark */
---foreground: 0 0% 97%;            /* #f7f7f8 - off-white */
---card: 240 6% 6%;                 /* #0f0f10 */
---card-foreground: 0 0% 97%;       /* #f7f7f8 */
---popover: 240 6% 6%;              /* #0f0f10 */
---popover-foreground: 0 0% 97%;    /* #f7f7f8 */
---primary: 263 70% 66%;            /* #a668fc - purple/violet accent */
---primary-foreground: 0 0% 100%;   /* #ffffff */
---secondary: 240 4% 16%;           /* #27272a - elevated surfaces */
---secondary-foreground: 0 0% 97%;  /* #f7f7f8 */
---muted: 240 4% 16%;               /* #27272a */
---muted-foreground: 240 4% 46%;    /* #71717a - zinc-500 */
---accent: 263 70% 66%;             /* #a668fc */
---accent-foreground: 0 0% 100%;    /* #ffffff */
---destructive: 0 84% 60%;          /* #ef4444 - red-500 */
---destructive-foreground: 0 0% 100%;
---border: 240 4% 16%;              /* #27272a */
---input: 240 4% 16%;               /* #27272a */
---ring: 263 70% 66%;               /* #a668fc */
-```
+/* Primary palette - darkmatter theme (sharper corners variant) */
+:root {
+  --background: hsl(0 0% 100%);           /* Light theme */
+  --foreground: hsl(220.9091 39.2857% 10.9804%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(220.9091 39.2857% 10.9804%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(220.9091 39.2857% 10.9804%);
+  --primary: hsl(21.7450 65.6388% 55.4902%);     /* Orange accent */
+  --primary-foreground: hsl(0 0% 100%);
+  --secondary: hsl(180 17.5879% 39.0196%);      /* Teal */
+  --secondary-foreground: hsl(0 0% 100%);
+  --muted: hsl(220.0000 14.2857% 95.8824%);
+  --muted-foreground: hsl(220 8.9362% 46.0784%);
+  --accent: hsl(0 0% 93.3333%);
+  --accent-foreground: hsl(220.9091 39.2857% 10.9804%);
+  --destructive: hsl(0 84.2365% 60.1961%);
+  --destructive-foreground: hsl(0 0% 98.0392%);
+  --border: hsl(220 13.0435% 90.9804%);
+  --input: hsl(220 13.0435% 90.9804%);
+  --ring: hsl(21.7450 65.6388% 55.4902%);
+}
+
+.dark {
+  --background: hsl(270 5.5556% 7.0588%);        /* #121213 - deep dark with purple tint */
+  --foreground: hsl(0 0% 75.6863%);              /* #c1c1c3 */
+  --card: hsl(0 0% 7.0588%);                     /* #121213 */
+  --card-foreground: hsl(0 0% 75.6863%);
+  --popover: hsl(270 5.5556% 7.0588%);
+  --popover-foreground: hsl(0 0% 75.6863%);
+  --primary: hsl(22.2973 75.5102% 61.5686%);     /* #d97706 - orange accent */
+  --primary-foreground: hsl(270 5.5556% 7.0588%);
+  --secondary: hsl(180 17.3913% 45.0980%);       /* #2dd4bf - teal */
+  --secondary-foreground: hsl(270 5.5556% 7.0588%);
+  --muted: hsl(0 0% 13.3333%);                   /* #222222 */
+  --muted-foreground: hsl(0 0% 53.3333%);        /* #888888 */
+  --accent: hsl(0 0% 20%);                       /* #333333 */
+  --accent-foreground: hsl(0 0% 75.6863%);
+  --destructive: hsl(180 17.3913% 45.0980%);     /* Uses teal for destructive in dark */
+  --destructive-foreground: hsl(270 5.5556% 7.0588%);
+  --border: hsl(0 0% 13.3333%);
+  --input: hsl(0 0% 13.3333%);
+  --ring: hsl(22.2973 75.5102% 61.5686%);
+}
 
 ### Typography
 
 ```css
-/* Clean sans-serif system fonts */
-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+/* Monospace-focused fonts for developer aesthetic */
+--font-sans: Geist Mono, ui-monospace, monospace;
+--font-serif: serif;
+--font-mono: JetBrains Mono, "IBM Plex Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
 
 /* Standard size scale */
 --text-xs: 0.75rem;    /* 12px */
@@ -559,16 +584,29 @@ font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe
 ### Borders & Effects
 
 ```css
-/* Rounded corners - modern feel */
---radius: 0.75rem;      /* 12px for large components */
---radius-sm: 0.5rem;    /* 8px for buttons/inputs */
---radius-lg: 1rem;      /* 16px for cards/modals */
+/* Sharp corners for minimal aesthetic */
+--radius: 0.25rem;      /* 4px - sharp corners */
+--radius-sm: calc(var(--radius) - 4px);
+--radius-md: calc(var(--radius) - 2px);
+--radius-lg: var(--radius);
+--radius-xl: calc(var(--radius) + 4px);
 border: 1px solid hsl(var(--border));
 
-/* Subtle shadows for elevation */
---shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
---shadow: 0 4px 6px -1px rgb(0 0 0 / 0.4);
---shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+/* Subtle shadows system */
+--shadow-x: 0px;
+--shadow-y: 1px;
+--shadow-blur: 4px;
+--shadow-spread: 0px;
+--shadow-opacity: 0.05;
+--shadow-color: #000000;
+--shadow-2xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+--shadow-xs: 0px 1px 4px 0px hsl(0 0% 0% / 0.03);
+--shadow-sm: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+--shadow: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+--shadow-md: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
+--shadow-lg: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
+--shadow-xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.05), 0px 8px 10px -1px hsl(0 0% 0% / 0.05);
+--shadow-2xl: 0px 1px 4px 0px hsl(0 0% 0% / 0.13);
 ```
 
 ---
@@ -579,7 +617,7 @@ Petrel is **sharing-first**, **darkmatter-aesthetic**, **performance-focused**.
 
 Every line of code should:
 1. Serve the sharing use case
-2. Match the darkmatter aesthetic (deep darks, purple accents, modern rounded corners)
+2. Match the darkmatter aesthetic (deep dark backgrounds with purple tint, orange/teal accents, sharp corners)
 3. Handle large files efficiently
 4. Be maintainable by humans
 
@@ -587,4 +625,4 @@ When in doubt, ask. When confident, keep it simple.
 
 ---
 
-*Last updated: 2026-01-28*
+*Last updated: 2026-02-01*

@@ -26,7 +26,7 @@ export function SearchBar({
 				placeholder={placeholder}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
-				className="h-8 w-full pl-9 pr-8"
+				className="h-8 w-full pl-9 pr-8 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
 			/>
 			{value && (
 				<Button

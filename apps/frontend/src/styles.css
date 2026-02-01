@@ -6,6 +6,7 @@ code {
 	font-family: "JetBrains Mono", "IBM Plex Mono", Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
+/* https://tweakcn.com/r/themes/darkmatter.json with sharper corners */
 :root {
   --background: hsl(0 0% 100%);
   --foreground: hsl(220.9091 39.2857% 10.9804%);

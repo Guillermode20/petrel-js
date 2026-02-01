@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LogOut, Upload, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { useAuth } from "@/hooks";
 import { MobileSidebar } from "./navigation/Sidebar";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -30,12 +30,6 @@ export function Header() {
 					</Badge>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button variant="ghost" size="sm" asChild className="hidden sm:inline-flex">
-						<Link to="/files">
-							<Upload className="mr-2 h-4 w-4" />
-							Upload
-						</Link>
-					</Button>
 					{isAuthenticated && user ? (
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>

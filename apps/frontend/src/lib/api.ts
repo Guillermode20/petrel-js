@@ -195,6 +195,7 @@ class ApiClient {
 	}> {
 		const searchParams = new URLSearchParams();
 		if (params?.folderId) searchParams.set("folderId", String(params.folderId));
+		if (params?.search) searchParams.set("search", params.search);
 
 		const limit = params?.limit ?? 20;
 		const page = params?.page ?? 1;
