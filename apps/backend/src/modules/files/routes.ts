@@ -1,4 +1,4 @@
-import { stat, unlink } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import type { File as SharedFile } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { config } from "../../config";
@@ -569,8 +569,6 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 						return { data: null, error: "Forbidden - You can only delete your own files" };
 					}
 
-					const diskPath = fileService.resolveDiskPath(file);
-					await unlink(diskPath).catch(() => null);
 					await fileService.deleteFile(params.id);
 
 					return { data: { id: params.id }, error: null };

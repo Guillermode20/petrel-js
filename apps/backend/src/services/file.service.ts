@@ -1,9 +1,10 @@
-import { readdir, rename, rm, stat } from "node:fs/promises";
+import { readdir, rename, rm, unlink } from "node:fs/promises";
+import path from "node:path";
 import type { File } from "@petrel/shared";
 import type { BunFile } from "bun";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
-import { files } from "../../db/schema";
+import { files, subtitles, transcodeJobs, videoTracks } from "../../db/schema";
 import {
 	buildFileRelativePath,
 	calculateFileHash,
@@ -38,6 +39,28 @@ export interface UpdateFileInput {
 }
 
 export class FileService {
+	private async deletePrimaryFileOnDisk(file: File): Promise<void> {
+		const diskPath = this.resolveDiskPath(file);
+		await unlink(diskPath).catch(() => null);
+	}
+
+	private async deleteDerivedAssets(fileId: number): Promise<void> {
+		const directoriesToRemove = [
+			path.posix.join(".thumbnails", fileId.toString()),
+			path.posix.join(".waveforms", fileId.toString()),
+			path.posix.join(".audio", fileId.toString()),
+			path.posix.join(".hls", fileId.toString()),
+			path.posix.join(".subtitles", fileId.toString()),
+		];
+
+		await Promise.all(
+			directoriesToRemove.map(async (relativeDir) => {
+				const absoluteDir = resolveStoragePath(relativeDir);
+				await rm(absoluteDir, { recursive: true, force: true }).catch(() => null);
+			}),
+		);
+	}
+
 	private mapFileRow(row: typeof files.$inferSelect): File {
 		let metadataValue = row.metadata as File["metadata"] | string | null | undefined;
 		if (typeof metadataValue === "string") {
@@ -182,6 +205,14 @@ export class FileService {
 	async deleteFile(id: number): Promise<File | null> {
 		const current = await this.getById(id);
 		if (!current) return null;
+
+		await this.deletePrimaryFileOnDisk(current);
+		await this.deleteDerivedAssets(id);
+		await Promise.all([
+			db.delete(videoTracks).where(eq(videoTracks.fileId, id)),
+			db.delete(subtitles).where(eq(subtitles.fileId, id)),
+			db.delete(transcodeJobs).where(eq(transcodeJobs.fileId, id)),
+		]);
 
 		await db.delete(files).where(eq(files.id, id));
 		return current;

@@ -1,4 +1,5 @@
-import type { UserSettings } from "@petrel/shared";
+import type { ExpiryDuration, UserSettings, VideoQuality } from "@petrel/shared";
+import { Loader2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -13,17 +14,34 @@ import { Switch } from "@/components/ui/switch";
 interface SettingsSharingProps {
 	settings: UserSettings;
 	onUpdate: <K extends keyof UserSettings>(section: K, updates: Partial<UserSettings[K]>) => void;
+	disabled?: boolean;
+	isSaving?: boolean;
 }
 
-export function SettingsSharing({ settings, onUpdate }: SettingsSharingProps) {
+export function SettingsSharing({
+	settings,
+	onUpdate,
+	disabled = false,
+	isSaving = false,
+}: SettingsSharingProps) {
+	const SavingOverlay = () =>
+		isSaving ? (
+			<div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded">
+				<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+			</div>
+		) : null;
+
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 relative">
+			<SavingOverlay />
+
 			<div className="space-y-4">
 				<div className="space-y-2">
 					<Label htmlFor="default-expiry">Default Expiry Duration</Label>
 					<Select
 						value={settings.sharing.defaultExpiry}
-						onValueChange={(value: any) => onUpdate("sharing", { defaultExpiry: value })}
+						onValueChange={(value: string) => onUpdate("sharing", { defaultExpiry: value as ExpiryDuration })}
+						disabled={disabled || isSaving}
 					>
 						<SelectTrigger id="default-expiry">
 							<SelectValue />
@@ -42,7 +60,8 @@ export function SettingsSharing({ settings, onUpdate }: SettingsSharingProps) {
 					<Label htmlFor="default-quality">Default Quality for Videos</Label>
 					<Select
 						value={settings.sharing.defaultQuality}
-						onValueChange={(value: any) => onUpdate("sharing", { defaultQuality: value })}
+						onValueChange={(value: string) => onUpdate("sharing", { defaultQuality: value as VideoQuality })}
+						disabled={disabled || isSaving}
 					>
 						<SelectTrigger id="default-quality">
 							<SelectValue />
@@ -67,6 +86,7 @@ export function SettingsSharing({ settings, onUpdate }: SettingsSharingProps) {
 						onCheckedChange={(checked) =>
 							onUpdate("sharing", { defaultPasswordProtection: checked })
 						}
+						disabled={disabled || isSaving}
 					/>
 				</div>
 
@@ -80,6 +100,7 @@ export function SettingsSharing({ settings, onUpdate }: SettingsSharingProps) {
 						onCheckedChange={(checked) =>
 							onUpdate("sharing", { defaultDownloadPermission: checked })
 						}
+						disabled={disabled || isSaving}
 					/>
 				</div>
 			</div>
@@ -96,6 +117,7 @@ export function SettingsSharing({ settings, onUpdate }: SettingsSharingProps) {
 						id="analytics-optout"
 						checked={settings.sharing.analyticsOptOut}
 						onCheckedChange={(checked) => onUpdate("sharing", { analyticsOptOut: checked })}
+						disabled={disabled || isSaving}
 					/>
 				</div>
 
@@ -118,6 +140,7 @@ export function SettingsSharing({ settings, onUpdate }: SettingsSharingProps) {
 								},
 							})
 						}
+						disabled={disabled || isSaving}
 					/>
 				</div>
 			</div>

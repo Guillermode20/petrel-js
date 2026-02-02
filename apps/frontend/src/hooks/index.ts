@@ -27,3 +27,4 @@ export {
 	useStreamTracks,
 } from "./useStream";
 export { useZipDownload } from "./useZipDownload";
+export { useSettings, useUpdateSettings, useResetSettings, settingsKeys } from "./useSettings";

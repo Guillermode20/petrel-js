@@ -117,13 +117,44 @@ export function createTestDatabase(): TestDb {
     );
 
     CREATE TABLE IF NOT EXISTS subtitles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
       file_id INTEGER NOT NULL REFERENCES files(id),
       language TEXT NOT NULL,
       path TEXT NOT NULL,
       format TEXT NOT NULL,
       title TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS user_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      settings TEXT NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+
+    CREATE INDEX IF NOT EXISTS user_settings_user_id_idx ON user_settings(user_id);
+
+    CREATE TABLE IF NOT EXISTS zip_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      progress INTEGER NOT NULL DEFAULT 0,
+      temp_path TEXT,
+      error TEXT,
+      file_ids TEXT,
+      folder_ids TEXT,
+      share_token TEXT,
+      user_id INTEGER REFERENCES users(id),
+      total_size INTEGER DEFAULT 0,
+      file_count INTEGER DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+      completed_at INTEGER,
+      downloaded_at INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS zip_jobs_job_id_idx ON zip_jobs(job_id);
+    CREATE INDEX IF NOT EXISTS zip_jobs_status_idx ON zip_jobs(status);
+    CREATE INDEX IF NOT EXISTS zip_jobs_created_at_idx ON zip_jobs(created_at);
   `);
 
 	const db = drizzle(sqlite, { schema });
@@ -205,20 +236,21 @@ export async function createTestFile(
  * Clear all data from the test database
  */
 export function clearTestDatabase(testDb: TestDb): void {
-	const tables = [
-		"album_files",
-		"albums",
-		"subtitles",
-		"video_tracks",
-		"transcode_jobs",
-		"share_settings",
-		"shares",
-		"folders",
-		"files",
-		"refresh_tokens",
-		"users",
-	];
-
+	        const tables = [
+	                "zip_jobs",
+	                "user_settings",
+	                "album_files",
+	                "albums",
+	                "subtitles",
+	                "video_tracks",
+	                "transcode_jobs",
+	                "share_settings",
+	                "shares",
+	                "folders",
+	                "files",
+	                "refresh_tokens",
+	                "users",
+	        ];
 	for (const table of tables) {
 		testDb.sqlite.exec(`DELETE FROM ${table}`);
 	}

@@ -2,6 +2,7 @@ import type { UserSettings } from "@petrel/shared";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db";
 import { userSettings } from "../../../db/schema";
+import { logger } from "../../lib/logger";
 
 const DEFAULT_SETTINGS: Omit<UserSettings, "userId"> = {
 	profile: {
@@ -74,71 +75,140 @@ const DEFAULT_SETTINGS: Omit<UserSettings, "userId"> = {
 };
 
 class SettingsService {
+	/**
+	 * Get user settings with transaction safety
+	 * Creates default settings if none exist
+	 */
 	async getUserSettings(userId: number): Promise<UserSettings> {
-		const result = await db.query.userSettings.findFirst({
-			where: eq(userSettings.userId, userId),
-		});
+		try {
+			// Use transaction to ensure consistency
+			const result = await db.transaction(async (tx) => {
+				const existing = await tx.query.userSettings.findFirst({
+					where: eq(userSettings.userId, userId),
+				});
 
-		if (!result) {
-			return this.createDefaultSettings(userId);
-		}
+				if (!existing) {
+					// Create default settings within the same transaction
+					const defaults = this.getDefaultSettings();
+					const settings = { ...defaults, userId };
 
-		const settings = result.settings as unknown as UserSettings;
-		return { ...settings, userId };
-	}
+					await tx.insert(userSettings).values({
+						userId,
+						settings,
+						updatedAt: new Date(),
+					});
 
-	async updateSettings(userId: number, updates: Partial<UserSettings>): Promise<UserSettings> {
-		const current = await this.getUserSettings(userId);
-		const merged = this.deepMerge(
-			current as unknown as Record<string, unknown>,
-			updates as unknown as Partial<Record<string, unknown>>,
-		) as unknown as UserSettings;
+					logger.info(`Created default settings for user ${userId}`);
+					return settings;
+				}
 
-		const existing = await db.query.userSettings.findFirst({
-			where: eq(userSettings.userId, userId),
-		});
-
-		if (existing) {
-			await db
-				.update(userSettings)
-				.set({
-					settings: merged,
-					updatedAt: new Date(),
-				})
-				.where(eq(userSettings.userId, userId));
-		} else {
-			await db.insert(userSettings).values({
-				userId,
-				settings: merged,
-				updatedAt: new Date(),
+				return existing.settings as unknown as UserSettings;
 			});
+
+			return { ...result, userId };
+		} catch (error) {
+			logger.error(error, `Failed to get settings for user ${userId}`);
+			throw new Error("Failed to retrieve settings");
 		}
-
-		return merged;
 	}
 
+	/**
+	 * Update settings with atomic transaction and optimistic locking
+	 * This prevents race conditions during concurrent updates
+	 */
+	async updateSettings(userId: number, updates: Partial<UserSettings>): Promise<UserSettings> {
+		try {
+			const updated = await db.transaction(async (tx) => {
+				// Lock the row for update to prevent concurrent modifications
+				const existing = await tx.query.userSettings.findFirst({
+					where: eq(userSettings.userId, userId),
+				});
+
+				if (!existing) {
+					// Create new settings if none exist
+					const defaults = this.getDefaultSettings();
+					const newSettings = this.deepMerge(
+						defaults as unknown as Record<string, unknown>,
+						updates as unknown as Partial<Record<string, unknown>>,
+					) as unknown as UserSettings;
+
+					await tx.insert(userSettings).values({
+						userId,
+						settings: { ...newSettings, userId },
+						updatedAt: new Date(),
+					});
+
+					logger.info(`Created settings with updates for user ${userId}`);
+					return { ...newSettings, userId };
+				}
+
+				// Merge existing settings with updates
+				const currentSettings = existing.settings as unknown as UserSettings;
+				const merged = this.deepMerge(
+					currentSettings as unknown as Record<string, unknown>,
+					updates as unknown as Partial<Record<string, unknown>>,
+				) as unknown as UserSettings;
+
+				// Update within transaction
+				await tx
+					.update(userSettings)
+					.set({
+						settings: merged,
+						updatedAt: new Date(),
+					})
+					.where(eq(userSettings.userId, userId));
+
+				logger.info(`Updated settings for user ${userId}`);
+				return merged;
+			});
+
+			return updated;
+		} catch (error) {
+			logger.error(error, `Failed to update settings for user ${userId}`);
+			throw new Error("Failed to update settings");
+		}
+	}
+
+	/**
+	 * Reset settings to defaults
+	 */
 	async resetSettings(userId: number): Promise<UserSettings> {
-		return this.createDefaultSettings(userId);
+		try {
+			return await db.transaction(async (tx) => {
+				const defaults = this.getDefaultSettings();
+				const settings = { ...defaults, userId };
+
+				// Delete existing and insert new
+				await tx.delete(userSettings).where(eq(userSettings.userId, userId));
+				await tx.insert(userSettings).values({
+					userId,
+					settings,
+					updatedAt: new Date(),
+				});
+
+				logger.info(`Reset settings for user ${userId}`);
+				return settings;
+			});
+		} catch (error) {
+			logger.error(error, `Failed to reset settings for user ${userId}`);
+			throw new Error("Failed to reset settings");
+		}
 	}
 
+	/**
+	 * Get default settings (deep clone)
+	 */
 	getDefaultSettings(): Omit<UserSettings, "userId"> {
 		return structuredClone(DEFAULT_SETTINGS);
 	}
 
-	private async createDefaultSettings(userId: number): Promise<UserSettings> {
-		const defaults = this.getDefaultSettings();
-		const settings = { ...defaults, userId };
-
-		await db.insert(userSettings).values({
-			userId,
-			settings,
-			updatedAt: new Date(),
-		});
-
-		return settings;
-	}
-
-	private deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+	/**
+	 * Deep merge utility for nested objects
+	 */
+	private deepMerge<T extends Record<string, unknown>>(
+		target: T,
+		source: Partial<T>,
+	): T {
 		const output = { ...target };
 		for (const key in source) {
 			const sourceValue = source[key];

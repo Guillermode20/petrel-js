@@ -5,6 +5,7 @@ import { config } from "./src/config";
 import { createChildLogger, generateCorrelationId, logger } from "./src/lib/logger";
 import { closeRedis, initRedis } from "./src/lib/redis";
 import { audioRoutes } from "./src/modules/audio";
+import { adminRoutes } from "./src/modules/admin";
 import { authRoutes } from "./src/modules/auth";
 import { fileRoutes } from "./src/modules/files";
 import { settingsRoutes } from "./src/modules/settings";
@@ -12,9 +13,63 @@ import { shareRoutes } from "./src/modules/shares";
 import { streamRoutes } from "./src/modules/stream";
 import { setupRoutes } from "./src/modules/setup";
 import { userRoutes } from "./src/modules/users";
+import { storageSyncService } from "./src/services/storage-sync.service";
 
 // Initialize Redis (optional caching layer)
 initRedis();
+
+async function runStartupSyncChecks(): Promise<void> {
+	try {
+		const importReport = await storageSyncService.autoImportIfDatabaseEmpty({ enrichMetadata: false });
+		if (importReport) {
+			logger.warn(
+				{
+					createdFolderCount: importReport.createdFolderCount,
+					importedFileCount: importReport.importedFileCount,
+					errors: importReport.errors.length,
+				},
+				"Database was empty; imported files from storage",
+			);
+		}
+
+		const report = await storageSyncService.validateSync();
+		const hasOrphanedDiskFiles = report.orphanedFilesOnDisk.length > 0;
+		const hasOrphanedDbRecords = report.orphanedDbFileIds.length > 0;
+
+		if (hasOrphanedDiskFiles) {
+			logger.warn(
+				{
+					orphanedFilesOnDisk: report.orphanedFilesOnDisk.length,
+				},
+				"Auto-repairing orphaned files on disk",
+			);
+			const repairReport = await storageSyncService.importOrphanedFiles({ enrichMetadata: false });
+			logger.info(
+				{
+					importedFileCount: repairReport.importedFileCount,
+					errors: repairReport.errors.length,
+				},
+				"Auto-repair completed",
+			);
+		}
+
+		if (hasOrphanedDbRecords) {
+			logger.warn(
+				{
+					orphanedDbFileIds: report.orphanedDbFileIds.length,
+				},
+				"Found orphaned database records (files missing on disk)",
+			);
+		}
+	} catch (err) {
+		logger.error(
+			{ error: err instanceof Error ? err.message : String(err) },
+			"Startup storage/database sync check failed",
+		);
+	}
+}
+
+void runStartupSyncChecks();
 
 const app = new Elysia()
 	// Request logging middleware with correlation IDs
@@ -128,6 +183,8 @@ const app = new Elysia()
 	.use(shareRoutes)
 	// Settings routes
 	.use(settingsRoutes)
+	// Admin routes
+	.use(adminRoutes)
 	// User routes
 	.use(userRoutes)
 	.listen(config.PORT);

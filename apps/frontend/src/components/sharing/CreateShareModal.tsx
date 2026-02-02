@@ -1,7 +1,7 @@
 import type { Share } from "@petrel/shared";
 import { addDays, addHours, addMonths, addWeeks, format } from "date-fns";
 import { Clock, Download, FileArchive, Info, Link, Loader2, Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useCreateShare } from "@/hooks";
+import { useCreateShare, useSettings } from "@/hooks";
 import { CopyLinkButton, getShareUrl } from "./CopyLinkButton";
 import type { CreateShareModalProps } from "./types";
 
@@ -62,6 +62,7 @@ export function CreateShareModal({
 	onClose,
 	onSuccess,
 }: CreateShareModalProps) {
+	const { data: settings } = useSettings();
 	const [expiry, setExpiry] = useState<ExpiryOption>("7d");
 	const [usePassword, setUsePassword] = useState(false);
 	const [password, setPassword] = useState("");
@@ -69,6 +70,17 @@ export function CreateShareModal({
 	const [allowZip, setAllowZip] = useState(true);
 	const [showMetadata, setShowMetadata] = useState(true);
 	const [createdShare, setCreatedShare] = useState<Share | null>(null);
+
+	// Update state when settings are loaded or modal opens
+	useEffect(() => {
+		if (isOpen && settings) {
+			setExpiry(settings.sharing.defaultExpiry as ExpiryOption);
+			setUsePassword(settings.sharing.defaultPasswordProtection);
+			setAllowDownload(settings.sharing.defaultDownloadPermission);
+			// allowZip doesn't have a specific global setting yet, defaults to true
+			setShowMetadata(true);
+		}
+	}, [isOpen, settings]);
 
 	const createShareMutation = useCreateShare();
 
@@ -95,8 +107,14 @@ export function CreateShareModal({
 
 	function handleClose(): void {
 		setCreatedShare(null);
-		setExpiry("7d");
-		setUsePassword(false);
+		if (settings) {
+			setExpiry(settings.sharing.defaultExpiry as ExpiryOption);
+			setUsePassword(settings.sharing.defaultPasswordProtection);
+			setAllowDownload(settings.sharing.defaultDownloadPermission);
+		} else {
+			setExpiry("7d");
+			setUsePassword(false);
+		}
 		setPassword("");
 		setAllowDownload(true);
 		setAllowZip(true);

@@ -5,6 +5,7 @@ import { shareRateLimit } from "../../lib/rate-limit";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
+import { settingsService } from "../settings/service";
 import {
 	buildZipDownloadFilename,
 	cleanupZip,
@@ -46,8 +47,29 @@ const protectedRoutes = new Elysia({ prefix: "/shares" })
 	.post(
 		"",
 		async ({ user, set, body }): Promise<ApiResponse<ShareData>> => {
+			const settings = await settingsService.getUserSettings(user.userId);
+
 			const expiresAtInput = body.expiresAt ?? null;
-			const parsedExpiry = parseExpiry(expiresAtInput, set);
+			let parsedExpiry = parseExpiry(expiresAtInput, set);
+
+			// If no expiry provided, use default from settings
+			if (expiresAtInput === null && settings.sharing.defaultExpiry !== "never") {
+				const now = new Date();
+				switch (settings.sharing.defaultExpiry) {
+					case "1h":
+						parsedExpiry = new Date(now.getTime() + 60 * 60 * 1000);
+						break;
+					case "24h":
+						parsedExpiry = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+						break;
+					case "7d":
+						parsedExpiry = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+						break;
+					case "30d":
+						parsedExpiry = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+						break;
+				}
+			}
 
 			if (parsedExpiry === undefined && body.expiresAt !== undefined && body.expiresAt !== null) {
 				return { data: null, error: "Invalid expiry" };
@@ -57,8 +79,8 @@ const protectedRoutes = new Elysia({ prefix: "/shares" })
 				type: body.type,
 				targetId: body.targetId,
 				expiresAt: parsedExpiry ?? null,
-				password: body.password ?? null,
-				allowDownload: body.allowDownload ?? true,
+				password: body.password ?? (settings.sharing.defaultPasswordProtection ? "" : null),
+				allowDownload: body.allowDownload ?? settings.sharing.defaultDownloadPermission,
 				allowZip: body.allowZip ?? false,
 				showMetadata: body.showMetadata ?? true,
 				createdBy: user.userId,
