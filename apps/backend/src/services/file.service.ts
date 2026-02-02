@@ -5,6 +5,7 @@ import type { BunFile } from "bun";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { files, subtitles, transcodeJobs, videoTracks } from "../../db/schema";
+import { cacheManager, Cacheable, CacheEvict, cacheKeys, cacheTTL } from "../cache";
 import {
 	buildFileRelativePath,
 	calculateFileHash,
@@ -85,11 +86,22 @@ export class FileService {
 		};
 	}
 
-	async listByPath(folderPath: string, limit: number, offset: number, search?: string): Promise<FileListResult> {
+	@Cacheable({
+		key: (folderPath: string, limit: number, offset: number, search?: string) =>
+			cacheKeys.fileList(folderPath, limit, offset, search),
+		ttl: cacheTTL.fileList,
+		condition: (_folderPath: string, _limit: number, _offset: number, search?: string) => !search, // Don't cache search results
+	})
+	async listByPath(
+		folderPath: string,
+		limit: number,
+		offset: number,
+		search?: string,
+	): Promise<FileListResult> {
 		const normalizedPath = normalizeRelativePath(folderPath);
 
 		const conditions = [];
-		
+
 		// When search is provided, search recursively in subfolders
 		// When search is NOT provided, only search in current folder
 		if (search) {
@@ -100,7 +112,9 @@ export class FileService {
 			} else {
 				// Current folder or subfolders
 				const pathPattern = `${normalizedPath}/%`;
-				conditions.push(sql`(${files.path} = ${normalizedPath} OR ${files.path} LIKE ${pathPattern})`);
+				conditions.push(
+					sql`(${files.path} = ${normalizedPath} OR ${files.path} LIKE ${pathPattern})`,
+				);
 			}
 			const searchPattern = `%${search}%`;
 			conditions.push(sql`lower(${files.name}) LIKE lower(${searchPattern})`);
@@ -108,7 +122,7 @@ export class FileService {
 			// Non-recursive: only files in current folder
 			conditions.push(eq(files.path, normalizedPath));
 		}
-		
+
 		const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
 		const fileRows = await db.query.files.findMany({
@@ -128,6 +142,7 @@ export class FileService {
 		};
 	}
 
+	@Cacheable({ key: (id: number) => cacheKeys.file(id), ttl: cacheTTL.file })
 	async getById(id: number): Promise<File | null> {
 		const file = await db.query.files.findFirst({
 			where: eq(files.id, id),
@@ -136,6 +151,11 @@ export class FileService {
 		return file ? this.mapFileRow(file) : null;
 	}
 
+	@Cacheable({
+		key: (folderPath: string, name: string) =>
+			`petrel:file:path:${normalizeRelativePath(folderPath)}/${name}`,
+		ttl: cacheTTL.file,
+	})
 	async findByPathAndName(folderPath: string, name: string): Promise<File | null> {
 		const normalizedPath = normalizeRelativePath(folderPath);
 		const file = await db.query.files.findFirst({
@@ -145,6 +165,7 @@ export class FileService {
 		return file ? this.mapFileRow(file) : null;
 	}
 
+	@CacheEvict({ key: () => cacheKeys.pattern.fileLists(), allEntries: true })
 	async createFile(input: CreateFileInput): Promise<File> {
 		const normalizedPath = normalizeRelativePath(input.path);
 		const inserted = await db
@@ -186,7 +207,17 @@ export class FileService {
 			.returning();
 
 		const updatedRow = updated[0];
-		return updatedRow ? this.mapFileRow(updatedRow) : null;
+		if (!updatedRow) return null;
+
+		// Evict caches: file by ID, old path-based cache, new path-based cache, and file lists
+		await Promise.all([
+			cacheManager.del(cacheKeys.file(id)),
+			cacheManager.del(`petrel:file:path:${normalizeRelativePath(current.path)}/${current.name}`),
+			cacheManager.del(`petrel:file:path:${nextPath}/${nextName}`),
+			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+		]);
+
+		return this.mapFileRow(updatedRow);
 	}
 
 	async updateFilesPathInFolder(oldFolderPath: string, newFolderPath: string): Promise<void> {
@@ -206,6 +237,13 @@ export class FileService {
 		const current = await this.getById(id);
 		if (!current) return null;
 
+		// Evict caches before deletion: file by ID, path-based cache, and file lists
+		await Promise.all([
+			cacheManager.del(cacheKeys.file(id)),
+			cacheManager.del(`petrel:file:path:${normalizeRelativePath(current.path)}/${current.name}`),
+			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+		]);
+
 		await this.deletePrimaryFileOnDisk(current);
 		await this.deleteDerivedAssets(id);
 		await Promise.all([
@@ -218,6 +256,7 @@ export class FileService {
 		return current;
 	}
 
+	@CacheEvict({ key: (id: number) => cacheKeys.file(id) })
 	async updateMetadata(id: number, metadata: File["metadata"] | null): Promise<File | null> {
 		if (!metadata) return await this.getById(id);
 

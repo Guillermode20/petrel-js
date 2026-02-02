@@ -1,26 +1,57 @@
 import { cors } from "@elysiajs/cors";
 import { swagger } from "@elysiajs/swagger";
 import { Elysia } from "elysia";
+import { cacheManager } from "./src/cache";
 import { config } from "./src/config";
 import { createChildLogger, generateCorrelationId, logger } from "./src/lib/logger";
 import { closeRedis, initRedis } from "./src/lib/redis";
-import { audioRoutes } from "./src/modules/audio";
 import { adminRoutes } from "./src/modules/admin";
+import { audioRoutes } from "./src/modules/audio";
 import { authRoutes } from "./src/modules/auth";
 import { fileRoutes } from "./src/modules/files";
 import { settingsRoutes } from "./src/modules/settings";
+import { setupRoutes } from "./src/modules/setup";
 import { shareRoutes } from "./src/modules/shares";
 import { streamRoutes } from "./src/modules/stream";
-import { setupRoutes } from "./src/modules/setup";
 import { userRoutes } from "./src/modules/users";
+import { closeQueues, createQueues } from "./src/queues/connection";
+import { registerFileEventHandlers, unregisterFileEventHandlers } from "./src/events";
 import { storageSyncService } from "./src/services/storage-sync.service";
+import { closeTranscodeWorker, createTranscodeWorker } from "./src/workers/transcode.worker";
+import { closeZipWorker, createZipWorker } from "./src/workers/zip.worker";
+
+// Track workers for cleanup
+let transcodeWorker: ReturnType<typeof createTranscodeWorker> = null;
+let zipWorker: ReturnType<typeof createZipWorker> = null;
 
 // Initialize Redis (optional caching layer)
 initRedis();
 
+// Initialize cache manager (uses Redis if available, otherwise memory)
+cacheManager.initialize();
+
+// Initialize job queues
+createQueues();
+
+// Register event handlers
+registerFileEventHandlers();
+
+// Initialize workers if Redis is configured
+if (config.REDIS_URL) {
+	transcodeWorker = createTranscodeWorker();
+	zipWorker = createZipWorker();
+	logger.info("Job workers initialized");
+} else {
+	logger.info(
+		"Redis not configured, skipping job worker initialization (using in-memory processing)",
+	);
+}
+
 async function runStartupSyncChecks(): Promise<void> {
 	try {
-		const importReport = await storageSyncService.autoImportIfDatabaseEmpty({ enrichMetadata: false });
+		const importReport = await storageSyncService.autoImportIfDatabaseEmpty({
+			enrichMetadata: false,
+		});
 		if (importReport) {
 			logger.warn(
 				{
@@ -198,12 +229,20 @@ logger.info(
 // Graceful shutdown
 process.on("SIGINT", async () => {
 	logger.info("Shutting down gracefully...");
+	unregisterFileEventHandlers();
+	await closeTranscodeWorker(transcodeWorker);
+	await closeZipWorker(zipWorker);
+	await closeQueues();
 	await closeRedis();
 	process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
 	logger.info("Shutting down gracefully...");
+	unregisterFileEventHandlers();
+	await closeTranscodeWorker(transcodeWorker);
+	await closeZipWorker(zipWorker);
+	await closeQueues();
 	await closeRedis();
 	process.exit(0);
 });

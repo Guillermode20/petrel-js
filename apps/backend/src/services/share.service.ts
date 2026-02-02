@@ -2,6 +2,7 @@ import type { File, Folder, Share, ShareSettings, ShareType } from "@petrel/shar
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { shareSettings, shares } from "../../db/schema";
+import { cacheManager, Cacheable, CacheEvict, cacheKeys, cacheTTL } from "../cache";
 import { generateSecureToken, hashPassword, verifyPassword } from "../modules/auth/utils";
 import { fileService } from "./file.service";
 import { folderService } from "./folder.service";
@@ -72,6 +73,7 @@ export class ShareService {
 		return token;
 	}
 
+	@CacheEvict({ key: () => cacheKeys.pattern.shareLists(), allEntries: true })
 	async createShare(input: CreateShareInput): Promise<ShareWithSettings> {
 		const token = await this.generateUniqueToken();
 		const passwordHash = input.password ? await hashPassword(input.password) : null;
@@ -114,6 +116,7 @@ export class ShareService {
 		};
 	}
 
+	@Cacheable({ key: (token: string) => cacheKeys.share(token), ttl: cacheTTL.share })
 	async getShareByToken(token: string): Promise<ShareWithSettings | null> {
 		const share = await db.query.shares.findFirst({ where: eq(shares.token, token) });
 		if (!share) return null;
@@ -146,6 +149,7 @@ export class ShareService {
 			.where(eq(shares.id, shareId));
 	}
 
+	@Cacheable({ key: (userId: number) => `petrel:shares:list:${userId}`, ttl: cacheTTL.shareList })
 	async listByUser(userId: number): Promise<ShareWithSettings[]> {
 		const rows = await db.query.shares.findMany({ where: eq(shares.createdBy, userId) });
 		if (rows.length === 0) return [];
@@ -184,8 +188,17 @@ export class ShareService {
 	}
 
 	async deleteShare(shareId: number): Promise<void> {
+		// Get share to evict its token-based cache
+		const share = await db.query.shares.findFirst({ where: eq(shares.id, shareId) });
+
 		await db.delete(shareSettings).where(eq(shareSettings.shareId, shareId));
 		await db.delete(shares).where(eq(shares.id, shareId));
+
+		// Evict caches: share by token and share lists
+		if (share) {
+			await cacheManager.del(cacheKeys.share(share.token));
+		}
+		await cacheManager.delPattern(cacheKeys.pattern.shareLists());
 	}
 
 	async updateShare(shareId: number, input: UpdateShareInput): Promise<ShareWithSettings | null> {
@@ -228,6 +241,10 @@ export class ShareService {
 
 		const updatedSetting = updatedSettings[0];
 		if (!updatedSetting) return null;
+
+		// Evict caches: share by token and share lists
+		await cacheManager.del(cacheKeys.share(existing.token));
+		await cacheManager.delPattern(cacheKeys.pattern.shareLists());
 
 		return {
 			share: this.mapShare(updatedShare),
