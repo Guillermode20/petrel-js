@@ -397,7 +397,141 @@
 
 ---
 
-## Phase 5: Enhanced Features
+## Phase 5: Settings Page
+
+### User Settings
+- [ ] **Profile Management**
+  - [ ] Change username/display name
+  - [ ] Update password with confirmation
+  - [ ] Avatar/profile picture upload
+  - [ ] Default language selection (i18n foundation)
+- [ ] **Session Management**
+  - [ ] View active sessions/devices
+  - [ ] Revoke specific sessions
+  - [ ] "Log out everywhere" functionality
+
+### Playback Preferences
+- [ ] **Video Settings**
+  - [ ] Default quality preference (auto, 1080p, 720p, 480p)
+  - [ ] Autoplay next file toggle
+  - [ ] Default volume level
+  - [ ] Subtitle language priority list
+  - [ ] Audio track language priority list
+  - [ ] Remember playback position (global toggle)
+  - [ ] Default playback speed
+- [ ] **Audio Settings**
+  - [ ] Default volume normalization
+  - [ ] Gapless playback toggle
+  - [ ] Visualizer style selection (waveform, spectrum, none)
+
+### Display & Interface
+- [ ] **Theme Settings**
+  - [ ] Dark/light mode toggle (override system)
+  - [ ] Accent color picker (orange/teal/purple/custom)
+  - [ ] Font size scaling (small/medium/large)
+  - [ ] Sharp vs rounded corners preference
+  - [ ] Terminal effects toggle (scan lines, CRT effect)
+- [ ] **File Browser Preferences**
+  - [ ] Default view mode (grid/list)
+  - [ ] Items per page (pagination limit)
+  - [ ] Show hidden files toggle
+  - [ ] Thumbnail size preference
+  - [ ] Default sort order (name/date/size)
+  - [ ] Folder thumbnail preview toggle
+
+### Sharing Defaults
+- [ ] **Share Link Settings**
+  - [ ] Default expiry duration (1h/24h/7d/30d/never)
+  - [ ] Default password protection (on/off)
+  - [ ] Default download permission (on/off)
+  - [ ] Default quality for shared videos
+  - [ ] Custom share URL prefix (if configured)
+- [ ] **Privacy Settings**
+  - [ ] Analytics opt-out for personal shares
+  - [ ] Auto-expire old shares threshold
+
+### Storage & Upload
+- [ ] **Upload Settings**
+  - [ ] Default upload folder
+  - [ ] Parallel upload count limit
+  - [ ] Auto-transcode preference (on/off/ask)
+  - [ ] Duplicate file handling (skip/rename/overwrite)
+- [ ] **Storage Management** (for self-hosted users)
+  - [ ] View storage usage by file type
+  - [ ] Cache management (clear thumbnails, clear transcodes)
+  - [ ] Storage cleanup rules (auto-delete after X days)
+
+### Notification Settings
+- [ ] **In-App Notifications**
+  - [ ] Upload complete notifications
+  - [ ] Transcode complete notifications
+  - [ ] Share link accessed notifications
+  - [ ] Low storage warning threshold
+- [ ] **Email Notifications** (if SMTP configured)
+  - [ ] Share expiry warnings
+  - [ ] Upload completion (large files)
+  - [ ] Security alerts (new login, password changed)
+
+### API & Integrations
+- [ ] **Personal Access Tokens**
+  - [ ] Generate/revoke API tokens
+  - [ ] View token usage statistics
+  - [ ] Set token expiration
+  - [ ] Scope/permission selection per token
+- [ ] **Third-Party Integrations**
+  - [ ] Webhook URL configuration
+  - [ ] RSS feed generation toggle
+  - [ ] DLNA/UPnP broadcasting toggle
+
+### Admin Settings (Admin-only)
+- [ ] **User Management**
+  - [ ] Create new users
+  - [ ] Edit user quotas and permissions
+  - [ ] Disable/enable user accounts
+  - [ ] View user activity logs
+- [ ] **Server Configuration**
+  - [ ] Storage quota per user
+  - [ ] Max upload size limit
+  - [ ] Allowed file types whitelist
+  - [ ] Transcode worker count
+  - [ ] Server maintenance mode toggle
+- [ ] **Security Settings**
+  - [ ] Require password for all shares
+  - [ ] Minimum password strength policy
+  - [ ] Session timeout duration
+  - [ ] IP whitelist/blacklist
+  - [ ] Rate limiting configuration
+- [ ] **System**
+  - [ ] Backup schedule configuration
+  - [ ] Log level selection
+  - [ ] Update checker (if applicable)
+
+### Settings UI Components
+- [ ] `SettingsLayout` — tabbed interface with sections
+- [ ] `SettingItem` — reusable row component (label, control, description)
+  - [ ] Toggle switches (shadcn Switch)
+  - [ ] Text inputs with validation
+  - [ ] Dropdown/select menus
+  - [ ] Number inputs with min/max
+  - [ ] Color pickers
+  - [ ] File/folder pickers
+- [ ] `SettingsSection` — collapsible section headers
+- [ ] `UnsavedChangesPrompt` — modal when navigating away with changes
+- [ ] Settings search/filter bar
+- [ ] Reset to defaults button per section
+- [ ] Import/export settings (JSON)
+
+### Backend Endpoints
+- [ ] `GET /api/settings` — fetch all user settings
+- [ ] `PATCH /api/settings` — update specific settings
+- [ ] `POST /api/settings/reset` — reset to defaults
+- [ ] `GET /api/settings/defaults` — get default values
+- [ ] `POST /api/admin/settings` — admin server configuration
+- [ ] Settings stored in database (`user_settings` table)
+
+---
+
+## Phase 6: Enhanced Features
 
 ### Performance
 - [ ] Image lazy loading with blur placeholders
@@ -426,7 +560,7 @@
 
 ---
 
-## Phase 6: Global Context Menus
+## Phase 7: Global Context Menus
 
 ### Core Context Menu System
 - [x] `ContextMenu` primitive component — floating menu with darkmatter styling
@@ -497,7 +631,7 @@
 
 ---
 
-## Phase 7: Polish & Deployment
+## Phase 8: Polish & Deployment
 
 ### Aesthetic Refinements
 - [x] Custom monospace font (JetBrains Mono / IBM Plex Mono)
