@@ -1,7 +1,7 @@
 import type { UserSettings } from "@petrel/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Settings, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import { SettingsDisplay } from "@/components/settings/SettingsDisplay";
 import { SettingsPlayback } from "@/components/settings/SettingsPlayback";
@@ -33,14 +33,26 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
 
 function SettingsPage() {
 	const queryClient = useQueryClient();
-	const {
-		data: settings,
-		isLoading,
-		error,
-	} = useQuery({
-		queryKey: ["settings"],
-		queryFn: () => api.getSettings(),
+	const { data: user } = useQuery({
+		queryKey: ["currentUser"],
+		queryFn: () => api.getCurrentUser(),
 		retry: false,
+	});
+
+	const isAuthenticated = !!user;
+
+	const { data: settings, isLoading } = useQuery<UserSettings>({
+		queryKey: ["settings"],
+		queryFn: async (): Promise<UserSettings> => {
+			if (isAuthenticated) {
+				return api.getSettings();
+			}
+
+			const defaultSettings = await api.getDefaultSettings();
+			return { userId: 0, ...defaultSettings };
+		},
+		retry: false,
+		enabled: true,
 	});
 
 	const updateMutation = useMutation({
@@ -94,6 +106,73 @@ function SettingsPage() {
 		return (
 			<div className="flex flex-col gap-6 p-6">
 				<h1 className="text-2xl font-semibold">Failed to load settings</h1>
+			</div>
+		);
+	}
+
+	if (!isAuthenticated) {
+		return (
+			<div className="flex flex-col gap-6 p-6">
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-2xl font-semibold flex items-center gap-2">
+							<Settings className="h-6 w-6" />
+							Settings
+						</h1>
+						<p className="text-muted-foreground mt-1">Configure your preferences</p>
+					</div>
+				</div>
+
+				<Card>
+					<CardContent className="p-6">
+						<div className="flex flex-col items-center gap-4 text-center">
+							<LogIn className="h-12 w-12 text-muted-foreground" />
+							<div>
+								<h3 className="text-lg font-semibold">Login Required</h3>
+								<p className="text-muted-foreground mt-1">
+									Please login to access and customize your settings.
+								</p>
+							</div>
+							<Link to="/">
+								<Button>
+									<LogIn className="h-4 w-4 mr-2" />
+									Login
+								</Button>
+							</Link>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle>Default Settings Preview</CardTitle>
+						<CardDescription>
+							These are the default settings that will be applied when you create an account.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<Tabs defaultValue="display" className="w-full">
+							<TabsList className="grid w-full grid-cols-4">
+								<TabsTrigger value="display">Display</TabsTrigger>
+								<TabsTrigger value="playback">Playback</TabsTrigger>
+								<TabsTrigger value="profile">Profile</TabsTrigger>
+								<TabsTrigger value="sharing">Sharing</TabsTrigger>
+							</TabsList>
+							<TabsContent value="display">
+								<SettingsDisplay settings={settings} onUpdate={() => {}} />
+							</TabsContent>
+							<TabsContent value="playback">
+								<SettingsPlayback settings={settings} onUpdate={() => {}} />
+							</TabsContent>
+							<TabsContent value="profile">
+								<SettingsProfile settings={settings} onUpdate={() => {}} />
+							</TabsContent>
+							<TabsContent value="sharing">
+								<SettingsSharing settings={settings} onUpdate={() => {}} />
+							</TabsContent>
+						</Tabs>
+					</CardContent>
+				</Card>
 			</div>
 		);
 	}
