@@ -172,3 +172,99 @@ export interface PaginatedResponse<T> {
 	} | null;
 	error: string | null;
 }
+
+export type VideoQuality = "auto" | "1080p" | "720p" | "480p";
+export type AudioVisualizer = "waveform" | "spectrum" | "none";
+export type ViewMode = "grid" | "list";
+export type SortBy = "name" | "date" | "size" | "type";
+export type ExpiryDuration = "1h" | "24h" | "7d" | "30d" | "never";
+export type AccentColor = "orange" | "teal" | "purple" | "custom";
+export type FontSize = "small" | "medium" | "large";
+export type ThemeMode = "dark" | "light" | "system";
+
+export interface UserSettings {
+	userId: number;
+	profile: {
+		username: string;
+		displayName: string | null;
+	};
+	playback: {
+		video: {
+			defaultQuality: VideoQuality;
+			autoplayNext: boolean;
+			defaultVolume: number;
+			subtitleLanguagePriority: string[];
+			audioLanguagePriority: string[];
+			rememberPlaybackPosition: boolean;
+			defaultPlaybackSpeed: number;
+		};
+		audio: {
+			volumeNormalization: boolean;
+			gaplessPlayback: boolean;
+			visualizerStyle: AudioVisualizer;
+		};
+	};
+	display: {
+		theme: {
+			mode: ThemeMode;
+			accentColor: AccentColor;
+			fontSize: FontSize;
+			sharpCorners: boolean;
+			terminalEffects: boolean;
+		};
+		fileBrowser: {
+			defaultViewMode: ViewMode;
+			itemsPerPage: number;
+			showHiddenFiles: boolean;
+			thumbnailSize: number;
+			defaultSortBy: SortBy;
+			folderThumbnailPreview: boolean;
+		};
+	};
+	sharing: {
+		defaultExpiry: ExpiryDuration;
+		defaultPasswordProtection: boolean;
+		defaultDownloadPermission: boolean;
+		defaultQuality: VideoQuality;
+		analyticsOptOut: boolean;
+		autoExpireOldShares: {
+			enabled: boolean;
+			thresholdDays: number;
+		};
+	};
+	storage: {
+		defaultUploadFolder: string | null;
+		parallelUploadLimit: number;
+		autoTranscode: "on" | "off" | "ask";
+		duplicateFileHandling: "skip" | "rename" | "overwrite";
+	};
+	notifications: {
+		inApp: {
+			uploadComplete: boolean;
+			transcodeComplete: boolean;
+			shareAccessed: boolean;
+			lowStorageWarning: boolean;
+		};
+		email: {
+			shareExpiryWarning: boolean;
+			uploadCompletion: boolean;
+			securityAlerts: boolean;
+		};
+	};
+}
+
+export interface CreatePersonalAccessTokenInput {
+	name: string;
+	expiresAt: Date | null;
+	scopes: string[];
+}
+
+export interface PersonalAccessToken {
+	id: number;
+	name: string;
+	token: string;
+	expiresAt: Date | null;
+	scopes: string[];
+	createdAt: Date;
+	lastUsedAt: Date | null;
+}

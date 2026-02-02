@@ -7,6 +7,7 @@ import type {
 	ShareSettings,
 	TranscodeJob,
 	User,
+	UserSettings,
 } from "@petrel/shared";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
@@ -619,6 +620,26 @@ class ApiClient {
 		fileId: number,
 	): Promise<{ jobId?: number; ready: boolean; firstSegmentUrl?: string }> {
 		return this.request(`/stream/${fileId}/prepare`, { method: "POST" });
+	}
+
+	// Settings endpoints
+	async getSettings(): Promise<UserSettings> {
+		return this.request("/settings");
+	}
+
+	async updateSettings(updates: Partial<UserSettings>): Promise<UserSettings> {
+		return this.request("/settings", {
+			method: "PATCH",
+			body: JSON.stringify(updates),
+		});
+	}
+
+	async resetSettings(): Promise<UserSettings> {
+		return this.request("/settings/reset", { method: "POST" });
+	}
+
+	async getDefaultSettings(): Promise<Omit<UserSettings, "userId">> {
+		return this.request("/settings/defaults");
 	}
 }
 

@@ -47,9 +47,11 @@ export function Header() {
 									<p className="text-xs text-muted-foreground">{user.role}</p>
 								</div>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem>
-									<User className="mr-2 h-4 w-4" />
-									Settings
+								<DropdownMenuItem asChild>
+									<Link to="/settings">
+										<User className="mr-2 h-4 w-4" />
+										Settings
+									</Link>
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
 								<DropdownMenuItem onClick={() => logout()}>

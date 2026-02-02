@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SharesRouteImport } from './routes/shares'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FilesIndexRouteImport } from './routes/files/index'
 import { Route as STokenRouteImport } from './routes/s/$token'
@@ -19,6 +20,11 @@ import { Route as FilesPreviewFileIdRouteImport } from './routes/files/preview.$
 const SharesRoute = SharesRouteImport.update({
   id: '/shares',
   path: '/shares',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -49,6 +55,7 @@ const FilesPreviewFileIdRoute = FilesPreviewFileIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRoute
   '/shares': typeof SharesRoute
   '/files/$folderId': typeof FilesFolderIdRoute
   '/s/$token': typeof STokenRoute
@@ -57,6 +64,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRoute
   '/shares': typeof SharesRoute
   '/files/$folderId': typeof FilesFolderIdRoute
   '/s/$token': typeof STokenRoute
@@ -66,6 +74,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRoute
   '/shares': typeof SharesRoute
   '/files/$folderId': typeof FilesFolderIdRoute
   '/s/$token': typeof STokenRoute
@@ -76,6 +85,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/settings'
     | '/shares'
     | '/files/$folderId'
     | '/s/$token'
@@ -84,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/settings'
     | '/shares'
     | '/files/$folderId'
     | '/s/$token'
@@ -92,6 +103,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/settings'
     | '/shares'
     | '/files/$folderId'
     | '/s/$token'
@@ -101,6 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SettingsRoute: typeof SettingsRoute
   SharesRoute: typeof SharesRoute
   FilesFolderIdRoute: typeof FilesFolderIdRoute
   STokenRoute: typeof STokenRoute
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/shares'
       fullPath: '/shares'
       preLoaderRoute: typeof SharesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -157,6 +177,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SettingsRoute: SettingsRoute,
   SharesRoute: SharesRoute,
   FilesFolderIdRoute: FilesFolderIdRoute,
   STokenRoute: STokenRoute,

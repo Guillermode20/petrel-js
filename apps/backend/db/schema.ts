@@ -132,3 +132,18 @@ export const zipJobs = sqliteTable(
 		createdAtIdx: index("zip_jobs_created_at_idx").on(table.createdAt),
 	}),
 );
+
+export const userSettings = sqliteTable(
+	"user_settings",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		userId: integer("user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		settings: text("settings", { mode: "json" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	},
+	(table) => ({
+		userIdIdx: index("user_settings_user_id_idx").on(table.userId),
+	}),
+);

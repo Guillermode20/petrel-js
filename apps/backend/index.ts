@@ -7,6 +7,7 @@ import { closeRedis, initRedis } from "./src/lib/redis";
 import { audioRoutes } from "./src/modules/audio";
 import { authRoutes } from "./src/modules/auth";
 import { fileRoutes } from "./src/modules/files";
+import { settingsRoutes } from "./src/modules/settings";
 import { shareRoutes } from "./src/modules/shares";
 import { streamRoutes } from "./src/modules/stream";
 
@@ -91,6 +92,7 @@ const app = new Elysia()
 					{ name: "Files", description: "File management endpoints" },
 					{ name: "Shares", description: "Share link management" },
 					{ name: "Stream", description: "Media streaming endpoints" },
+					{ name: "Settings", description: "User settings management" },
 				],
 			},
 		}),
@@ -120,6 +122,8 @@ const app = new Elysia()
 	.use(audioRoutes)
 	// Share routes
 	.use(shareRoutes)
+	// Settings routes
+	.use(settingsRoutes)
 	.listen(config.PORT);
 
 logger.info({ port: app.server?.port, hostname: app.server?.hostname }, "🦊 Elysia server started");
