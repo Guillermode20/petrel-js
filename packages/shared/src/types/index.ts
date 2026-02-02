@@ -1,4 +1,7 @@
-export type UserRole = "admin" | "user" | "guest";
+import type { FilePermission, RolePermissions, UserRole } from "./permissions";
+
+export type { FilePermission, RolePermissions, UserRole } from "./permissions";
+export { hasPermission, ROLE_PERMISSIONS } from "./permissions";
 
 export interface User {
 	id: number;

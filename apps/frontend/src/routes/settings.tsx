@@ -1,11 +1,9 @@
 import type { UserSettings } from "@petrel/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Settings, LogIn } from "lucide-react";
+import { LogIn, Settings } from "lucide-react";
 import { toast } from "sonner";
-import { SettingsDisplay } from "@/components/settings/SettingsDisplay";
-import { SettingsPlayback } from "@/components/settings/SettingsPlayback";
-import { SettingsProfile } from "@/components/settings/SettingsProfile";
+import { SettingsAccounts } from "@/components/settings/SettingsAccounts";
 import { SettingsSharing } from "@/components/settings/SettingsSharing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,8 +59,9 @@ function SettingsPage() {
 			queryClient.invalidateQueries({ queryKey: ["settings"] });
 			toast.success("Settings saved");
 		},
-		onError: () => {
-			toast.error("Failed to save settings");
+		onError: (err: Error) => {
+			console.error("Settings update error:", err);
+			toast.error(`Failed to save settings: ${err.message}`);
 		},
 	});
 
@@ -151,24 +150,16 @@ function SettingsPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Tabs defaultValue="display" className="w-full">
-							<TabsList className="grid w-full grid-cols-4">
-								<TabsTrigger value="display">Display</TabsTrigger>
-								<TabsTrigger value="playback">Playback</TabsTrigger>
-								<TabsTrigger value="profile">Profile</TabsTrigger>
+						<Tabs defaultValue="sharing" className="w-full">
+							<TabsList className="grid w-full grid-cols-2">
 								<TabsTrigger value="sharing">Sharing</TabsTrigger>
+								<TabsTrigger value="accounts">Accounts</TabsTrigger>
 							</TabsList>
-							<TabsContent value="display">
-								<SettingsDisplay settings={settings} onUpdate={() => {}} />
-							</TabsContent>
-							<TabsContent value="playback">
-								<SettingsPlayback settings={settings} onUpdate={() => {}} />
-							</TabsContent>
-							<TabsContent value="profile">
-								<SettingsProfile settings={settings} onUpdate={() => {}} />
-							</TabsContent>
 							<TabsContent value="sharing">
 								<SettingsSharing settings={settings} onUpdate={() => {}} />
+							</TabsContent>
+							<TabsContent value="accounts">
+								<div className="text-muted-foreground">Login required</div>
 							</TabsContent>
 						</Tabs>
 					</CardContent>
@@ -192,49 +183,11 @@ function SettingsPage() {
 				</Button>
 			</div>
 
-			<Tabs defaultValue="profile" className="w-full">
-				<TabsList className="grid w-full grid-cols-4">
-					<TabsTrigger value="profile">Profile</TabsTrigger>
-					<TabsTrigger value="playback">Playback</TabsTrigger>
-					<TabsTrigger value="display">Display</TabsTrigger>
+			<Tabs defaultValue="sharing" className="w-full">
+				<TabsList className="grid w-full grid-cols-2">
 					<TabsTrigger value="sharing">Sharing</TabsTrigger>
+					{user?.role === "admin" && <TabsTrigger value="accounts">Accounts</TabsTrigger>}
 				</TabsList>
-
-				<TabsContent value="profile">
-					<Card>
-						<CardHeader>
-							<CardTitle>Profile Settings</CardTitle>
-							<CardDescription>Manage your profile and account</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<SettingsProfile settings={settings} onUpdate={handleUpdate} />
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="playback">
-					<Card>
-						<CardHeader>
-							<CardTitle>Playback Preferences</CardTitle>
-							<CardDescription>Configure video and audio playback settings</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<SettingsPlayback settings={settings} onUpdate={handleUpdate} />
-						</CardContent>
-					</Card>
-				</TabsContent>
-
-				<TabsContent value="display">
-					<Card>
-						<CardHeader>
-							<CardTitle>Display & Interface</CardTitle>
-							<CardDescription>Customize the look and feel</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<SettingsDisplay settings={settings} onUpdate={handleUpdate} />
-						</CardContent>
-					</Card>
-				</TabsContent>
 
 				<TabsContent value="sharing">
 					<Card>
@@ -247,6 +200,16 @@ function SettingsPage() {
 						</CardContent>
 					</Card>
 				</TabsContent>
+
+				{user?.role === "admin" && (
+					<TabsContent value="accounts">
+						<Card>
+							<CardContent className="pt-6">
+								<SettingsAccounts currentUserRole={user.role} />
+							</CardContent>
+						</Card>
+					</TabsContent>
+				)}
 			</Tabs>
 		</div>
 	);

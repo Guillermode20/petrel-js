@@ -6,10 +6,10 @@ import { uploadRateLimit, zipRateLimit } from "../../lib/rate-limit";
 import {
 	buildFileRelativePath,
 	ensureDirectory,
+	moveFileOnDisk,
 	normalizeFileName,
 	normalizeRelativePath,
 	resolveStoragePath,
-	moveFileOnDisk,
 	type ThumbnailSize,
 } from "../../lib/storage";
 import {
@@ -28,7 +28,7 @@ import {
 	getZipJob,
 	scheduleZipCleanup,
 } from "../../services/zip.service";
-import { authMiddleware, requireAuth } from "../auth";
+import { authMiddleware, requireAuth, requirePermission } from "../auth";
 import type { ApiResponse, FileListData } from "./types";
 
 const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
@@ -455,9 +455,15 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 		app
 			.use(requireAuth)
 			.use(uploadRateLimit)
+			.use(requirePermission("upload"))
 			.post(
 				"/upload",
 				async ({ body, set, user }): Promise<ApiResponse<SharedFile>> => {
+					if (!user) {
+						set.status = 401;
+						return { data: null, error: "Unauthorized" };
+					}
+
 					const chunkIndex = parseNumberField(body.chunkIndex, set, "chunkIndex");
 					if (chunkIndex === null) {
 						return { data: null, error: "Invalid chunk index" };
@@ -539,13 +545,28 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 					},
 				},
 			)
+			.use(requirePermission("delete"))
 			.delete(
 				"/:id",
-				async ({ params, set }): Promise<ApiResponse<{ id: number }>> => {
+				async ({ params, set, user }): Promise<ApiResponse<{ id: number }>> => {
+					if (!user) {
+						set.status = 401;
+						return { data: null, error: "Unauthorized" };
+					}
+
 					const file = await fileService.getById(params.id);
 					if (!file) {
 						set.status = 404;
 						return { data: null, error: "File not found" };
+					}
+
+					if (
+						user.role !== "admin" &&
+						file.uploadedBy !== null &&
+						file.uploadedBy !== user.userId
+					) {
+						set.status = 403;
+						return { data: null, error: "Forbidden - You can only delete your own files" };
 					}
 
 					const diskPath = fileService.resolveDiskPath(file);
@@ -565,13 +586,28 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 					},
 				},
 			)
+			.use(requirePermission("update"))
 			.patch(
 				"/:id",
-				async ({ params, body, set }): Promise<ApiResponse<SharedFile>> => {
+				async ({ params, body, set, user }): Promise<ApiResponse<SharedFile>> => {
+					if (!user) {
+						set.status = 401;
+						return { data: null, error: "Unauthorized" };
+					}
+
 					const file = await fileService.getById(params.id);
 					if (!file) {
 						set.status = 404;
 						return { data: null, error: "File not found" };
+					}
+
+					if (
+						user.role !== "admin" &&
+						file.uploadedBy !== null &&
+						file.uploadedBy !== user.userId
+					) {
+						set.status = 403;
+						return { data: null, error: "Forbidden - You can only update your own files" };
 					}
 
 					const nextName = body.name ? normalizeNameSafe(body.name, set) : file.name;
@@ -631,11 +667,25 @@ export const fileRoutes = new Elysia({ prefix: "/api" })
 			)
 			.put(
 				"/:id/content",
-				async ({ params, body, set }): Promise<ApiResponse<SharedFile>> => {
+				async ({ params, body, set, user }): Promise<ApiResponse<SharedFile>> => {
+					if (!user) {
+						set.status = 401;
+						return { data: null, error: "Unauthorized" };
+					}
+
 					const file = await fileService.getById(params.id);
 					if (!file) {
 						set.status = 404;
 						return { data: null, error: "File not found" };
+					}
+
+					if (
+						user.role !== "admin" &&
+						file.uploadedBy !== null &&
+						file.uploadedBy !== user.userId
+					) {
+						set.status = 403;
+						return { data: null, error: "Forbidden - You can only edit your own files" };
 					}
 
 					const TEXT_MIME_TYPES = [

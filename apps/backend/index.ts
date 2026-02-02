@@ -10,6 +10,7 @@ import { fileRoutes } from "./src/modules/files";
 import { settingsRoutes } from "./src/modules/settings";
 import { shareRoutes } from "./src/modules/shares";
 import { streamRoutes } from "./src/modules/stream";
+import { userRoutes } from "./src/modules/users";
 
 // Initialize Redis (optional caching layer)
 initRedis();
@@ -124,6 +125,8 @@ const app = new Elysia()
 	.use(shareRoutes)
 	// Settings routes
 	.use(settingsRoutes)
+	// User routes
+	.use(userRoutes)
 	.listen(config.PORT);
 
 logger.info({ port: app.server?.port, hostname: app.server?.hostname }, "🦊 Elysia server started");

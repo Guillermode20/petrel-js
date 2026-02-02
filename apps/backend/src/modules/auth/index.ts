@@ -6,6 +6,7 @@
  */
 
 export { authMiddleware, requireAdmin, requireAuth } from "./middleware";
+export { requirePermission } from "./permissions";
 export { authRoutes } from "./routes";
 export type {
 	AuthContext,
