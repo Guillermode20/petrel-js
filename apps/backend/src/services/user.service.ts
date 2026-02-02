@@ -134,6 +134,28 @@ export class UserService {
 
 		await db.delete(users).where(eq(users.id, id));
 	}
+
+	async countAdmins(): Promise<number> {
+		const result = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(users)
+			.where(eq(users.role, "admin"));
+		return result[0]?.count ?? 0;
+	}
+
+	async createInitialAdmin(input: CreateUserInput): Promise<User> {
+		const adminCount = await this.countAdmins();
+
+		if (adminCount > 0) {
+			throw new Error("Admin account already exists - cannot create initial admin");
+		}
+
+		if (input.role !== "admin") {
+			throw new Error("Initial admin must have admin role");
+		}
+
+		return await this.create(input);
+	}
 }
 
 export const userService = new UserService();

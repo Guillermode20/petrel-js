@@ -1,9 +1,12 @@
 import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { CreateAdminForm } from "../components/auth/CreateAdminForm";
 import { LoginForm } from "../components/auth/LoginForm";
 import { GlobalContextMenu, useGlobalContextMenuOnAction } from "../components/global-context-menu";
 import { Header } from "../components/Header";
 import { Sidebar } from "../components/navigation/Sidebar";
 import { useAuth } from "../hooks/useAuth";
+import { api } from "../lib/api";
 
 /**
  * Check if current path is a public route that doesn't require auth
@@ -18,6 +21,16 @@ function RootComponent() {
 	const pathname = routerState.location.pathname;
 	const handleContextMenuAction = useGlobalContextMenuOnAction();
 
+	// Check if admin setup is needed (only when not authenticated)
+	const { data: setupStatus, isLoading: isSetupLoading } = useQuery({
+		queryKey: ["setup", "status"],
+		queryFn: () => api.getSetupStatus(),
+		enabled: !isLoading && !isAuthenticated,
+		retry: false,
+	});
+
+	const needsAdminSetup = setupStatus?.needsAdminSetup ?? false;
+
 	// Public routes bypass auth check
 	if (isPublicRoute(pathname)) {
 		return (
@@ -28,7 +41,7 @@ function RootComponent() {
 		);
 	}
 
-	if (isLoading) {
+	if (isLoading || isSetupLoading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -37,6 +50,10 @@ function RootComponent() {
 	}
 
 	if (!isAuthenticated) {
+		// Show admin creation form if no admin exists, otherwise show login
+		if (needsAdminSetup) {
+			return <CreateAdminForm onSuccess={() => window.location.reload()} />;
+		}
 		return <LoginForm />;
 	}
 

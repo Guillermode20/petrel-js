@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
 
 /**
  * LoginForm - Authentication form for Petrel
@@ -89,12 +88,6 @@ export function LoginForm() {
 							)}
 						</Button>
 					</form>
-					<div className="mt-6 text-center text-sm text-muted-foreground">
-						<p>Default credentials:</p>
-						<p className="font-mono">
-							<span className={cn("text-foreground")}>admin</span> / admin123
-						</p>
-					</div>
 				</CardContent>
 			</Card>
 		</div>

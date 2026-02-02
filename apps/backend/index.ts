@@ -10,6 +10,7 @@ import { fileRoutes } from "./src/modules/files";
 import { settingsRoutes } from "./src/modules/settings";
 import { shareRoutes } from "./src/modules/shares";
 import { streamRoutes } from "./src/modules/stream";
+import { setupRoutes } from "./src/modules/setup";
 import { userRoutes } from "./src/modules/users";
 
 // Initialize Redis (optional caching layer)
@@ -115,6 +116,8 @@ const app = new Elysia()
 	}))
 	// Auth routes
 	.use(authRoutes)
+	// Setup routes (must be before user routes to allow first-time admin creation)
+	.use(setupRoutes)
 	// File routes
 	.use(fileRoutes)
 	// Stream routes

@@ -641,6 +641,39 @@ class ApiClient {
 	async getDefaultSettings(): Promise<Omit<UserSettings, "userId">> {
 		return this.request("/settings/defaults");
 	}
+
+	// Setup endpoints
+	async getSetupStatus(): Promise<{ needsAdminSetup: boolean }> {
+		return this.request("/setup/status");
+	}
+
+	async createInitialAdmin(data: {
+		username: string;
+		password: string;
+	}): Promise<{ id: number; username: string; role: string }> {
+		const response = await fetch(`${API_BASE}/setup/admin`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(data),
+		});
+
+		const contentType = response.headers.get("content-type");
+		if (!contentType?.includes("application/json")) {
+			const text = await response.text();
+			throw new Error(text || `HTTP ${response.status}`);
+		}
+
+		const result: {
+			data: { user: { id: number; username: string; role: string } };
+			error: string | null;
+		} = await response.json();
+
+		if (result.error || !result.data) {
+			throw new Error(result.error || "Failed to create admin");
+		}
+
+		return result.data.user;
+	}
 }
 
 export const api = new ApiClient();
