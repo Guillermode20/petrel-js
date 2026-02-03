@@ -5,6 +5,6 @@ export default defineConfig({
 	schema: "./db/schema.ts",
 	out: "./drizzle",
 	dbCredentials: {
-		url: "file:./petrel.db",
+		url: process.env.DATABASE_URL ?? "file:./petrel.db",
 	},
 });

@@ -262,6 +262,11 @@ export class FileService {
 
 		const updated = await db.update(files).set({ metadata }).where(eq(files.id, id)).returning();
 
+		await Promise.all([
+			cacheManager.del(cacheKeys.file(id)),
+			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+		]);
+
 		const updatedRow = updated[0];
 		return updatedRow ? this.mapFileRow(updatedRow) : null;
 	}
@@ -295,6 +300,12 @@ export class FileService {
 			}
 
 			await rename(tempPath, diskPath);
+
+			await Promise.all([
+				cacheManager.del(cacheKeys.file(id)),
+				cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+			]);
+
 			return this.mapFileRow(updatedRow);
 		} catch (err) {
 			await Bun.file(tempPath)

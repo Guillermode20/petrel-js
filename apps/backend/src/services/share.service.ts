@@ -3,6 +3,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { shareSettings, shares } from "../../db/schema";
 import { cacheManager, Cacheable, CacheEvict, cacheKeys, cacheTTL } from "../cache";
+import { createEventPayload, eventBus } from "../events";
 import { generateSecureToken, hashPassword, verifyPassword } from "../modules/auth/utils";
 import { fileService } from "./file.service";
 import { folderService } from "./folder.service";
@@ -110,10 +111,20 @@ export class ShareService {
 			throw new Error("Failed to create share settings");
 		}
 
-		return {
+		const result = {
 			share: this.mapShare(createdShare),
 			settings: this.mapSettings(createdSettings),
 		};
+
+		eventBus.emit(
+			"share:created",
+			createEventPayload({
+				share: result.share,
+				settings: result.settings,
+			}),
+		);
+
+		return result;
 	}
 
 	@Cacheable({ key: (token: string) => cacheKeys.share(token), ttl: cacheTTL.share })
@@ -149,7 +160,10 @@ export class ShareService {
 			.where(eq(shares.id, shareId));
 	}
 
-	@Cacheable({ key: (userId: number) => `petrel:shares:list:${userId}`, ttl: cacheTTL.shareList })
+	@Cacheable({
+		key: (userId: number) => cacheKeys.shareList(userId, 1000, 0),
+		ttl: cacheTTL.shareList,
+	})
 	async listByUser(userId: number): Promise<ShareWithSettings[]> {
 		const rows = await db.query.shares.findMany({ where: eq(shares.createdBy, userId) });
 		if (rows.length === 0) return [];
@@ -188,16 +202,25 @@ export class ShareService {
 	}
 
 	async deleteShare(shareId: number): Promise<void> {
-		// Get share to evict its token-based cache
 		const share = await db.query.shares.findFirst({ where: eq(shares.id, shareId) });
 
 		await db.delete(shareSettings).where(eq(shareSettings.shareId, shareId));
 		await db.delete(shares).where(eq(shares.id, shareId));
 
-		// Evict caches: share by token and share lists
 		if (share) {
 			await cacheManager.del(cacheKeys.share(share.token));
+
+			eventBus.emit(
+				"share:deleted",
+				createEventPayload({
+					shareId,
+					token: share.token,
+					type: share.type as "file" | "folder",
+					targetId: share.targetId,
+				}),
+			);
 		}
+
 		await cacheManager.delPattern(cacheKeys.pattern.shareLists());
 	}
 
@@ -242,14 +265,31 @@ export class ShareService {
 		const updatedSetting = updatedSettings[0];
 		if (!updatedSetting) return null;
 
-		// Evict caches: share by token and share lists
 		await cacheManager.del(cacheKeys.share(existing.token));
 		await cacheManager.delPattern(cacheKeys.pattern.shareLists());
 
-		return {
+		const result = {
 			share: this.mapShare(updatedShare),
 			settings: this.mapSettings(updatedSetting),
 		};
+
+		const changes: Partial<Share> & Partial<ShareSettings> = {};
+		if (input.expiresAt !== undefined) changes.expiresAt = input.expiresAt;
+		if (input.password !== undefined) changes.passwordHash = passwordHash;
+		if (input.allowDownload !== undefined) changes.allowDownload = input.allowDownload;
+		if (input.allowZip !== undefined) changes.allowZip = input.allowZip;
+		if (input.showMetadata !== undefined) changes.showMetadata = input.showMetadata;
+
+		eventBus.emit(
+			"share:updated",
+			createEventPayload({
+				share: result.share,
+				settings: result.settings,
+				changes,
+			}),
+		);
+
+		return result;
 	}
 }
 

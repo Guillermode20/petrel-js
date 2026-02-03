@@ -18,6 +18,10 @@ export function useShares() {
 	return useQuery({
 		queryKey: shareKeys.lists(),
 		queryFn: () => api.getMyShares(),
+		refetchInterval: 5000,
+		refetchIntervalInBackground: true,
+		refetchOnWindowFocus: true,
+		staleTime: 0,
 	});
 }
 

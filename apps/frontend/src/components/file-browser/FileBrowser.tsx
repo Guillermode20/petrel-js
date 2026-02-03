@@ -16,6 +16,7 @@ import type { ContextMenuActionHandler, MenuContext } from "@/components/global-
 import { CreateShareModal } from "@/components/sharing";
 import {
 	useCreateFolder,
+	useCreateShare,
 	useDeleteFile,
 	useFiles,
 	useUpdateFile,
@@ -98,6 +99,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	const createFolderMutation = useCreateFolder();
 	const uploadMutation = useUploadFile();
 	const deleteMutation = useDeleteFile();
+	const createShareMutation = useCreateShare();
 	const pendingZipToastRef = useRef<string | number | undefined>(undefined);
 	const { startDownload: startZipDownload } = useZipDownload({
 		onComplete: () => {
@@ -209,7 +211,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 
 	const handleCopyShareLink = useCallback(async (item: File | Folder) => {
 		try {
-			const share = await api.createShare({
+			const share = await createShareMutation.mutateAsync({
 				type: isFolder(item) ? "folder" : "file",
 				targetId: item.id,
 				allowDownload: true,
@@ -640,8 +642,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		[handleUpload],
 	);
 
-	const hasMultipleSelected = selectedIds.size > 1;
-
 	return (
 		<div className="space-y-4">
 			{/* Hidden file input for context menu upload */}
@@ -747,19 +747,19 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 						</div>
 					) : (
 						<div className="text-xs text-muted-foreground">
-							{data?.pagination && (
+							{data && (
 								<>
-									Showing {data.items.length} of {data.pagination.total} items
+									Showing {data.items.length} of {data.total} items
 								</>
 							)}
 						</div>
 					)}
 				</div>
 
-				{data?.pagination && data.pagination.total > data.pagination.limit && (
+				{data && data.total > data.limit && (
 					<Pagination
 						currentPage={page}
-						totalPages={Math.ceil(data.pagination.total / data.pagination.limit)}
+						totalPages={Math.ceil(data.total / data.limit)}
 						onPageChange={setPage}
 					/>
 				)}

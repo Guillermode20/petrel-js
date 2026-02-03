@@ -1,12 +1,13 @@
 import type { File, Folder, ShareSettings } from "@petrel/shared";
 import { ChevronRight, FolderIcon, Home } from "lucide-react";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FileGrid } from "@/components/file-browser/FileGrid";
 import { FileList } from "@/components/file-browser/FileList";
 import type { SortField, ViewMode } from "@/components/file-browser/types";
 import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
+import { useZipDownload } from "@/hooks/useZipDownload";
 import { Button } from "@/components/ui/button";
 import { PageBar } from "@/components/navigation/PageBar";
 import { useContextMenuActions, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
@@ -70,6 +71,17 @@ export function SharedFileBrowser({
 	const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 	const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+
+	const { startDownload: startZipDownload } = useZipDownload({
+		shareToken,
+		password,
+		onComplete: () => {
+			toast.success("ZIP download started");
+		},
+		onError: (error) => {
+			toast.error(`ZIP download failed: ${error}`);
+		},
+	});
 
 	// Combine folders and files, folders first
 	const items = [...folders, ...files];
@@ -135,43 +147,10 @@ export function SharedFileBrowser({
 			return;
 		}
 
-		// Show what we're downloading
 		const itemCount = fileIds.length + folderIds.length;
-		const itemTypes = [
-			fileIds.length > 0 ? `${fileIds.length} file${fileIds.length !== 1 ? "s" : ""}` : "",
-			folderIds.length > 0 ? `${folderIds.length} folder${folderIds.length !== 1 ? "s" : ""}` : "",
-		]
-			.filter(Boolean)
-			.join(" and ");
-
-		try {
-			toast.info(`Creating ZIP with ${itemTypes}...`);
-			const { jobId } = await api.createZipDownload(shareToken, fileIds, folderIds, password);
-
-			// Poll for status
-			const pollStatus = async () => {
-				const status = await api.getZipDownloadStatus(shareToken, jobId, password);
-				if (status.status === "completed") {
-					window.location.href = api.getZipDownloadUrl(shareToken, jobId, password);
-					toast.success("ZIP download started");
-				} else if (status.status === "error") {
-					toast.error("Failed to create ZIP archive");
-				} else {
-					setTimeout(pollStatus, 2000);
-				}
-			};
-
-			toast.promise(pollStatus(), {
-				loading: `Preparing ZIP archive (${itemCount} items)...`,
-				success: "ZIP archive ready",
-				error: "Failed to prepare ZIP",
-			});
-		} catch (error) {
-			toast.error(
-				`ZIP download failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		}
-	}, [selectedIds, shareToken, password, settings.allowDownload, settings.allowZip]);
+		toast.info(`Preparing ZIP with ${itemCount} items...`);
+		await startZipDownload(fileIds, folderIds);
+	}, [selectedIds, startZipDownload, settings.allowDownload, settings.allowZip]);
 
 	// Handle sort
 	const handleSort = (field: SortField) => {

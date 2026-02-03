@@ -82,7 +82,7 @@ function SettingsPage() {
 	const isAuthenticated = !!user;
 
 	const { data: settings, isLoading } = useQuery<UserSettings>({
-		queryKey: ["settings"],
+		queryKey: ["settings", isAuthenticated],
 		queryFn: async (): Promise<UserSettings> => {
 			if (isAuthenticated) {
 				return api.getSettings();
@@ -95,7 +95,8 @@ function SettingsPage() {
 		retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
 		staleTime: 1000 * 60 * 5, // 5 minutes
 		gcTime: 1000 * 60 * 30, // 30 minutes
-		enabled: true,
+		// Only run query after we know if user is authenticated
+		enabled: user !== undefined,
 	});
 
 	const updateMutation = useMutation({

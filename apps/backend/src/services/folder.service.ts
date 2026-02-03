@@ -3,6 +3,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { folders } from "../../db/schema";
 import { normalizeRelativePath } from "../lib/storage";
+import { cacheKeys, cacheTTL, cacheManager, Cacheable, CacheEvict } from "../cache";
 import { fileService } from "./file.service";
 
 export interface CreateFolderInput {
@@ -12,6 +13,7 @@ export interface CreateFolderInput {
 }
 
 export class FolderService {
+	@Cacheable({ key: (id: number) => cacheKeys.folder(id), ttl: cacheTTL.folder })
 	async getById(id: number): Promise<Folder | null> {
 		const folder = await db.query.folders.findFirst({
 			where: eq(folders.id, id),
@@ -20,6 +22,7 @@ export class FolderService {
 		return folder ?? null;
 	}
 
+	@Cacheable({ key: (path: string) => cacheKeys.folderByPath(path), ttl: cacheTTL.folder })
 	async getFolderByPath(path: string): Promise<Folder | null> {
 		const normalizedPath = normalizeRelativePath(path);
 		const folder = await db.query.folders.findFirst({
@@ -111,7 +114,9 @@ export class FolderService {
 			})
 			.returning();
 
-		const created = inserted[0];
+		await cacheManager.delPattern(cacheKeys.pattern.allFolders());
+
+		const created = (inserted as any[])?.[0];
 		if (!created) {
 			throw new Error("Failed to create folder record");
 		}
@@ -182,7 +187,16 @@ export class FolderService {
 			.where(eq(folders.id, id))
 			.returning();
 
-		const updatedFolder = updated[0];
+		// Invalidate caches
+		await Promise.all([
+			cacheManager.del(cacheKeys.folder(id)),
+			cacheManager.del(cacheKeys.folderByPath(current.path)),
+			cacheManager.del(cacheKeys.folderByPath(nextPath)),
+			cacheManager.delPattern(cacheKeys.pattern.allFolders()),
+			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+		]);
+
+		const updatedFolder = (updated as any[])?.[0];
 		if (updatedFolder && nextPath !== current.path) {
 			// Recursively update children paths
 			await this.updateChildrenPaths(id, current.path, nextPath);

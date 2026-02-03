@@ -40,6 +40,8 @@ export function useFiles(params?: {
 			search: params?.search,
 		}),
 		queryFn: () => api.getFiles(params),
+		staleTime: 0,
+		refetchInterval: 10000,
 	});
 }
 

@@ -1,4 +1,4 @@
-import type { File, Folder } from "@petrel/shared";
+import type { File, Folder, Share, ShareSettings } from "@petrel/shared";
 
 export interface EventPayload {
 	timestamp: number;
@@ -66,6 +66,24 @@ export interface ZipCompletedEvent extends EventPayload {
 	error?: string;
 }
 
+export interface ShareCreatedEvent extends EventPayload {
+	share: Share;
+	settings: ShareSettings;
+}
+
+export interface ShareUpdatedEvent extends EventPayload {
+	share: Share;
+	settings: ShareSettings;
+	changes: Partial<Share> & Partial<ShareSettings>;
+}
+
+export interface ShareDeletedEvent extends EventPayload {
+	shareId: number;
+	token: string;
+	type: "file" | "folder";
+	targetId: number;
+}
+
 export interface PetrelEventsMap {
 	"file:created": FileCreatedEvent;
 	"file:deleted": FileDeletedEvent;
@@ -79,6 +97,9 @@ export interface PetrelEventsMap {
 	"thumbnail:completed": ThumbnailCompletedEvent;
 	"zip:requested": ZipRequestedEvent;
 	"zip:completed": ZipCompletedEvent;
+	"share:created": ShareCreatedEvent;
+	"share:updated": ShareUpdatedEvent;
+	"share:deleted": ShareDeletedEvent;
 }
 
 export type PetrelEventName = keyof PetrelEventsMap;

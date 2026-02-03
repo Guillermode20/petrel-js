@@ -1,5 +1,6 @@
 export { createEventPayload, eventBus } from "./bus";
 export { registerFileEventHandlers, unregisterFileEventHandlers } from "./handlers/file-events";
+export { registerShareEventHandlers, unregisterShareEventHandlers } from "./handlers/share-events";
 export type {
 	EventHandler,
 	FileCreatedEvent,
@@ -11,6 +12,9 @@ export type {
 	PetrelEventName,
 	PetrelEventPayload,
 	PetrelEventsMap,
+	ShareCreatedEvent,
+	ShareDeletedEvent,
+	ShareUpdatedEvent,
 	ThumbnailCompletedEvent,
 	ThumbnailRequestedEvent,
 	TranscodeCompletedEvent,

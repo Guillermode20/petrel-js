@@ -15,7 +15,7 @@ import { shareRoutes } from "./src/modules/shares";
 import { streamRoutes } from "./src/modules/stream";
 import { userRoutes } from "./src/modules/users";
 import { closeQueues, createQueues } from "./src/queues/connection";
-import { registerFileEventHandlers, unregisterFileEventHandlers } from "./src/events";
+import { registerFileEventHandlers, registerShareEventHandlers, unregisterFileEventHandlers, unregisterShareEventHandlers } from "./src/events";
 import { storageSyncService } from "./src/services/storage-sync.service";
 import { closeTranscodeWorker, createTranscodeWorker } from "./src/workers/transcode.worker";
 import { closeZipWorker, createZipWorker } from "./src/workers/zip.worker";
@@ -35,6 +35,7 @@ createQueues();
 
 // Register event handlers
 registerFileEventHandlers();
+registerShareEventHandlers();
 
 // Initialize workers if Redis is configured
 if (config.REDIS_URL) {
@@ -230,6 +231,7 @@ logger.info(
 process.on("SIGINT", async () => {
 	logger.info("Shutting down gracefully...");
 	unregisterFileEventHandlers();
+	unregisterShareEventHandlers();
 	await closeTranscodeWorker(transcodeWorker);
 	await closeZipWorker(zipWorker);
 	await closeQueues();
@@ -240,6 +242,7 @@ process.on("SIGINT", async () => {
 process.on("SIGTERM", async () => {
 	logger.info("Shutting down gracefully...");
 	unregisterFileEventHandlers();
+	unregisterShareEventHandlers();
 	await closeTranscodeWorker(transcodeWorker);
 	await closeZipWorker(zipWorker);
 	await closeQueues();
