@@ -1,7 +1,8 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { logger } from "@/lib/logger";
 
 interface Props {
 	children: ReactNode;
@@ -30,7 +31,7 @@ export class SettingsErrorBoundary extends Component<Props, State> {
 	}
 
 	override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-		console.error(`Settings Error [${this.props.sectionName || "unknown"}]:`, error, errorInfo);
+		logger.error(`Settings Error [${this.props.sectionName || "unknown"}]:`, error, errorInfo);
 		this.setState({ error, errorInfo });
 	}
 

@@ -1,17 +1,18 @@
-import { useState } from "react";
 import type { UserSettings } from "@petrel/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Loader2, LogIn, Save, Settings, AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2, LogIn, Save } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { SettingsAccounts } from "@/components/settings/SettingsAccounts";
-import { SettingsSharing } from "@/components/settings/SettingsSharing";
 import { SettingsErrorBoundary } from "@/components/settings/SettingsErrorBoundary";
+import { SettingsSharing } from "@/components/settings/SettingsSharing";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 
 export const Route = createFileRoute("/settings")({
 	component: SettingsPageWrapper,
@@ -136,7 +137,7 @@ function SettingsPage() {
 				queryClient.setQueryData(["settings"], context.previousSettings);
 			}
 
-			console.error("Settings update error:", err);
+			logger.error("Settings update error:", err);
 			setPersistenceState({
 				status: "error",
 				lastError: err.message,
@@ -214,7 +215,11 @@ function SettingsPage() {
 	}
 
 	function handleReset(): void {
-		if (window.confirm("Are you sure you want to reset all settings to defaults? This action cannot be undone.")) {
+		if (
+			window.confirm(
+				"Are you sure you want to reset all settings to defaults? This action cannot be undone.",
+			)
+		) {
 			resetMutation.mutate();
 		}
 	}
@@ -289,16 +294,6 @@ function SettingsPage() {
 	if (!isAuthenticated) {
 		return (
 			<div className="flex flex-col gap-6 p-6">
-				<div className="flex items-center justify-between">
-					<div>
-						<h1 className="text-2xl font-semibold flex items-center gap-2">
-							<Settings className="h-6 w-6" />
-							Settings
-						</h1>
-						<p className="text-muted-foreground mt-1">Configure your preferences</p>
-					</div>
-				</div>
-
 				<Card>
 					<CardContent className="p-6">
 						<div className="flex flex-col items-center gap-4 text-center">
@@ -347,31 +342,18 @@ function SettingsPage() {
 
 	return (
 		<div className="flex flex-col gap-6 p-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-semibold flex items-center gap-2">
-						<Settings className="h-6 w-6" />
-						Settings
-					</h1>
-					<p className="text-muted-foreground mt-1">Configure your preferences</p>
-				</div>
-				<div className="flex items-center gap-4">
-					{getStatusIndicator()}
-					<Button
-						variant="outline"
-						onClick={handleReset}
-						disabled={resetMutation.isPending}
-					>
-						{resetMutation.isPending ? (
-							<>
-								<Loader2 className="h-4 w-4 mr-2 animate-spin" />
-								Resetting...
-							</>
-						) : (
-							"Reset to Defaults"
-						)}
-					</Button>
-				</div>
+			<div className="flex items-center justify-end gap-4">
+				{getStatusIndicator()}
+				<Button variant="outline" onClick={handleReset} disabled={resetMutation.isPending}>
+					{resetMutation.isPending ? (
+						<>
+							<Loader2 className="h-4 w-4 mr-2 animate-spin" />
+							Resetting...
+						</>
+					) : (
+						"Reset to Defaults"
+					)}
+				</Button>
 			</div>
 
 			{persistenceState.lastError && (

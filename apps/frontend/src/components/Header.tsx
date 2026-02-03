@@ -61,9 +61,11 @@ export function Header() {
 							</DropdownMenuContent>
 						</DropdownMenu>
 					) : (
-						<Button variant="outline" size="sm">
-							Log in
-						</Button>
+						<Link to="/">
+							<Button variant="outline" size="sm">
+								Log in
+							</Button>
+						</Link>
 					)}
 				</div>
 			</div>

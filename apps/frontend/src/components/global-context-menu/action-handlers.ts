@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useContext } from "react";
+import { useCallback, useContext, useEffect, useRef } from "react";
+import { logger } from "@/lib/logger";
 import { ContextMenuActionRegistryContext } from "./ContextMenuProvider";
 import type { ContextMenuActionHandler, MenuContext } from "./types";
 import { useContextMenuActions, useContextMenuState } from "./useContextMenu";
@@ -13,7 +14,7 @@ function useContextMenuActionRegistry() {
 
 /**
  * Registers a handler and returns a stable handlerId to pass into `open(..., handlerId)`.
- * 
+ *
  * The handlerId remains stable across re-renders - only the handler reference is updated.
  * This ensures the context menu can still dispatch to the correct handler even if the
  * component re-renders while the menu is open.
@@ -61,7 +62,7 @@ export function useRegisterContextMenuActionHandler(handler: ContextMenuActionHa
  * Returns an `onAction` callback suitable for `<GlobalContextMenu onAction={...} />`.
  *
  * It will dispatch to the currently-open menu's registered handler (if any) and then close the menu.
- * 
+ *
  * Uses refs to ensure we always dispatch with the latest context/handlerId values,
  * avoiding stale closure issues that can occur with useCallback.
  */
@@ -84,10 +85,10 @@ export function useGlobalContextMenuOnAction(): (action: string, data?: unknown)
 	return useCallback(
 		(action: string, data?: unknown) => {
 			const { context, handlerId } = stateRef.current;
-			console.log("[ContextMenu] onAction called:", { action, data, context, handlerId });
-			
+			logger.debug("[ContextMenu] onAction called:", { action, data, context, handlerId });
+
 			if (!context) {
-				console.log("[ContextMenu] No context, closing");
+				logger.debug("[ContextMenu] No context, closing");
 				closeRef.current();
 				return;
 			}
@@ -95,11 +96,16 @@ export function useGlobalContextMenuOnAction(): (action: string, data?: unknown)
 			const run = async (currentContext: MenuContext, currentHandlerId: string | null) => {
 				try {
 					if (currentHandlerId) {
-						console.log("[ContextMenu] Dispatching to handler:", currentHandlerId);
-						const dispatched = await registryRef.current.dispatch(currentHandlerId, action, currentContext, data);
-						console.log("[ContextMenu] Dispatch result:", dispatched);
+						logger.debug("[ContextMenu] Dispatching to handler:", currentHandlerId);
+						const dispatched = await registryRef.current.dispatch(
+							currentHandlerId,
+							action,
+							currentContext,
+							data,
+						);
+						logger.debug("[ContextMenu] Dispatch result:", dispatched);
 					} else {
-						console.log("[ContextMenu] No handlerId to dispatch to");
+						logger.debug("[ContextMenu] No handlerId to dispatch to");
 					}
 				} finally {
 					closeRef.current();
@@ -111,4 +117,3 @@ export function useGlobalContextMenuOnAction(): (action: string, data?: unknown)
 		[], // Stable callback - reads from refs
 	);
 }
-

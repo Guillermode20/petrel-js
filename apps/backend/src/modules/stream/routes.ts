@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { config } from "../../config";
-import { streamRateLimit } from "../../lib/rate-limit";
+import { shareRateLimit, streamRateLimit } from "../../lib/rate-limit";
+import { validateShareAccess } from "../../lib/share-validation";
 import { resolveStoragePath } from "../../lib/storage";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
@@ -9,7 +10,6 @@ import { streamService } from "../../services/stream.service";
 import { transcodeQueue } from "../../services/transcode.service";
 import { videoService } from "../../services/video.service";
 import { authMiddleware } from "../auth";
-import { shareRateLimit } from "../../lib/rate-limit";
 import type { ApiResponse, StreamInfoResponse } from "./types";
 
 const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
@@ -389,24 +389,11 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 	.get(
 		"/:token/:fileId/master.m3u8",
 		async ({ params, query, set }) => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return "#EXTM3U\n# Share not found";
-			}
-
-			if (share.share.expiresAt && new Date(share.share.expiresAt) < new Date()) {
-				set.status = 410;
-				return "#EXTM3U\n# Share expired";
-			}
-
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return "#EXTM3U\n# Invalid password";
-				}
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return `#EXTM3U\n# ${error}`;
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
@@ -423,8 +410,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			}
 
 			// Check if file is within shared folder (for folder shares)
-			if (share.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share.share);
+			if (share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
 				if (!shareContent) {
 					set.status = 400;
 					return "#EXTM3U\n# Invalid share";
@@ -433,12 +420,15 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 					set.status = 403;
 					return "#EXTM3U\n# Access denied";
 				}
-				const isInFolder = await folderService.isDescendantOf(file.parentId, (shareContent as { path: string }).path);
+				const isInFolder = await folderService.isDescendantOf(
+					file.parentId,
+					(shareContent as { path: string }).path,
+				);
 				if (!isInFolder) {
 					set.status = 403;
 					return "#EXTM3U\n# Access denied";
 				}
-			} else if (share.share.type === "file" && share.share.targetId !== fileId) {
+			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
 				set.status = 403;
 				return "#EXTM3U\n# Access denied";
 			}
@@ -484,8 +474,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			}
 
 			// Replace segment URLs with share-aware URLs
-			return content
-				.replace(/\.m3u8/g, `.m3u8?shareToken=${params.token}${passwordQuery}`);
+			return content.replace(/\.m3u8/g, `.m3u8?shareToken=${params.token}${passwordQuery}`);
 		},
 		{
 			params: t.Object({
@@ -500,24 +489,11 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 	.get(
 		"/:token/:fileId/:playlist",
 		async ({ params, query, set }) => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return "#EXTM3U\n# Share not found";
-			}
-
-			if (share.share.expiresAt && new Date(share.share.expiresAt) < new Date()) {
-				set.status = 410;
-				return "#EXTM3U\n# Share expired";
-			}
-
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return "#EXTM3U\n# Invalid password";
-				}
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return `#EXTM3U\n# ${error}`;
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
@@ -586,6 +562,4 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 		},
 	);
 
-export const streamRoutes = new Elysia()
-	.use(authenticatedStreamRoutes)
-	.use(shareStreamRoutes);
+export const streamRoutes = new Elysia().use(authenticatedStreamRoutes).use(shareStreamRoutes);

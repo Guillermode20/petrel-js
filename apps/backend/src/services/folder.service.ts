@@ -2,8 +2,8 @@ import type { Folder } from "@petrel/shared";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { folders } from "../../db/schema";
+import { Cacheable, CacheEvict, cacheKeys, cacheManager, cacheTTL } from "../cache";
 import { normalizeRelativePath } from "../lib/storage";
-import { cacheKeys, cacheTTL, cacheManager, Cacheable, CacheEvict } from "../cache";
 import { fileService } from "./file.service";
 
 export interface CreateFolderInput {
@@ -32,9 +32,13 @@ export class FolderService {
 		return folder ?? null;
 	}
 
-	async listByParentId(parentId: number | null, search?: string, folderPath?: string): Promise<Folder[]> {
+	async listByParentId(
+		parentId: number | null,
+		search?: string,
+		folderPath?: string,
+	): Promise<Folder[]> {
 		const conditions = [];
-		
+
 		// When search is provided, search recursively in subfolders
 		// When search is NOT provided, only search direct children
 		if (search) {
@@ -51,7 +55,9 @@ export class FolderService {
 				} else {
 					// Current folder or subfolders
 					const pathPattern = `${normalizedPath}/%`;
-					conditions.push(sql`(${folders.path} = ${normalizedPath} OR ${folders.path} LIKE ${pathPattern})`);
+					conditions.push(
+						sql`(${folders.path} = ${normalizedPath} OR ${folders.path} LIKE ${pathPattern})`,
+					);
 				}
 			} else {
 				// Fallback: if folderPath not provided, get it from parentId
@@ -62,11 +68,13 @@ export class FolderService {
 						// Root: search all folders
 					} else {
 						const pathPattern = `${normalizedPath}/%`;
-						conditions.push(sql`(${folders.path} = ${normalizedPath} OR ${folders.path} LIKE ${pathPattern})`);
+						conditions.push(
+							sql`(${folders.path} = ${normalizedPath} OR ${folders.path} LIKE ${pathPattern})`,
+						);
 					}
 				}
 			}
-			
+
 			const searchPattern = `%${search}%`;
 			conditions.push(sql`lower(${folders.name}) LIKE lower(${searchPattern})`);
 		} else {
@@ -78,11 +86,12 @@ export class FolderService {
 			}
 		}
 
-		const whereClause = conditions.length === 0 
-			? undefined 
-			: conditions.length > 1 
-				? and(...conditions) 
-				: conditions[0];
+		const whereClause =
+			conditions.length === 0
+				? undefined
+				: conditions.length > 1
+					? and(...conditions)
+					: conditions[0];
 
 		return await db.query.folders.findMany({
 			where: whereClause,

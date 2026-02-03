@@ -1,5 +1,6 @@
 import type { User } from "@petrel/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
@@ -18,6 +19,7 @@ export const authKeys = {
  */
 export function useAuth() {
 	const [isInitialized, setIsInitialized] = useState(false);
+	const navigate = useNavigate();
 
 	// Initialize token from localStorage on mount
 	useEffect(() => {
@@ -27,6 +29,19 @@ export function useAuth() {
 		}
 		setIsInitialized(true);
 	}, []);
+
+	// Register auth error handler to redirect to login when tokens are cleared
+	useEffect(() => {
+		const handleAuthError = () => {
+			navigate({ to: "/" });
+		};
+
+		api.setAuthErrorHandler(handleAuthError);
+
+		return () => {
+			api.setAuthErrorHandler(null);
+		};
+	}, [navigate]);
 
 	const {
 		data: user,

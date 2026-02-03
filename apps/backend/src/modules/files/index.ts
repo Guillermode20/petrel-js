@@ -4,5 +4,6 @@
  * Provides file and folder CRUD endpoints and chunked upload handling.
  */
 
+export * from "./guards";
 export { fileRoutes } from "./routes";
 export type { ApiResponse, FileListData } from "./types";

@@ -17,9 +17,14 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
  */
 class ApiClient {
 	private accessToken: string | null = null;
+	private onAuthError: (() => void) | null = null;
 
 	setAccessToken(token: string | null): void {
 		this.accessToken = token;
+	}
+
+	setAuthErrorHandler(handler: (() => void) | null): void {
+		this.onAuthError = handler;
 	}
 
 	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -58,6 +63,7 @@ class ApiClient {
 					localStorage.removeItem("petrel_access_token");
 					localStorage.removeItem("petrel_refresh_token");
 					this.setAccessToken(null);
+					this.onAuthError?.();
 					throw new Error("Unauthorized");
 				}
 			}

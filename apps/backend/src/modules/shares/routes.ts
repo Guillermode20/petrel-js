@@ -2,10 +2,10 @@ import { stat } from "node:fs/promises";
 import type { File } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { shareRateLimit } from "../../lib/rate-limit";
+import { setShareValidationError, validateShareAccess } from "../../lib/share-validation";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
-import { settingsService } from "../settings/service";
 import {
 	buildZipDownloadFilename,
 	cleanupZip,
@@ -15,6 +15,7 @@ import {
 	scheduleZipCleanup,
 } from "../../services/zip.service";
 import { authMiddleware, requireAuth } from "../auth";
+import { settingsService } from "../settings/service";
 import type { ApiResponse, ShareContentData, ShareData } from "./types";
 
 type RouteSet = { status?: number; headers?: Record<string, string> };
@@ -178,40 +179,19 @@ function parseExpiry(value: string | null, set: RouteSet): Date | null | undefin
 	return parsed;
 }
 
-function isExpired(value: Date | null): boolean {
-	if (!value) {
-		return false;
-	}
-	return value.getTime() <= Date.now();
-}
-
 const publicRoutes = new Elysia({ prefix: "/shares" })
 	.use(shareRateLimit)
 	.get(
 		"/:token/download",
 		async ({ params, query, set }) => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return { data: null, error: "Share not found" };
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				set.status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				return { data: null, error };
 			}
 
-			if (isExpired(share.share.expiresAt)) {
-				set.status = 410;
-				return { data: null, error: "Share expired" };
-			}
-
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return { data: null, error: "Invalid password" };
-				}
-			}
-
-			const content = await shareService.getShareContent(share.share);
-			if (!content || share.share.type !== "file") {
+			const content = await shareService.getShareContent(share!.share);
+			if (!content || share!.share.type !== "file") {
 				set.status = 400;
 				return { data: null, error: "Download not available for this share" };
 			}
@@ -250,29 +230,15 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 	.post(
 		"/:token/download-zip",
 		async ({ params, body, query, set }) => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return { data: null, error: "Share not found" };
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				set.status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				return { data: null, error };
 			}
 
-			if (isExpired(share.share.expiresAt)) {
-				set.status = 410;
-				return { data: null, error: "Share expired" };
-			}
-
-			if (!share.settings.allowZip) {
+			if (!share!.settings.allowZip) {
 				set.status = 403;
 				return { data: null, error: "ZIP download not allowed for this share" };
-			}
-
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return { data: null, error: "Invalid password" };
-				}
 			}
 
 			// Get the files/folders to include in the ZIP
@@ -294,8 +260,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 					}
 
 					// If it's a folder share, verify file is within the shared folder
-					if (share.share.type === "folder") {
-						const shareContent = await shareService.getShareContent(share.share);
+					if (share!.share.type === "folder") {
+						const shareContent = await shareService.getShareContent(share!.share);
 						if (!shareContent) {
 							set.status = 400;
 							return { data: null, error: "Invalid share" };
@@ -312,7 +278,7 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 							set.status = 403;
 							return { data: null, error: `File ${fileId} not accessible via this share` };
 						}
-					} else if (share.share.type === "file" && share.share.targetId !== fileId) {
+					} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
 						// For file shares, only the shared file is accessible
 						set.status = 403;
 						return { data: null, error: `File ${fileId} not accessible via this share` };
@@ -321,8 +287,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}
 
 			// Validate folderIds if provided (must be within share for folder shares)
-			if (folderIds && folderIds.length > 0 && share.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share.share);
+			if (folderIds && folderIds.length > 0 && share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
 				if (!shareContent) {
 					set.status = 400;
 					return { data: null, error: "Invalid share" };
@@ -380,24 +346,10 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 	.get(
 		"/:token/download-zip/:jobId",
 		async ({ params, query, set, request }) => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return { data: null, error: "Share not found" };
-			}
-
-			if (isExpired(share.share.expiresAt)) {
-				set.status = 410;
-				return { data: null, error: "Share expired" };
-			}
-
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return { data: null, error: "Invalid password" };
-				}
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				set.status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				return { data: null, error };
 			}
 
 			const job = await getZipJob(params.jobId);
@@ -451,7 +403,7 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			const response = new Response(Bun.file(job.tempPath));
 
 			// Increment download count when the actual download is initiated
-			await shareService.incrementDownloadCount(share.share.id);
+			await shareService.incrementDownloadCount(share!.share.id);
 
 			// Clean up after streaming (fire and forget)
 			scheduleZipCleanup(params.jobId);
@@ -478,29 +430,15 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 	.get(
 		"/:token/folder/:folderId",
 		async ({ params, query, set }): Promise<ApiResponse<ShareContentData>> => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return { data: null, error: "Share not found" };
-			}
-
-			if (isExpired(share.share.expiresAt)) {
-				set.status = 410;
-				return { data: null, error: "Share expired" };
-			}
-
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return { data: null, error: "Invalid password" };
-				}
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				set.status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				return { data: null, error };
 			}
 
 			// Get the shared folder to verify hierarchy
-			const shareContent = await shareService.getShareContent(share.share);
-			if (!shareContent || share.share.type !== "folder") {
+			const shareContent = await shareService.getShareContent(share!.share);
+			if (!shareContent || share!.share.type !== "folder") {
 				set.status = 400;
 				return { data: null, error: "Invalid share type" };
 			}
@@ -525,8 +463,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 
 			return {
 				data: {
-					share: share.share,
-					settings: share.settings,
+					share: share!.share,
+					settings: share!.settings,
 					content: folder,
 					files: fileList.files,
 					folders: childFolders,
@@ -552,33 +490,19 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 	.get(
 		"/:token",
 		async ({ params, query, set }): Promise<ApiResponse<ShareContentData>> => {
-			const share = await shareService.getShareByToken(params.token);
-			if (!share) {
-				set.status = 404;
-				return { data: null, error: "Share not found" };
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				set.status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				return { data: null, error };
 			}
 
-			if (isExpired(share.share.expiresAt)) {
-				set.status = 410;
-				return { data: null, error: "Share expired" };
-			}
+			await shareService.incrementViewCount(share!.share.id);
 
-			if (share.share.passwordHash) {
-				const password = query.password ?? "";
-				const valid = await shareService.verifySharePassword(share.share, password);
-				if (!valid) {
-					set.status = 401;
-					return { data: null, error: "Invalid password" };
-				}
-			}
-
-			await shareService.incrementViewCount(share.share.id);
-
-			const content = await shareService.getShareContent(share.share);
+			const content = await shareService.getShareContent(share!.share);
 			let files;
 			let folders;
 
-			if (share.share.type === "folder" && content) {
+			if (share!.share.type === "folder" && content) {
 				const childFolders = await folderService.listByParentId(content.id);
 				folders = childFolders;
 
@@ -588,8 +512,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 
 			return {
 				data: {
-					share: share.share,
-					settings: share.settings,
+					share: share!.share,
+					settings: share!.settings,
 					content,
 					files,
 					folders,

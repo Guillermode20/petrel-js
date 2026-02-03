@@ -1,22 +1,16 @@
-import { readdir, rename, rm, unlink } from "node:fs/promises";
+import { rename, rm, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { File } from "@petrel/shared";
-import type { BunFile } from "bun";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { files, subtitles, transcodeJobs, videoTracks } from "../../db/schema";
-import { cacheManager, Cacheable, CacheEvict, cacheKeys, cacheTTL } from "../cache";
+import { Cacheable, CacheEvict, cacheKeys, cacheManager, cacheTTL } from "../cache";
 import {
 	buildFileRelativePath,
 	calculateFileHash,
-	ensureDirectory,
-	getChunkDirectoryRelativePath,
-	getChunkRelativePath,
 	normalizeRelativePath,
 	resolveStoragePath,
 } from "../lib/storage";
-import { folderService } from "./folder.service";
-import { metadataService } from "./metadata.service";
 
 export interface FileListResult {
 	files: File[];
@@ -237,12 +231,7 @@ export class FileService {
 		const current = await this.getById(id);
 		if (!current) return null;
 
-		// Evict caches before deletion: file by ID, path-based cache, and file lists
-		await Promise.all([
-			cacheManager.del(cacheKeys.file(id)),
-			cacheManager.del(`petrel:file:path:${normalizeRelativePath(current.path)}/${current.name}`),
-			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
-		]);
+		await this.invalidateFileCache(id, current);
 
 		await this.deletePrimaryFileOnDisk(current);
 		await this.deleteDerivedAssets(id);
@@ -262,10 +251,7 @@ export class FileService {
 
 		const updated = await db.update(files).set({ metadata }).where(eq(files.id, id)).returning();
 
-		await Promise.all([
-			cacheManager.del(cacheKeys.file(id)),
-			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
-		]);
+		await this.invalidateFileCache(id);
 
 		const updatedRow = updated[0];
 		return updatedRow ? this.mapFileRow(updatedRow) : null;
@@ -301,10 +287,7 @@ export class FileService {
 
 			await rename(tempPath, diskPath);
 
-			await Promise.all([
-				cacheManager.del(cacheKeys.file(id)),
-				cacheManager.delPattern(cacheKeys.pattern.fileLists()),
-			]);
+			await this.invalidateFileCache(id);
 
 			return this.mapFileRow(updatedRow);
 		} catch (err) {
@@ -315,111 +298,19 @@ export class FileService {
 		}
 	}
 
-	async handleChunkUpload(params: {
-		uploadId: string;
-		chunkIndex: number;
-		totalChunks: number;
-		fileName: string;
-		folderPath: string;
-		mimeType: string;
-		chunk: Blob;
-		userId: number;
-	}): Promise<{ file: File | null; allChunksPresent: boolean }> {
-		await this.writeChunkToDisk(params.chunk, params.uploadId, params.chunkIndex);
-		const allChunksPresent = await this.areAllChunksPresent(params.uploadId, params.totalChunks);
+	private async invalidateFileCache(id: number, file?: File): Promise<void> {
+		const promises = [
+			cacheManager.del(cacheKeys.file(id)),
+			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+		];
 
-		if (!allChunksPresent) {
-			return { file: null, allChunksPresent: false };
-		}
-
-		const created = await this.finalizeUpload({
-			uploadId: params.uploadId,
-			totalChunks: params.totalChunks,
-			folderPath: params.folderPath,
-			fileName: params.fileName,
-			mimeType: params.mimeType,
-			userId: params.userId,
-		});
-
-		return { file: created, allChunksPresent: true };
-	}
-
-	private async writeChunkToDisk(chunk: Blob, uploadId: string, chunkIndex: number): Promise<void> {
-		const chunkDir = getChunkDirectoryRelativePath(uploadId);
-		await ensureDirectory(chunkDir);
-
-		const chunkPath = resolveStoragePath(getChunkRelativePath(uploadId, chunkIndex));
-		await Bun.write(chunkPath, chunk);
-	}
-
-	private async areAllChunksPresent(uploadId: string, totalChunks: number): Promise<boolean> {
-		const chunkDir = resolveStoragePath(getChunkDirectoryRelativePath(uploadId));
-		const entries = await readdir(chunkDir).catch(() => []);
-		return entries.length >= totalChunks;
-	}
-
-	private async finalizeUpload(params: {
-		uploadId: string;
-		totalChunks: number;
-		folderPath: string;
-		fileName: string;
-		mimeType: string;
-		userId: number;
-	}): Promise<File> {
-		const finalRelativePath = buildFileRelativePath(params.folderPath, params.fileName);
-		const finalPath = resolveStoragePath(finalRelativePath);
-		await ensureDirectory(params.folderPath);
-		await this.assembleChunks(params.uploadId, params.totalChunks, finalPath);
-
-		const fileHash = await calculateFileHash(finalPath);
-		const size = Bun.file(finalPath).size;
-
-		const folder = await folderService.getFolderByPath(params.folderPath);
-		const parentId = folder?.id ?? null;
-
-		const created = await this.createFile({
-			name: params.fileName,
-			path: params.folderPath,
-			size,
-			mimeType: params.mimeType,
-			hash: fileHash,
-			uploadedBy: params.userId,
-			parentId,
-			metadata: null,
-		});
-
-		const updated = await metadataService.enrichMetadata(created);
-		return updated ?? created;
-	}
-
-	private async assembleChunks(
-		uploadId: string,
-		totalChunks: number,
-		finalPath: string,
-	): Promise<void> {
-		const chunkDir = resolveStoragePath(getChunkDirectoryRelativePath(uploadId));
-		const writer = Bun.file(finalPath).writer();
-
-		for (let index = 0; index < totalChunks; index += 1) {
-			const chunkFileName = index.toString().padStart(6, "0");
-			const chunkPath = resolveStoragePath(
-				`${getChunkDirectoryRelativePath(uploadId)}/${chunkFileName}`,
+		if (file) {
+			promises.push(
+				cacheManager.del(`petrel:file:path:${normalizeRelativePath(file.path)}/${file.name}`),
 			);
-			await this.appendFileToWriter(writer, chunkPath);
 		}
 
-		await writer.end();
-		await rm(chunkDir, { recursive: true, force: true });
-	}
-
-	private async appendFileToWriter(
-		writer: ReturnType<BunFile["writer"]>,
-		chunkPath: string,
-	): Promise<void> {
-		const stream = Bun.file(chunkPath).stream();
-		for await (const data of stream) {
-			await writer.write(data as Uint8Array);
-		}
+		await Promise.all(promises);
 	}
 
 	resolveDiskPath(file: File): string {

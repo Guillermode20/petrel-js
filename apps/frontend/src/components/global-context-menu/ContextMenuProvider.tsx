@@ -1,7 +1,8 @@
-import { createContext, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, useCallback, useMemo, useRef, useState } from "react";
+import { logger } from "@/lib/logger";
 import type {
-	ContextMenuActionRegistry,
 	ContextMenuActionHandler,
+	ContextMenuActionRegistry,
 	ContextMenuActions,
 	ContextMenuPosition,
 	ContextMenuState,
@@ -18,7 +19,9 @@ export const ContextMenuStateContext = createContext<ContextMenuState | null>(nu
  */
 export const ContextMenuActionsContext = createContext<ContextMenuActions | null>(null);
 
-export const ContextMenuActionRegistryContext = createContext<ContextMenuActionRegistry | null>(null);
+export const ContextMenuActionRegistryContext = createContext<ContextMenuActionRegistry | null>(
+	null,
+);
 
 interface ContextMenuProviderProps {
 	children: ReactNode;
@@ -47,14 +50,17 @@ export function ContextMenuProvider({ children }: ContextMenuProviderProps): Rea
 
 	const handlersRef = useRef<Map<string, ContextMenuActionHandler>>(new Map());
 
-	const open = useCallback((position: ContextMenuPosition, context: MenuContext, handlerId?: string) => {
-		setState({
-			isOpen: true,
-			position,
-			context,
-			handlerId: handlerId ?? null,
-		});
-	}, []);
+	const open = useCallback(
+		(position: ContextMenuPosition, context: MenuContext, handlerId?: string) => {
+			setState({
+				isOpen: true,
+				position,
+				context,
+				handlerId: handlerId ?? null,
+			});
+		},
+		[],
+	);
 
 	const close = useCallback(() => {
 		setState((prev) => ({
@@ -73,21 +79,36 @@ export function ContextMenuProvider({ children }: ContextMenuProviderProps): Rea
 			register: (handler: ContextMenuActionHandler) => {
 				const id = createHandlerId();
 				handlersRef.current.set(id, handler);
-				console.log("[ContextMenu Registry] Registered handler:", id, "Total handlers:", handlersRef.current.size);
+				logger.debug(
+					"[ContextMenu Registry] Registered handler:",
+					id,
+					"Total handlers:",
+					handlersRef.current.size,
+				);
 				return id;
 			},
 			unregister: (handlerId: string) => {
 				handlersRef.current.delete(handlerId);
-				console.log("[ContextMenu Registry] Unregistered handler:", handlerId, "Total handlers:", handlersRef.current.size);
+				logger.debug(
+					"[ContextMenu Registry] Unregistered handler:",
+					handlerId,
+					"Total handlers:",
+					handlersRef.current.size,
+				);
 			},
 			dispatch: async (handlerId: string, action: string, context: MenuContext, data?: unknown) => {
-				console.log("[ContextMenu Registry] Dispatch lookup:", handlerId, "Available handlers:", Array.from(handlersRef.current.keys()));
+				logger.debug(
+					"[ContextMenu Registry] Dispatch lookup:",
+					handlerId,
+					"Available handlers:",
+					Array.from(handlersRef.current.keys()),
+				);
 				const handler = handlersRef.current.get(handlerId);
 				if (!handler) {
-					console.log("[ContextMenu Registry] Handler not found!");
+					logger.warn("[ContextMenu Registry] Handler not found!");
 					return false;
 				}
-				console.log("[ContextMenu Registry] Calling handler for action:", action);
+				logger.debug("[ContextMenu Registry] Calling handler for action:", action);
 				await handler(action, context, data);
 				return true;
 			},

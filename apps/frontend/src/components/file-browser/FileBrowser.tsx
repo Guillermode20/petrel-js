@@ -3,17 +3,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { buildBreadcrumbSegments, FolderBreadcrumb } from "@/components/navigation";
+import type { ContextMenuActionHandler, MenuContext } from "@/components/global-context-menu";
 import {
-	useContextMenuActions,
-	useContextMenuKeyboardShortcuts,
-	useRegisterContextMenuActionHandler,
 	toClipboardItem,
+	useContextMenuActions,
 	useContextMenuClipboardActions,
 	useContextMenuClipboardState,
+	useContextMenuKeyboardShortcuts,
+	useRegisterContextMenuActionHandler,
 } from "@/components/global-context-menu";
-import type { ContextMenuActionHandler, MenuContext } from "@/components/global-context-menu";
+import { buildBreadcrumbSegments, FolderBreadcrumb } from "@/components/navigation";
+import { PageBar } from "@/components/navigation/PageBar";
 import { CreateShareModal } from "@/components/sharing";
+import { Pagination } from "@/components/ui/pagination";
 import {
 	useCreateFolder,
 	useCreateShare,
@@ -25,6 +27,7 @@ import {
 	useZipDownload,
 } from "@/hooks";
 import { api } from "@/lib/api";
+import { logger } from "@/lib/logger";
 import { CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
 import { FileGrid } from "./FileGrid";
 import { FileList } from "./FileList";
@@ -35,8 +38,6 @@ import type { SortField, UploadProgress, ViewMode } from "./types";
 import { UploadBar, UploadProgressList } from "./UploadZone";
 import { isFile, isFolder, parseSelectionKey } from "./utils/selection";
 import { ViewToggle } from "./ViewToggle";
-import { PageBar } from "@/components/navigation/PageBar";
-import { Pagination } from "@/components/ui/pagination";
 
 interface FileBrowserProps {
 	folderId?: number;
@@ -222,7 +223,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			await navigator.clipboard.writeText(url);
 			toast.success("Share link copied to clipboard");
 		} catch (error) {
-			console.error("Failed to create share link:", error);
+			logger.error("Failed to create share link:", error);
 			const message = error instanceof Error ? error.message : "Unknown error";
 			if (message.includes("Unauthorized") || message.includes("null is not an object")) {
 				toast.error(
@@ -320,7 +321,11 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 
 	const handleFileBrowserContextMenuAction = useCallback<ContextMenuActionHandler>(
 		async (action: string, context: MenuContext, data?: unknown) => {
-			console.log("[FileBrowser] Context menu action received:", { action, contextType: context.type, data });
+			logger.debug("[FileBrowser] Context menu action received:", {
+				action,
+				contextType: context.type,
+				data,
+			});
 			if (context.type === "file" || context.type === "folder") {
 				const item = context.item;
 				if (action === "open") return handleOpen(item);
@@ -424,7 +429,9 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		],
 	);
 
-	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleFileBrowserContextMenuAction);
+	const contextMenuHandlerId = useRegisterContextMenuActionHandler(
+		handleFileBrowserContextMenuAction,
+	);
 
 	const buildMenuContextForItem = useCallback(
 		(item: File | Folder): MenuContext => {
@@ -461,7 +468,11 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			openContextMenu(
 				{ x: event.clientX, y: event.clientY },
 				selectedIds.size > 1
-					? { type: "multi-selection", items: getSelectedItemsForContextMenu(sortedItems), selectedIds }
+					? {
+							type: "multi-selection",
+							items: getSelectedItemsForContextMenu(sortedItems),
+							selectedIds,
+						}
 					: { type: "empty-space", folderId },
 				contextMenuHandlerId,
 			);

@@ -1,0 +1,185 @@
+import { Elysia, t } from "elysia";
+import { TEXT_MIME_TYPES } from "../../../constants/mime-types";
+import {
+	normalizeNameSafe,
+	normalizePathSafe,
+	parseNumberField,
+	resolveFolderPathById,
+} from "../../../lib/route-helpers";
+import {
+	buildFileRelativePath,
+	ensureDirectory,
+	moveFileOnDisk,
+	resolveStoragePath,
+} from "../../../lib/storage";
+import { fileService } from "../../../services/file.service";
+import { requireAuth, requirePermission } from "../../auth";
+import type { ApiResponse } from "../types";
+
+export const mutateRoutes = new Elysia({ prefix: "/api" })
+	.use(requireAuth)
+	.patch(
+		"/files/:id",
+		async ({
+			params,
+			body,
+			user,
+			set,
+		}): Promise<ApiResponse<{ id: number; name: string; path: string }>> => {
+			const file = await fileService.getById(params.id);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			if (user.role !== "admin" && file.uploadedBy !== null && file.uploadedBy !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only modify your own files" };
+			}
+
+			const updateData: { name?: string; path?: string } = {};
+
+			if (body.name !== undefined) {
+				const safeName = normalizeNameSafe(body.name, set);
+				if (!safeName) {
+					return { data: null, error: "Invalid file name" };
+				}
+				updateData.name = safeName;
+			}
+
+			if (body.path !== undefined || body.folderId !== undefined) {
+				let folderPath: string | undefined;
+				if (body.folderId !== undefined) {
+					const folderId = parseNumberField(body.folderId, set, "folderId");
+					if (folderId === null) {
+						return { data: null, error: "Invalid folder id" };
+					}
+					const resolvedPath = await resolveFolderPathById(folderId, set);
+					if (resolvedPath === null) {
+						return { data: null, error: "Folder not found" };
+					}
+					folderPath = resolvedPath;
+				} else if (body.path !== undefined) {
+					folderPath = normalizePathSafe(body.path, set);
+					if (folderPath === null) {
+						return { data: null, error: "Invalid path" };
+					}
+				}
+				updateData.path = folderPath ?? undefined;
+			}
+
+			const updated = await fileService.updateFile(file.id, updateData);
+			if (!updated) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			const currentDiskPath = fileService.resolveDiskPath(file);
+			const nextDiskPath = resolveStoragePath(buildFileRelativePath(updated.path, updated.name));
+			await ensureDirectory(updated.path);
+			await moveFileOnDisk(currentDiskPath, nextDiskPath);
+
+			return {
+				data: { id: updated.id, name: updated.name, path: updated.path },
+				error: null,
+			};
+		},
+		{
+			params: t.Object({
+				id: t.Number(),
+			}),
+			body: t.Object({
+				name: t.Optional(t.String({ minLength: 1 })),
+				path: t.Optional(t.String()),
+				folderId: t.Optional(t.Union([t.Number(), t.String()])),
+			}),
+			detail: {
+				summary: "Rename or move file",
+				description: "Updates file name or path/folder",
+				tags: ["Files"],
+			},
+		},
+	)
+	.use(requirePermission("delete"))
+	.delete(
+		"/files/:id",
+		async ({ params, user, set }): Promise<ApiResponse<{ id: number }>> => {
+			const file = await fileService.getById(params.id);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			if (user.role !== "admin" && file.uploadedBy !== null && file.uploadedBy !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only delete your own files" };
+			}
+
+			const deleted = await fileService.deleteFile(params.id);
+			if (!deleted) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			return { data: { id: deleted.id }, error: null };
+		},
+		{
+			params: t.Object({
+				id: t.Number(),
+			}),
+			detail: {
+				summary: "Delete file",
+				description: "Permanently deletes a file and all derived assets",
+				tags: ["Files"],
+			},
+		},
+	)
+	.put(
+		"/files/:id/content",
+		async ({
+			params,
+			body,
+			user,
+			set,
+		}): Promise<ApiResponse<{ id: number; size: number; hash: string }>> => {
+			const file = await fileService.getById(params.id);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			if (user.role !== "admin" && file.uploadedBy !== null && file.uploadedBy !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only edit your own files" };
+			}
+
+			if (!TEXT_MIME_TYPES.includes(file.mimeType)) {
+				set.status = 400;
+				return { data: null, error: "File editing is only supported for text files" };
+			}
+
+			const updated = await fileService.updateFileContent(params.id, body.content);
+			if (!updated) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			return {
+				data: { id: updated.id, size: updated.size, hash: updated.hash },
+				error: null,
+			};
+		},
+		{
+			params: t.Object({
+				id: t.Number(),
+			}),
+			body: t.Object({
+				content: t.String({ minLength: 0 }),
+			}),
+			detail: {
+				summary: "Edit text file content",
+				description: "Updates the content of a text file",
+				tags: ["Files"],
+			},
+		},
+	);
