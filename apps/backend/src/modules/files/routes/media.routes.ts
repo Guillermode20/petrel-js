@@ -1,17 +1,17 @@
+import type { ApiResponse } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { parseThumbnailSize } from "../../../lib/route-helpers";
 import type { SpriteMetadata } from "../../../lib/thumbnails";
 import type { WaveformData } from "../../../lib/waveform";
 import { fileService } from "../../../services/file.service";
 import { mediaService } from "../../../services/media.service";
-import { fileAccessGuard } from "../guards";
+import { fileAccessGuard, fileReadGuard } from "../guards";
 
 export const mediaRoutes = new Elysia({ prefix: "/api" })
-	.use(fileAccessGuard)
+	.use(fileReadGuard)
 	.get(
 		"/files/:id/thumbnail",
-		async ({ params, query, set }) => {
-			const file = await fileService.getById(params.id);
+		async ({ file, query, set }) => {
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
@@ -29,7 +29,10 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					set.status = 400;
 					return { data: null, error: err.message };
 				}
-				throw err;
+				return {
+					data: null,
+					error: err instanceof Error ? err.message : "Failed to generate thumbnail",
+				};
 			}
 		},
 		{
@@ -48,8 +51,7 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/sprite",
-		async ({ params, set }) => {
-			const file = await fileService.getById(params.id);
+		async ({ file, set }) => {
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
@@ -65,7 +67,10 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					set.status = 400;
 					return { data: null, error: err.message };
 				}
-				throw err;
+				return {
+					data: null,
+					error: err instanceof Error ? err.message : "Failed to generate sprite",
+				};
 			}
 		},
 		{
@@ -81,8 +86,7 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/sprite/meta",
-		async ({ params, set }): Promise<{ data: SpriteMetadata | null; error: string | null }> => {
-			const file = await fileService.getById(params.id);
+		async ({ file, set }): Promise<ApiResponse<SpriteMetadata>> => {
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
@@ -97,7 +101,10 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					set.status = 400;
 					return { data: null, error: err.message };
 				}
-				throw err;
+				return {
+					data: null,
+					error: err instanceof Error ? err.message : "Failed to get sprite metadata",
+				};
 			}
 		},
 		{
@@ -113,8 +120,7 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/waveform",
-		async ({ params, set }): Promise<{ data: WaveformData | null; error: string | null }> => {
-			const file = await fileService.getById(params.id);
+		async ({ file, set }): Promise<ApiResponse<WaveformData>> => {
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
@@ -129,7 +135,10 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					set.status = 400;
 					return { data: null, error: err.message };
 				}
-				throw err;
+				return {
+					data: null,
+					error: err instanceof Error ? err.message : "Failed to get waveform data",
+				};
 			}
 		},
 		{
@@ -145,8 +154,7 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/waveform/image",
-		async ({ params, query, set }) => {
-			const file = await fileService.getById(params.id);
+		async ({ file, query, set }) => {
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
@@ -166,7 +174,10 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					set.status = 400;
 					return { data: null, error: err.message };
 				}
-				throw err;
+				return {
+					data: null,
+					error: err instanceof Error ? err.message : "Failed to generate waveform image",
+				};
 			}
 		},
 		{

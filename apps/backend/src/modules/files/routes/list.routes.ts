@@ -1,6 +1,7 @@
 import type { File as SharedFile } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import {
+	canRead,
 	getPagination,
 	normalizePathSafe,
 	parseNumberField,
@@ -8,14 +9,17 @@ import {
 } from "../../../lib/route-helpers";
 import { fileService } from "../../../services/file.service";
 import { folderService } from "../../../services/folder.service";
-import { fileAccessGuard } from "../guards";
+import { fileReadGuard } from "../guards";
 import type { ApiResponse, FileListData } from "../types";
 
 export const listRoutes = new Elysia({ prefix: "/api" })
-	.use(fileAccessGuard)
 	.get(
 		"/files",
 		async ({ query, set, user }): Promise<ApiResponse<FileListData>> => {
+			if (!canRead(user)) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
+			}
 			let folderPath: string | null = null;
 			if (query.folderId !== undefined) {
 				const folderId = parseNumberField(query.folderId, set, "folderId");
@@ -83,10 +87,10 @@ export const listRoutes = new Elysia({ prefix: "/api" })
 			},
 		},
 	)
+	.use(fileReadGuard)
 	.get(
 		"/files/:id",
-		async ({ params, set, user }): Promise<ApiResponse<SharedFile>> => {
-			const file = await fileService.getById(params.id);
+		async ({ file, set }): Promise<ApiResponse<SharedFile>> => {
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };

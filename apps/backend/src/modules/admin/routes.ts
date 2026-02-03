@@ -1,11 +1,7 @@
+import type { ApiResponse } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { requireAdmin } from "../auth";
 import { storageSyncService } from "../../services/storage-sync.service";
-
-interface ApiResponse<T> {
-	data: T | null;
-	error: string | null;
-}
 
 export const adminRoutes = new Elysia({ prefix: "/api/admin" })
 	.use(requireAdmin)

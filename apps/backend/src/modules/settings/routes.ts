@@ -1,4 +1,4 @@
-import type { UserSettings } from "@petrel/shared";
+import type { ApiResponse, UserSettings } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { authMiddleware, requireAuth } from "../auth";
 import { settingsService } from "./service";
@@ -7,7 +7,7 @@ export const settingsRoutes = new Elysia({ prefix: "/api" })
 	.use(authMiddleware)
 	.get(
 		"/settings",
-		async ({ user, set }): Promise<{ data: unknown | null; error: string | null }> => {
+		async ({ user, set }): Promise<ApiResponse<UserSettings>> => {
 			if (!user) {
 				set.status = 401;
 				return { data: null, error: "Unauthorized" };
@@ -33,10 +33,10 @@ export const settingsRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/settings/defaults",
-		async (): Promise<{ data: unknown | null; error: string | null }> => {
+		async (): Promise<ApiResponse<UserSettings>> => {
 			try {
 				const defaults = settingsService.getDefaultSettings();
-				return { data: defaults, error: null };
+				return { data: defaults as UserSettings, error: null };
 			} catch (error) {
 				return {
 					data: null,
@@ -55,7 +55,7 @@ export const settingsRoutes = new Elysia({ prefix: "/api" })
 	.use(requireAuth)
 	.patch(
 		"/settings",
-		async ({ user, body, set }): Promise<{ data: unknown | null; error: string | null }> => {
+		async ({ user, body, set }): Promise<ApiResponse<UserSettings>> => {
 			if (!user) {
 				set.status = 401;
 				return { data: null, error: "Unauthorized" };
@@ -226,7 +226,7 @@ export const settingsRoutes = new Elysia({ prefix: "/api" })
 	)
 	.post(
 		"/settings/reset",
-		async ({ user, set }): Promise<{ data: unknown | null; error: string | null }> => {
+		async ({ user, set }): Promise<ApiResponse<UserSettings>> => {
 			if (!user) {
 				set.status = 401;
 				return { data: null, error: "Unauthorized" };

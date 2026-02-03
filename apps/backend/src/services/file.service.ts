@@ -215,11 +215,19 @@ export class FileService {
 	}
 
 	async updateFilesPathInFolder(oldFolderPath: string, newFolderPath: string): Promise<void> {
+		await this.updateFilesPathInFolderInternal(oldFolderPath, newFolderPath, db);
+	}
+
+	async updateFilesPathInFolderInternal(
+		oldFolderPath: string,
+		newFolderPath: string,
+		tx: any,
+	): Promise<void> {
 		const normalizedOld = normalizeRelativePath(oldFolderPath);
 		const normalizedNew = normalizeRelativePath(newFolderPath);
 
 		// Use string concatenation to safely replace only the prefix
-		await db
+		await tx
 			.update(files)
 			.set({
 				path: sql`${normalizedNew} || substr(path, length(${normalizedOld}) + 1)`,
@@ -231,18 +239,19 @@ export class FileService {
 		const current = await this.getById(id);
 		if (!current) return null;
 
-		await this.invalidateFileCache(id, current);
+		return await db.transaction(async (tx) => {
+			await tx.delete(videoTracks).where(eq(videoTracks.fileId, id));
+			await tx.delete(subtitles).where(eq(subtitles.fileId, id));
+			await tx.delete(transcodeJobs).where(eq(transcodeJobs.fileId, id));
+			await tx.delete(files).where(eq(files.id, id));
 
-		await this.deletePrimaryFileOnDisk(current);
-		await this.deleteDerivedAssets(id);
-		await Promise.all([
-			db.delete(videoTracks).where(eq(videoTracks.fileId, id)),
-			db.delete(subtitles).where(eq(subtitles.fileId, id)),
-			db.delete(transcodeJobs).where(eq(transcodeJobs.fileId, id)),
-		]);
+			// Perform side effects only if transaction succeeds
+			await this.deletePrimaryFileOnDisk(current);
+			await this.deleteDerivedAssets(id);
+			await this.invalidateFileCache(id, current);
 
-		await db.delete(files).where(eq(files.id, id));
-		return current;
+			return current;
+		});
 	}
 
 	@CacheEvict({ key: (id: number) => cacheKeys.file(id) })

@@ -7,20 +7,15 @@ import {
 	getZipJob,
 	scheduleZipCleanup,
 } from "../../../services/zip.service";
-import { fileAccessGuard } from "../guards";
+import { requireAuth } from "../../auth";
 import type { ApiResponse } from "../types";
 
 export const zipRoutes = new Elysia({ prefix: "/api" })
-	.use(fileAccessGuard)
+	.use(requireAuth)
 	.use(zipRateLimit)
 	.post(
 		"/files/download-zip",
 		async ({ body, set, user }): Promise<ApiResponse<{ jobId: string }>> => {
-			if (!user) {
-				set.status = 401;
-				return { data: null, error: "Unauthorized" };
-			}
-
 			const fileIds: number[] = [];
 			const folderIds: number[] = [];
 
@@ -80,11 +75,6 @@ export const zipRoutes = new Elysia({ prefix: "/api" })
 			if (!job) {
 				set.status = 404;
 				return { data: null, error: "ZIP job not found" };
-			}
-
-			if (!user) {
-				set.status = 401;
-				return { data: null, error: "Unauthorized" };
 			}
 
 			if (job.userId !== user.userId) {

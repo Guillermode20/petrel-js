@@ -1,10 +1,11 @@
+import type { ApiResponse } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { userService } from "../../services/user.service";
 
 export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 	.get(
 		"/status",
-		async (): Promise<{ data: { needsAdminSetup: boolean }; error: null }> => {
+		async (): Promise<ApiResponse<{ needsAdminSetup: boolean }>> => {
 			const adminCount = await userService.countAdmins();
 			return { data: { needsAdminSetup: adminCount === 0 }, error: null };
 		},
@@ -18,7 +19,7 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 	)
 	.post(
 		"/admin",
-		async ({ body, set }): Promise<{ data: { user: { id: number; username: string; role: string } }; error: string | null }> => {
+		async ({ body, set }): Promise<ApiResponse<{ user: { id: number; username: string; role: string } }>> => {
 			try {
 				const user = await userService.createInitialAdmin({
 					username: body.username,
@@ -38,7 +39,7 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 			} catch (error) {
 				set.status = 409;
 				return {
-					data: { user: { id: 0, username: "", role: "" } },
+					data: null,
 					error: error instanceof Error ? error.message : "Failed to create admin",
 				};
 			}

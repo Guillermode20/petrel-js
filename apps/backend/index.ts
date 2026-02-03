@@ -17,6 +17,7 @@ import { userRoutes } from "./src/modules/users";
 import { closeQueues, createQueues } from "./src/queues/connection";
 import { registerFileEventHandlers, registerShareEventHandlers, unregisterFileEventHandlers, unregisterShareEventHandlers } from "./src/events";
 import { storageSyncService } from "./src/services/storage-sync.service";
+import { uploadService } from "./src/services/upload.service";
 import { closeTranscodeWorker, createTranscodeWorker } from "./src/workers/transcode.worker";
 import { closeZipWorker, createZipWorker } from "./src/workers/zip.worker";
 
@@ -102,6 +103,13 @@ async function runStartupSyncChecks(): Promise<void> {
 }
 
 void runStartupSyncChecks();
+
+// Schedule periodic cleanup tasks
+setInterval(() => {
+	void uploadService.cleanupOldUploads().catch((err: unknown) => { // Added explicit type for catch error
+		logger.error({ error: err instanceof Error ? err.message : String(err) }, "Abandoned upload cleanup failed");
+	});
+}, 6 * 60 * 60 * 1000); // Every 6 hours
 
 const app = new Elysia()
 	// Request logging middleware with correlation IDs

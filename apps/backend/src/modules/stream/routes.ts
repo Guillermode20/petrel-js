@@ -10,13 +10,8 @@ import { streamService } from "../../services/stream.service";
 import { transcodeQueue } from "../../services/transcode.service";
 import { videoService } from "../../services/video.service";
 import { authMiddleware } from "../auth";
+import { canRead } from "../../lib/route-helpers";
 import type { ApiResponse, StreamInfoResponse } from "./types";
-
-const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
-
-function canRead(user: unknown): boolean {
-	return Boolean(user) || GUEST_ACCESS_ENABLED;
-}
 
 const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 	.use(authMiddleware)
@@ -128,19 +123,19 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 		async ({ params, query, set, user }) => {
 			if (!canRead(user)) {
 				set.status = 401;
-				return "#EXTM3U\n# Unauthorized";
+				return { data: null, error: "Unauthorized" };
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
 			if (Number.isNaN(fileId)) {
 				set.status = 400;
-				return "#EXTM3U\n# Invalid file ID";
+				return { data: null, error: "Invalid file ID" };
 			}
 
 			const file = await fileService.getById(fileId);
 			if (!file) {
 				set.status = 404;
-				return "#EXTM3U\n# File not found";
+				return { data: null, error: "File not found" };
 			}
 
 			const filePath = fileService.resolveDiskPath(file);
@@ -152,16 +147,16 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 					// Client will poll /info endpoint until stream is ready
 					void streamService.generateTransmuxStream(fileId, filePath);
 					set.status = 202;
-					return "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n/processing.m3u8";
+					return { data: { processing: true }, error: null };
 				}
 				set.status = 202;
-				return "#EXTM3U\n# Stream not ready, transcode in progress";
+				return { data: { processing: true, message: "Stream not ready, transcode in progress" }, error: null };
 			}
 
 			const playlist = await streamService.getMasterPlaylist(fileId);
 			if (!playlist) {
 				set.status = 500;
-				return "#EXTM3U\n# Failed to generate playlist";
+				return { data: null, error: "Failed to generate playlist" };
 			}
 
 			set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
@@ -198,13 +193,13 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 		async ({ params, query, set, user }) => {
 			if (!canRead(user)) {
 				set.status = 401;
-				return "#EXTM3U\n# Unauthorized";
+				return { data: null, error: "Unauthorized" };
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
 			if (Number.isNaN(fileId)) {
 				set.status = 400;
-				return "#EXTM3U\n# Invalid file ID";
+				return { data: null, error: "Invalid file ID" };
 			}
 
 			const playlistName = params.playlist;
@@ -219,14 +214,14 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 					set.status = 202;
 					set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
 					set.headers["Cache-Control"] = "no-cache";
-					return "#EXTM3U\n# Stream is being prepared, please wait...";
+					return { data: { processing: true }, error: null };
 				}
 
 				const playlistPath = await streamService.getQualityPlaylist(fileId, quality);
 
 				if (!playlistPath) {
 					set.status = 404;
-					return "#EXTM3U\n# Playlist not found";
+					return { data: null, error: "Playlist not found" };
 				}
 
 				set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
@@ -243,7 +238,7 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 
 				if (!segmentPath) {
 					set.status = 404;
-					return "Segment not found";
+					return { data: null, error: "Segment not found" };
 				}
 
 				set.headers["Content-Type"] = "video/MP2T";
@@ -253,7 +248,7 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 			}
 
 			set.status = 400;
-			return "Invalid request";
+			return { data: null, error: "Invalid request" };
 		},
 		{
 			params: t.Object({
@@ -302,7 +297,7 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 		async ({ params, set, user }) => {
 			if (!canRead(user)) {
 				set.status = 401;
-				return "Unauthorized";
+				return { data: null, error: "Unauthorized" };
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
@@ -310,7 +305,7 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 
 			if (Number.isNaN(fileId) || Number.isNaN(subtitleId)) {
 				set.status = 400;
-				return "Invalid ID";
+				return { data: null, error: "Invalid ID" };
 			}
 
 			const subtitles = await videoService.getSubtitles(fileId);
@@ -318,7 +313,7 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 
 			if (!subtitle) {
 				set.status = 404;
-				return "Subtitle not found";
+				return { data: null, error: "Subtitle not found" };
 			}
 
 			const absolutePath = resolveStoragePath(subtitle.path);
@@ -393,20 +388,20 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			if (error) {
 				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
 				set.status = status;
-				return `#EXTM3U\n# ${error}`;
+				return { data: null, error };
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
 			if (Number.isNaN(fileId)) {
 				set.status = 400;
-				return "#EXTM3U\n# Invalid file ID";
+				return { data: null, error: "Invalid file ID" };
 			}
 
 			// Verify file is accessible via this share
 			const file = await fileService.getById(fileId);
 			if (!file) {
 				set.status = 404;
-				return "#EXTM3U\n# File not found";
+				return { data: null, error: "File not found" };
 			}
 
 			// Check if file is within shared folder (for folder shares)
@@ -414,11 +409,11 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				const shareContent = await shareService.getShareContent(share!.share);
 				if (!shareContent) {
 					set.status = 400;
-					return "#EXTM3U\n# Invalid share";
+					return { data: null, error: "Invalid share" };
 				}
 				if (file.parentId === null) {
 					set.status = 403;
-					return "#EXTM3U\n# Access denied";
+					return { data: null, error: "Access denied" };
 				}
 				const isInFolder = await folderService.isDescendantOf(
 					file.parentId,
@@ -426,16 +421,16 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				);
 				if (!isInFolder) {
 					set.status = 403;
-					return "#EXTM3U\n# Access denied";
+					return { data: null, error: "Access denied" };
 				}
 			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
 				set.status = 403;
-				return "#EXTM3U\n# Access denied";
+				return { data: null, error: "Access denied" };
 			}
 
 			if (!file.mimeType.startsWith("video/")) {
 				set.status = 400;
-				return "#EXTM3U\n# File is not a video";
+				return { data: null, error: "File is not a video" };
 			}
 
 			const filePath = fileService.resolveDiskPath(file);
@@ -445,16 +440,16 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				if (streamInfo.isTransmux) {
 					void streamService.generateTransmuxStream(fileId, filePath);
 					set.status = 202;
-					return "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\n/processing.m3u8";
+					return { data: { processing: true }, error: null };
 				}
 				set.status = 202;
-				return "#EXTM3U\n# Stream not ready, transcode in progress";
+				return { data: { processing: true, message: "Stream not ready, transcode in progress" }, error: null };
 			}
 
 			const playlist = await streamService.getMasterPlaylist(fileId);
 			if (!playlist) {
 				set.status = 500;
-				return "#EXTM3U\n# Failed to generate playlist";
+				return { data: null, error: "Failed to generate playlist" };
 			}
 
 			set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
@@ -493,13 +488,13 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			if (error) {
 				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
 				set.status = status;
-				return `#EXTM3U\n# ${error}`;
+				return { data: null, error };
 			}
 
 			const fileId = Number.parseInt(params.fileId, 10);
 			if (Number.isNaN(fileId)) {
 				set.status = 400;
-				return "#EXTM3U\n# Invalid file ID";
+				return { data: null, error: "Invalid file ID" };
 			}
 
 			const playlistName = params.playlist;
@@ -511,14 +506,14 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 					set.status = 202;
 					set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
 					set.headers["Cache-Control"] = "no-cache";
-					return "#EXTM3U\n# Stream is being prepared, please wait...";
+					return { data: { processing: true }, error: null };
 				}
 
 				const playlistPath = await streamService.getQualityPlaylist(fileId, quality);
 
 				if (!playlistPath) {
 					set.status = 404;
-					return "#EXTM3U\n# Playlist not found";
+					return { data: null, error: "Playlist not found" };
 				}
 
 				set.headers["Content-Type"] = "application/vnd.apple.mpegurl";
@@ -538,7 +533,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 
 				if (!segmentPath) {
 					set.status = 404;
-					return "Segment not found";
+					return { data: null, error: "Segment not found" };
 				}
 
 				set.headers["Content-Type"] = "video/MP2T";
@@ -548,7 +543,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			}
 
 			set.status = 400;
-			return "Invalid request";
+			return { data: null, error: "Invalid request" };
 		},
 		{
 			params: t.Object({

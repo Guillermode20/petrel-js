@@ -205,7 +205,10 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error: "File not found" };
 			}
 
-			const headers = (set.headers ??= {} as Record<string, string>);
+			if (!set.headers) {
+				set.headers = {} as Record<string, string>;
+			}
+			const headers = set.headers;
 			headers["Content-Type"] = fileRecord.mimeType;
 			headers["Content-Length"] = fileStat.size.toString();
 			headers["Content-Disposition"] = `attachment; filename="${fileRecord.name}"`;
@@ -395,7 +398,10 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				primaryFolderName,
 			);
 
-			const headers = (set.headers ??= {} as Record<string, string>);
+			if (!set.headers) {
+				set.headers = {} as Record<string, string>;
+			}
+			const headers = set.headers;
 			headers["Content-Type"] = "application/zip";
 			headers["Content-Length"] = fileStat.size.toString();
 			headers["Content-Disposition"] = `attachment; filename="${filename}"`;

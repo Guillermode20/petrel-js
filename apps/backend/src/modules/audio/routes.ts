@@ -155,7 +155,7 @@ export const audioRoutes = new Elysia({ prefix: "/api/audio" })
 			if (!context) {
 				const statusCode = typeof set.status === "number" ? set.status : 401;
 				set.status = statusCode;
-				return "";
+				return { data: null, error: "Unauthorized or not found" };
 			}
 
 			const headers = new Headers();
@@ -179,7 +179,7 @@ export const audioRoutes = new Elysia({ prefix: "/api/audio" })
 			if (!context) {
 				const statusCode = typeof set.status === "number" ? set.status : 401;
 				set.status = statusCode;
-				return "Unauthorized";
+				return { data: null, error: "Unauthorized or not found" };
 			}
 
 			const rangeHeader = request.headers.get("range");

@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { downloadRoutes } from "./download.routes";
+import { folderRoutes } from "./folder.routes";
 import { listRoutes } from "./list.routes";
 import { mediaRoutes } from "./media.routes";
 import { mutateRoutes } from "./mutate.routes";
@@ -8,6 +9,7 @@ import { zipRoutes } from "./zip.routes";
 
 export const fileRoutes = new Elysia({ prefix: "" })
 	.use(uploadRoutes)
+	.use(folderRoutes)
 	.use(listRoutes)
 	.use(downloadRoutes)
 	.use(mediaRoutes)

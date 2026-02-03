@@ -11,6 +11,30 @@ import { uploadService } from "../../../services/upload.service";
 import { requireAuth, requirePermission } from "../../auth";
 import type { ApiResponse } from "../types";
 
+interface UploadPathParams {
+	folderId?: string | number;
+	path?: string;
+}
+
+async function resolveUploadPath(
+	params: UploadPathParams,
+	set: { status?: number | string },
+): Promise<string | null> {
+	let folderPath: string | undefined;
+
+	if (params.folderId !== undefined) {
+		const folderId = parseNumberField(params.folderId, set, "folderId");
+		if (folderId === null) return null;
+
+		const resolvedPath = await resolveFolderPathById(folderId, set);
+		if (resolvedPath === null) return null;
+		folderPath = resolvedPath;
+	}
+
+	const safeFolderPath = normalizePathSafe(folderPath ?? params.path, set);
+	return safeFolderPath;
+}
+
 export const uploadRoutes = new Elysia({ prefix: "/api" })
 	.use(requireAuth)
 	.use(uploadRateLimit)
@@ -24,13 +48,10 @@ export const uploadRoutes = new Elysia({ prefix: "/api" })
 			}
 
 			const chunkIndex = parseNumberField(body.chunkIndex, set, "chunkIndex");
-			if (chunkIndex === null) {
-				return { data: null, error: "Invalid chunk index" };
-			}
-
 			const totalChunks = parseNumberField(body.totalChunks, set, "totalChunks");
-			if (totalChunks === null) {
-				return { data: null, error: "Invalid total chunks" };
+
+			if (chunkIndex === null || totalChunks === null) {
+				return { data: null, error: "Invalid chunk parameters" };
 			}
 
 			if (chunkIndex < 0 || chunkIndex >= totalChunks) {
@@ -38,28 +59,14 @@ export const uploadRoutes = new Elysia({ prefix: "/api" })
 				return { data: null, error: "Invalid chunk index" };
 			}
 
-			let folderPath: string | undefined;
-			if (body.folderId !== undefined) {
-				const folderId = parseNumberField(body.folderId, set, "folderId");
-				if (folderId === null) {
-					return { data: null, error: "Invalid folder id" };
-				}
-				const resolvedPath = await resolveFolderPathById(folderId, set);
-				if (resolvedPath === null) {
-					return { data: null, error: "Folder not found" };
-				}
-				folderPath = resolvedPath;
-			}
-
-			const safeFolderPath = normalizePathSafe(folderPath ?? body.path, set);
-			if (safeFolderPath === null) {
-				return { data: null, error: "Invalid path" };
-			}
+			const safeFolderPath = await resolveUploadPath(
+				{ folderId: body.folderId, path: body.path },
+				set,
+			);
+			if (safeFolderPath === null) return { data: null, error: "Invalid upload path" };
 
 			const safeFileName = normalizeNameSafe(body.fileName, set);
-			if (!safeFileName) {
-				return { data: null, error: "Invalid file name" };
-			}
+			if (!safeFileName) return { data: null, error: "Invalid file name" };
 
 			const existing = await uploadService.fileExists(safeFolderPath, safeFileName);
 			if (existing) {

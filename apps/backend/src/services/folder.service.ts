@@ -13,13 +13,23 @@ export interface CreateFolderInput {
 }
 
 export class FolderService {
+	private mapFolderRow(row: typeof folders.$inferSelect): Folder {
+		return {
+			id: row.id,
+			name: row.name,
+			path: row.path,
+			parentId: row.parentId,
+			ownerId: row.ownerId,
+		};
+	}
+
 	@Cacheable({ key: (id: number) => cacheKeys.folder(id), ttl: cacheTTL.folder })
 	async getById(id: number): Promise<Folder | null> {
 		const folder = await db.query.folders.findFirst({
 			where: eq(folders.id, id),
 		});
 
-		return folder ?? null;
+		return folder ? this.mapFolderRow(folder) : null;
 	}
 
 	@Cacheable({ key: (path: string) => cacheKeys.folderByPath(path), ttl: cacheTTL.folder })
@@ -29,7 +39,7 @@ export class FolderService {
 			where: eq(folders.path, normalizedPath),
 		});
 
-		return folder ?? null;
+		return folder ? this.mapFolderRow(folder) : null;
 	}
 
 	async listByParentId(
@@ -93,9 +103,11 @@ export class FolderService {
 					? and(...conditions)
 					: conditions[0];
 
-		return await db.query.folders.findMany({
+		const results = await db.query.folders.findMany({
 			where: whereClause,
 		});
+
+		return results.map((row) => this.mapFolderRow(row));
 	}
 
 	async createFolder(input: CreateFolderInput): Promise<Folder> {
@@ -107,7 +119,7 @@ export class FolderService {
 		});
 
 		if (existing) {
-			return existing;
+			return this.mapFolderRow(existing);
 		}
 
 		const parentFolder = parentPath ? await this.getFolderByPath(parentPath) : null;
@@ -125,12 +137,12 @@ export class FolderService {
 
 		await cacheManager.delPattern(cacheKeys.pattern.allFolders());
 
-		const created = (inserted as any[])?.[0];
+		const created = (inserted as (typeof folders.$inferSelect)[])[0];
 		if (!created) {
 			throw new Error("Failed to create folder record");
 		}
 
-		return created;
+		return this.mapFolderRow(created);
 	}
 
 	async getParentChain(folderId: number | null): Promise<Folder[]> {
@@ -186,48 +198,61 @@ export class FolderService {
 			nextPath = parentPath ? `${parentPath}/${nextName}` : nextName;
 		}
 
-		const updated = await db
-			.update(folders)
-			.set({
-				name: nextName,
-				parentId: nextParentId,
-				path: nextPath,
-			})
-			.where(eq(folders.id, id))
-			.returning();
+		return await db.transaction(async (tx) => {
+			const updated = await tx
+				.update(folders)
+				.set({
+					name: nextName,
+					parentId: nextParentId,
+					path: nextPath,
+				})
+				.where(eq(folders.id, id))
+				.returning();
 
-		// Invalidate caches
-		await Promise.all([
-			cacheManager.del(cacheKeys.folder(id)),
-			cacheManager.del(cacheKeys.folderByPath(current.path)),
-			cacheManager.del(cacheKeys.folderByPath(nextPath)),
-			cacheManager.delPattern(cacheKeys.pattern.allFolders()),
-			cacheManager.delPattern(cacheKeys.pattern.fileLists()),
-		]);
+			const updatedFolder = (updated as (typeof folders.$inferSelect)[])[0];
+			
+			if (updatedFolder && nextPath !== current.path) {
+				// Recursively update children paths within the same transaction
+				await this.updateChildrenPathsInternal(id, current.path, nextPath, tx);
+			}
 
-		const updatedFolder = (updated as any[])?.[0];
-		if (updatedFolder && nextPath !== current.path) {
-			// Recursively update children paths
-			await this.updateChildrenPaths(id, current.path, nextPath);
-		}
+			// Invalidate caches after transaction succeeds
+			await Promise.all([
+				cacheManager.del(cacheKeys.folder(id)),
+				cacheManager.del(cacheKeys.folderByPath(current.path)),
+				cacheManager.del(cacheKeys.folderByPath(nextPath)),
+				cacheManager.delPattern(cacheKeys.pattern.allFolders()),
+				cacheManager.delPattern(cacheKeys.pattern.fileLists()),
+			]);
 
-		return updatedFolder ?? null;
+			return updatedFolder ? this.mapFolderRow(updatedFolder) : null;
+		});
 	}
 
-	private async updateChildrenPaths(
+	private async updateChildrenPathsInternal(
 		folderId: number,
 		oldParentPath: string,
 		newParentPath: string,
+		tx: any,
+		visited: Set<number> = new Set(),
 	): Promise<void> {
+		if (visited.has(folderId)) {
+			throw new Error(`Circular reference detected in folder hierarchy at ID: ${folderId}`);
+		}
+		visited.add(folderId);
+
 		// Update files in this folder
-		await fileService.updateFilesPathInFolder(oldParentPath, newParentPath);
+		await fileService.updateFilesPathInFolderInternal(oldParentPath, newParentPath, tx);
 
 		// Recursively update subfolders
-		const children = await this.listByParentId(folderId);
+		const children = await tx.query.folders.findMany({
+			where: eq(folders.parentId, folderId),
+		});
+
 		for (const child of children) {
 			const nextChildPath = newParentPath + child.path.slice(oldParentPath.length);
-			await db.update(folders).set({ path: nextChildPath }).where(eq(folders.id, child.id));
-			await this.updateChildrenPaths(child.id, child.path, nextChildPath);
+			await tx.update(folders).set({ path: nextChildPath }).where(eq(folders.id, child.id));
+			await this.updateChildrenPathsInternal(child.id, child.path, nextChildPath, tx, visited);
 		}
 	}
 

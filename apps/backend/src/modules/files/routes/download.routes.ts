@@ -1,14 +1,11 @@
 import { stat } from "node:fs/promises";
 import { Elysia, t } from "elysia";
 import { fileService } from "../../../services/file.service";
-import { fileAccessGuard } from "../guards";
+import { fileReadGuard } from "../guards";
 
-export const downloadRoutes = new Elysia({ prefix: "/api" })
-	.use(fileAccessGuard)
-	.get(
-		"/files/:id/download",
-	async ({ params, set }) => {
-		const file = await fileService.getById(params.id);
+export const downloadRoutes = new Elysia({ prefix: "/api" }).use(fileReadGuard).get(
+	"/files/:id/download",
+	async ({ file, set }) => {
 		if (!file) {
 			set.status = 404;
 			return { data: null, error: "File not found" };

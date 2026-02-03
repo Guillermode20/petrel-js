@@ -1,4 +1,5 @@
-import { readdir, rename, rm } from "node:fs/promises";
+import { readdir, rename, rm, stat } from "node:fs/promises";
+import { join } from "node:path";
 import type { File } from "@petrel/shared";
 import type { BunFile } from "bun";
 import {
@@ -7,8 +8,10 @@ import {
 	ensureDirectory,
 	getChunkDirectoryRelativePath,
 	getChunkRelativePath,
+	pathExists,
 	resolveStoragePath,
 } from "../lib/storage";
+import { logger } from "../lib/logger";
 import { type FileService, fileService } from "./file.service";
 import { type FolderService, folderService } from "./folder.service";
 import { type MetadataService, metadataService } from "./metadata.service";
@@ -30,6 +33,8 @@ export interface UploadResult {
 }
 
 export class UploadService {
+	private activeFinalizations = new Set<string>();
+
 	constructor(
 		private fileService: FileService,
 		private folderService: FolderService,
@@ -44,21 +49,59 @@ export class UploadService {
 			return { file: null, allChunksPresent: false };
 		}
 
-		const created = await this.finalizeUpload({
-			uploadId: params.uploadId,
-			totalChunks: params.totalChunks,
-			folderPath: params.folderPath,
-			fileName: params.fileName,
-			mimeType: params.mimeType,
-			userId: params.userId,
-		});
+		// Prevent race condition where multiple chunks triggering finalization
+		if (this.activeFinalizations.has(params.uploadId)) {
+			return { file: null, allChunksPresent: true };
+		}
 
-		return { file: created, allChunksPresent: true };
+		this.activeFinalizations.add(params.uploadId);
+
+		try {
+			const created = await this.finalizeUpload({
+				uploadId: params.uploadId,
+				totalChunks: params.totalChunks,
+				folderPath: params.folderPath,
+				fileName: params.fileName,
+				mimeType: params.mimeType,
+				userId: params.userId,
+			});
+
+			return { file: created, allChunksPresent: true };
+		} finally {
+			this.activeFinalizations.delete(params.uploadId);
+		}
 	}
 
 	async fileExists(folderPath: string, fileName: string): Promise<boolean> {
 		const file = await this.fileService.findByPathAndName(folderPath, fileName);
 		return file !== null;
+	}
+
+	/**
+	 * Cleans up abandoned chunk uploads older than the specified max age
+	 */
+	async cleanupOldUploads(maxAgeMs: number = 24 * 60 * 60 * 1000): Promise<void> {
+		const chunksRoot = resolveStoragePath(".chunks");
+		const exists = await pathExists(chunksRoot);
+		if (!exists) return;
+
+		const uploadDirs = await readdir(chunksRoot).catch(() => []);
+		const now = Date.now();
+
+		for (const uploadId of uploadDirs) {
+			const dirPath = join(chunksRoot, uploadId);
+			try {
+				const stats = await stat(dirPath);
+				const age = now - stats.mtimeMs;
+
+				if (age > maxAgeMs) {
+					logger.info({ uploadId, ageHours: Math.round(age / 3600000) }, "Cleaning up abandoned upload");
+					await rm(dirPath, { recursive: true, force: true });
+				}
+			} catch (err) {
+				logger.error({ uploadId, error: err instanceof Error ? err.message : String(err) }, "Failed to stat upload directory");
+			}
+		}
 	}
 
 	private async writeChunk(chunk: Blob, uploadId: string, chunkIndex: number): Promise<void> {
