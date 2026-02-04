@@ -13,7 +13,7 @@ import {
 	resolveStoragePath,
 } from "../../../lib/storage";
 import { fileService } from "../../../services/file.service";
-import { fileOwnershipGuard } from "../guards";
+import { authMiddleware } from "../../auth";
 import type { ApiResponse } from "../types";
 
 async function resolveUpdatePath(
@@ -43,17 +43,29 @@ async function resolveUpdatePath(
 }
 
 export const mutateRoutes = new Elysia({ prefix: "/api" })
-	.use(fileOwnershipGuard)
+	.use(authMiddleware)
 	.patch(
 		"/files/:id",
 		async ({
-			file,
+			params,
+			user,
 			body,
 			set,
 		}): Promise<ApiResponse<{ id: number; name: string; path: string }>> => {
+			if (!user) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
+			}
+
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			if (user.role !== "admin" && file.uploadedBy !== null && file.uploadedBy !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only modify your own files" };
 			}
 
 			const updateData: { name?: string; path?: string } = {};
@@ -105,10 +117,21 @@ export const mutateRoutes = new Elysia({ prefix: "/api" })
 	)
 	.delete(
 		"/files/:id",
-		async ({ file, set }): Promise<ApiResponse<{ id: number }>> => {
+		async ({ params, user, set }): Promise<ApiResponse<{ id: number }>> => {
+			if (!user) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
+			}
+
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			if (user.role !== "admin" && file.uploadedBy !== null && file.uploadedBy !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only modify your own files" };
 			}
 
 			const deleted = await fileService.deleteFile(file.id);
@@ -133,13 +156,25 @@ export const mutateRoutes = new Elysia({ prefix: "/api" })
 	.put(
 		"/files/:id/content",
 		async ({
-			file,
+			params,
+			user,
 			body,
 			set,
 		}): Promise<ApiResponse<{ id: number; size: number; hash: string }>> => {
+			if (!user) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
+			}
+
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			if (user.role !== "admin" && file.uploadedBy !== null && file.uploadedBy !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only modify your own files" };
 			}
 
 			if (!TEXT_MIME_TYPES.includes(file.mimeType)) {

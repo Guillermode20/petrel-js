@@ -1,20 +1,60 @@
 import type { ApiResponse } from "@petrel/shared";
 import { Elysia, t } from "elysia";
+import { config } from "../../../config";
 import { parseThumbnailSize } from "../../../lib/route-helpers";
+import { validateShareAccess } from "../../../lib/share-validation";
 import type { SpriteMetadata } from "../../../lib/thumbnails";
 import type { WaveformData } from "../../../lib/waveform";
 import { fileService } from "../../../services/file.service";
 import { mediaService } from "../../../services/media.service";
-import { fileReadGuard } from "../guards";
+import { shareService } from "../../../services/share.service";
+import { authMiddleware } from "../../auth";
 
 export const mediaRoutes = new Elysia({ prefix: "/api" })
-	.use(fileReadGuard)
+	.use(authMiddleware)
 	.get(
 		"/files/:id/thumbnail",
-		async ({ file, query, set }) => {
+		async ({ params, user, query, set }) => {
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			// Check access permissions
+			const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
+			const sharePassword = (query as Record<string, unknown> | undefined)?.password;
+
+			if (typeof shareToken === "string" && shareToken.length > 0) {
+				const result = await validateShareAccess(
+					shareToken,
+					typeof sharePassword === "string" ? sharePassword : undefined,
+				);
+				if (result.error) {
+					set.status = result.status;
+					return { data: null, error: result.error };
+				}
+
+				if (result.share!.share.type === "file") {
+					if (result.share!.share.targetId !== file.id) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				} else {
+					const content = await shareService.getShareContent(result.share!.share);
+					if (!content || typeof (content as { path?: unknown }).path !== "string") {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					const sharePath = (content as { path: string }).path;
+					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				}
+			} else if (!user && !config.PETREL_GUEST_ACCESS) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
 			}
 
 			const size = parseThumbnailSize(query.size);
@@ -51,10 +91,46 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/sprite",
-		async ({ file, set }) => {
+		async ({ params, user, query, set }) => {
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
+			const sharePassword = (query as Record<string, unknown> | undefined)?.password;
+
+			if (typeof shareToken === "string" && shareToken.length > 0) {
+				const result = await validateShareAccess(
+					shareToken,
+					typeof sharePassword === "string" ? sharePassword : undefined,
+				);
+				if (result.error) {
+					set.status = result.status;
+					return { data: null, error: result.error };
+				}
+
+				if (result.share!.share.type === "file") {
+					if (result.share!.share.targetId !== file.id) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				} else {
+					const content = await shareService.getShareContent(result.share!.share);
+					if (!content || typeof (content as { path?: unknown }).path !== "string") {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					const sharePath = (content as { path: string }).path;
+					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				}
+			} else if (!user && !config.PETREL_GUEST_ACCESS) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
 			}
 
 			try {
@@ -86,10 +162,46 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/sprite/meta",
-		async ({ file, set }): Promise<ApiResponse<SpriteMetadata>> => {
+		async ({ params, user, query, set }): Promise<ApiResponse<SpriteMetadata>> => {
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
+			const sharePassword = (query as Record<string, unknown> | undefined)?.password;
+
+			if (typeof shareToken === "string" && shareToken.length > 0) {
+				const result = await validateShareAccess(
+					shareToken,
+					typeof sharePassword === "string" ? sharePassword : undefined,
+				);
+				if (result.error) {
+					set.status = result.status;
+					return { data: null, error: result.error };
+				}
+
+				if (result.share!.share.type === "file") {
+					if (result.share!.share.targetId !== file.id) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				} else {
+					const content = await shareService.getShareContent(result.share!.share);
+					if (!content || typeof (content as { path?: unknown }).path !== "string") {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					const sharePath = (content as { path: string }).path;
+					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				}
+			} else if (!user && !config.PETREL_GUEST_ACCESS) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
 			}
 
 			try {
@@ -120,10 +232,46 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/waveform",
-		async ({ file, set }): Promise<ApiResponse<WaveformData>> => {
+		async ({ params, user, query, set }): Promise<ApiResponse<WaveformData>> => {
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
+			const sharePassword = (query as Record<string, unknown> | undefined)?.password;
+
+			if (typeof shareToken === "string" && shareToken.length > 0) {
+				const result = await validateShareAccess(
+					shareToken,
+					typeof sharePassword === "string" ? sharePassword : undefined,
+				);
+				if (result.error) {
+					set.status = result.status;
+					return { data: null, error: result.error };
+				}
+
+				if (result.share!.share.type === "file") {
+					if (result.share!.share.targetId !== file.id) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				} else {
+					const content = await shareService.getShareContent(result.share!.share);
+					if (!content || typeof (content as { path?: unknown }).path !== "string") {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					const sharePath = (content as { path: string }).path;
+					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				}
+			} else if (!user && !config.PETREL_GUEST_ACCESS) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
 			}
 
 			try {
@@ -154,10 +302,46 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/:id/waveform/image",
-		async ({ file, query, set }) => {
+		async ({ params, user, query, set }) => {
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
+			const sharePassword = (query as Record<string, unknown> | undefined)?.password;
+
+			if (typeof shareToken === "string" && shareToken.length > 0) {
+				const result = await validateShareAccess(
+					shareToken,
+					typeof sharePassword === "string" ? sharePassword : undefined,
+				);
+				if (result.error) {
+					set.status = result.status;
+					return { data: null, error: result.error };
+				}
+
+				if (result.share!.share.type === "file") {
+					if (result.share!.share.targetId !== file.id) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				} else {
+					const content = await shareService.getShareContent(result.share!.share);
+					if (!content || typeof (content as { path?: unknown }).path !== "string") {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					const sharePath = (content as { path: string }).path;
+					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				}
+			} else if (!user && !config.PETREL_GUEST_ACCESS) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
 			}
 
 			try {

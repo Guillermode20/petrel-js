@@ -19,14 +19,7 @@ const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
  * Includes rate limiting for brute force protection
  */
 export const authRoutes = new Elysia({ prefix: "/api/auth" })
-	// JWT plugins for access and refresh tokens
-	.use(
-		jwt({
-			secret: config.JWT_SECRET,
-			exp: "15m",
-			name: "jwt",
-		}),
-	)
+	// Add refresh token JWT plugin (authMiddleware provides access token jwt)
 	.use(
 		jwt({
 			secret: config.JWT_REFRESH_SECRET,
@@ -52,6 +45,8 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 			},
 		}),
 	)
+	// Add access token JWT and user context for login/refresh endpoints
+	.use(authMiddleware)
 	// Login endpoint
 	.post(
 		"/login",
@@ -333,8 +328,7 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 			},
 		},
 	)
-	// Get current user endpoint (protected)
-	.use(authMiddleware)
+	// Get current user endpoint (protected - uses authMiddleware from line 49)
 	.get(
 		"/me",
 		async ({ user, set }): Promise<ApiResponse<MeResponse>> => {

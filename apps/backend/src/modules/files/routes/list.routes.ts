@@ -1,5 +1,6 @@
 import type { File as SharedFile } from "@petrel/shared";
 import { Elysia, t } from "elysia";
+import { config } from "../../../config";
 import {
 	canRead,
 	getPagination,
@@ -7,10 +8,11 @@ import {
 	parseNumberField,
 	resolveFolderPathById,
 } from "../../../lib/route-helpers";
+import { validateShareAccess } from "../../../lib/share-validation";
 import { fileService } from "../../../services/file.service";
 import { folderService } from "../../../services/folder.service";
+import { shareService } from "../../../services/share.service";
 import { authMiddleware } from "../../auth";
-import { fileReadGuard } from "../guards";
 import type { ApiResponse, FileListData } from "../types";
 
 const filesListRoute = new Elysia({ prefix: "/api" })
@@ -91,13 +93,50 @@ const filesListRoute = new Elysia({ prefix: "/api" })
 	);
 
 const fileByIdRoute = new Elysia({ prefix: "/api" })
-	.use(fileReadGuard)
+	.use(authMiddleware)
 	.get(
 		"/files/:id",
-		async ({ file, set }): Promise<ApiResponse<SharedFile>> => {
+		async ({ params, user, query, set }): Promise<ApiResponse<SharedFile>> => {
+			const file = await fileService.getById(params.id);
 			if (!file) {
 				set.status = 404;
 				return { data: null, error: "File not found" };
+			}
+
+			// Check access permissions
+			const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
+			const sharePassword = (query as Record<string, unknown> | undefined)?.password;
+
+			if (typeof shareToken === "string" && shareToken.length > 0) {
+				const result = await validateShareAccess(
+					shareToken,
+					typeof sharePassword === "string" ? sharePassword : undefined,
+				);
+				if (result.error) {
+					set.status = result.status;
+					return { data: null, error: result.error };
+				}
+
+				if (result.share!.share.type === "file") {
+					if (result.share!.share.targetId !== file.id) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				} else {
+					const content = await shareService.getShareContent(result.share!.share);
+					if (!content || typeof (content as { path?: unknown }).path !== "string") {
+						set.status = 400;
+						return { data: null, error: "Invalid share" };
+					}
+					const sharePath = (content as { path: string }).path;
+					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+						set.status = 403;
+						return { data: null, error: "Access denied" };
+					}
+				}
+			} else if (!user && !config.PETREL_GUEST_ACCESS) {
+				set.status = 401;
+				return { data: null, error: "Unauthorized" };
 			}
 
 			return { data: file, error: null };
