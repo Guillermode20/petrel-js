@@ -21,11 +21,14 @@ export default defineConfig({
 		globals: true,
 		environment: "jsdom",
 		setupFiles: ["./tests/setup.ts"],
-		include: ["src/**/*.{test,spec}.{js,jsx,ts,tsx}"],
+		include: ["src/**/*.{test,spec}.{js,jsx,ts,tsx}", "tests/**/*.{test,spec}.{js,jsx,ts,tsx}"],
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "json", "html"],
 			exclude: ["node_modules/", "tests/", "src/index.css", "src/main.tsx", "**/*.stories.tsx"],
+		},
+		deps: {
+			inline: ["@testing-library/jest-dom"],
 		},
 	},
 });

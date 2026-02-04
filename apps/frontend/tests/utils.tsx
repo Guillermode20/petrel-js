@@ -20,7 +20,7 @@ interface TestProvidersProps {
 	queryClient?: QueryClient;
 }
 
-function TestProviders({ children, queryClient }: TestProvidersProps) {
+export function TestProviders({ children, queryClient }: TestProvidersProps) {
 	const client = queryClient ?? createTestQueryClient();
 	return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 }

@@ -5,6 +5,10 @@ import * as schema from "../../db/schema";
 /**
  * Test database utilities for integration testing.
  * Uses in-memory SQLite for fast, isolated tests.
+ *
+ * ⚠️ WARNING: This file duplicates the database schema inline.
+ * If the production schema (db/schema.ts) changes, this file must be updated.
+ * Consider running a schema validation check in CI to detect drift.
  */
 
 export interface TestDb {
@@ -182,8 +186,16 @@ export async function createTestUser(
 
 	const user = testDb.sqlite
 		.prepare("SELECT * FROM users WHERE id = ?")
-		.get(result.lastInsertRowid);
-	return user as typeof schema.users.$inferSelect;
+		.get(result.lastInsertRowid) as Record<string, unknown>;
+
+	// Map snake_case columns to camelCase
+	return {
+		id: user.id as number,
+		username: user.username as string,
+		passwordHash: user.password_hash as string,
+		role: user.role as string,
+		createdAt: user.created_at ? new Date((user.created_at as number) * 1000) : new Date(),
+	};
 }
 
 /**
@@ -229,6 +241,44 @@ export async function createTestFile(
 		uploadedBy: file.uploaded_by as number | null,
 		metadata: file.metadata as unknown,
 		createdAt: file.created_at ? new Date((file.created_at as number) * 1000) : new Date(),
+	};
+}
+
+/**
+ * Create a test folder and return the folder data
+ */
+export async function createTestFolder(
+	testDb: TestDb,
+	folderData: {
+		name: string;
+		path: string;
+		parentId: number | null;
+		ownerId: number | null;
+	},
+): Promise<typeof schema.folders.$inferSelect> {
+	const result = testDb.sqlite
+		.prepare(`
+    INSERT INTO folders (name, path, parent_id, owner_id)
+    VALUES (?, ?, ?, ?)
+  `)
+		.run(
+			folderData.name,
+			folderData.path,
+			folderData.parentId,
+			folderData.ownerId,
+		);
+
+	const folder = testDb.sqlite
+		.prepare("SELECT * FROM folders WHERE id = ?")
+		.get(result.lastInsertRowid) as Record<string, unknown>;
+
+	// Map snake_case columns to camelCase
+	return {
+		id: folder.id as number,
+		name: folder.name as string,
+		path: folder.path as string,
+		parentId: folder.parent_id as number | null,
+		ownerId: folder.owner_id as number | null,
 	};
 }
 
