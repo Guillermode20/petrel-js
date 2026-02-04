@@ -13,7 +13,7 @@ import { authMiddleware } from "../../auth";
 import { fileReadGuard } from "../guards";
 import type { ApiResponse, FileListData } from "../types";
 
-export const listRoutes = new Elysia({ prefix: "/api" })
+const filesListRoute = new Elysia({ prefix: "/api" })
 	.use(authMiddleware)
 	.get(
 		"/files",
@@ -88,7 +88,9 @@ export const listRoutes = new Elysia({ prefix: "/api" })
 				tags: ["Files"],
 			},
 		},
-	)
+	);
+
+const fileByIdRoute = new Elysia({ prefix: "/api" })
 	.use(fileReadGuard)
 	.get(
 		"/files/:id",
@@ -111,3 +113,7 @@ export const listRoutes = new Elysia({ prefix: "/api" })
 			},
 		},
 	);
+
+export const listRoutes = new Elysia()
+	.use(filesListRoute)
+	.use(fileByIdRoute);

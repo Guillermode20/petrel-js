@@ -7,7 +7,7 @@ import {
 	resolveFolderPathById,
 } from "../../../lib/route-helpers";
 import { folderService } from "../../../services/folder.service";
-import { requireAuth, requirePermission } from "../../auth";
+import { requirePermission } from "../../auth";
 import type { ApiResponse } from "../types";
 
 async function resolveCreatePath(
@@ -27,7 +27,6 @@ async function resolveCreatePath(
 }
 
 export const folderRoutes = new Elysia({ prefix: "/api" })
-	.use(requireAuth)
 	.use(requirePermission("createFolders"))
 	.post(
 		"/folders",

@@ -1,6 +1,6 @@
 import type { ApiResponse, UserSettings } from "@petrel/shared";
 import { Elysia, t } from "elysia";
-import { authMiddleware, requireAuth } from "../auth";
+import { authMiddleware } from "../auth";
 import { settingsService } from "./service";
 
 export const settingsRoutes = new Elysia({ prefix: "/api" })
@@ -52,7 +52,6 @@ export const settingsRoutes = new Elysia({ prefix: "/api" })
 			},
 		},
 	)
-	.use(requireAuth)
 	.patch(
 		"/settings",
 		async ({ user, body, set }): Promise<ApiResponse<UserSettings>> => {

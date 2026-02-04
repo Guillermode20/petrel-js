@@ -8,7 +8,7 @@ import {
 	resolveFolderPathById,
 } from "../../../lib/route-helpers";
 import { uploadService } from "../../../services/upload.service";
-import { requireAuth, requirePermission } from "../../auth";
+import { requirePermission } from "../../auth";
 import type { ApiResponse } from "../types";
 
 interface UploadPathParams {
@@ -36,7 +36,6 @@ async function resolveUploadPath(
 }
 
 export const uploadRoutes = new Elysia({ prefix: "/api" })
-	.use(requireAuth)
 	.use(uploadRateLimit)
 	.use(requirePermission("upload"))
 	.post(

@@ -1,19 +1,13 @@
 import type { ApiResponse, ServerSettings } from "@petrel/shared";
 import { Elysia, t } from "elysia";
-import { authMiddleware, requireAuth } from "../auth";
+import { requireAdmin } from "../auth";
 import { serverSettingsService } from "./service";
 
 export const serverSettingsRoutes = new Elysia({ prefix: "/api" })
-	.use(authMiddleware)
-	.use(requireAuth)
+	.use(requireAdmin)
 	.get(
 		"/server-settings",
-		async ({ user, set }): Promise<ApiResponse<ServerSettings>> => {
-			if (user.role !== "admin") {
-				set.status = 403;
-				return { data: null, error: "Forbidden - Admin access required" };
-			}
-
+		async ({ set }): Promise<ApiResponse<ServerSettings>> => {
 			try {
 				const settings = await serverSettingsService.getSettings();
 				return { data: settings, error: null };
@@ -35,12 +29,7 @@ export const serverSettingsRoutes = new Elysia({ prefix: "/api" })
 	)
 	.patch(
 		"/server-settings",
-		async ({ user, body, set }): Promise<ApiResponse<ServerSettings>> => {
-			if (user.role !== "admin") {
-				set.status = 403;
-				return { data: null, error: "Forbidden - Admin access required" };
-			}
-
+		async ({ body, set }): Promise<ApiResponse<ServerSettings>> => {
 			try {
 				const updates = body as Partial<ServerSettings>;
 				const updated = await serverSettingsService.updateSettings(updates);
@@ -71,12 +60,7 @@ export const serverSettingsRoutes = new Elysia({ prefix: "/api" })
 	)
 	.post(
 		"/server-settings/reset",
-		async ({ user, set }): Promise<ApiResponse<ServerSettings>> => {
-			if (user.role !== "admin") {
-				set.status = 403;
-				return { data: null, error: "Forbidden - Admin access required" };
-			}
-
+		async ({ set }): Promise<ApiResponse<ServerSettings>> => {
 			try {
 				const reset = await serverSettingsService.resetSettings();
 				return { data: reset, error: null };

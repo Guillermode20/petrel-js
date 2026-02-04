@@ -2,20 +2,14 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import type { File as SharedFile } from "@petrel/shared";
 import { Elysia, t } from "elysia";
-import { config } from "../../config";
 import { parseRangeHeader } from "../../lib/http-range";
+import { canRead } from "../../lib/route-helpers";
 import { streamRateLimit } from "../../lib/rate-limit";
 import { audioService } from "../../services/audio.service";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
 import { authMiddleware } from "../auth";
-
-const GUEST_ACCESS_ENABLED = config.PETREL_GUEST_ACCESS;
-
-function canRead(user: unknown): boolean {
-	return Boolean(user) || GUEST_ACCESS_ENABLED;
-}
 
 function isExpired(value: Date | null): boolean {
 	if (!value) {

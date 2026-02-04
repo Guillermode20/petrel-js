@@ -1,7 +1,6 @@
 import type { File } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { config } from "../../config";
-import { canRead } from "../../lib/route-helpers";
 import { validateShareAccess } from "../../lib/share-validation";
 import { fileService } from "../../services/file.service";
 import { shareService } from "../../services/share.service";
@@ -10,15 +9,6 @@ import { authMiddleware } from "../auth";
 export interface FileContext {
 	file: File;
 }
-
-export const fileAccessGuard = new Elysia({ name: "file-access-guard" })
-	.use(authMiddleware)
-	.onBeforeHandle(({ user, set }) => {
-		if (!canRead(user)) {
-			set.status = 401;
-			return { data: null, error: "Unauthorized" };
-		}
-	});
 
 export const fileResolver = new Elysia({ name: "file-resolver" }).derive(
 	{ as: "scoped" },

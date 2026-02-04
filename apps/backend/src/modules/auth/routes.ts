@@ -334,7 +334,6 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 		},
 	)
 	// Get current user endpoint (protected)
-	.use(authMiddleware)
 	.use(requireAuth)
 	.get(
 		"/me",
