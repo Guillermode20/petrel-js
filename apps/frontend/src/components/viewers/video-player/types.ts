@@ -3,6 +3,8 @@ import type { Subtitle, TranscodeJob, VideoTrack } from "@petrel/shared";
 export interface VideoPlayerProps {
 	src: string;
 	fileId: number;
+	shareToken?: string;
+	sharePassword?: string;
 	poster?: string;
 	className?: string;
 	autoPlay?: boolean;

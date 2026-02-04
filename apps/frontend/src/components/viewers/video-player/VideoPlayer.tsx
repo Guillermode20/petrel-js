@@ -3,7 +3,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
 import type { ContextMenuActionHandler, VideoPlayerContext } from "@/components/global-context-menu";
-import { getStreamUrl, useStreamInfo, useStreamSubtitles, useStreamTracks } from "@/hooks";
+import {
+	getStreamUrl,
+	useShareStreamInfo,
+	useShareStreamSubtitles,
+	useShareStreamTracks,
+	useStreamInfo,
+	useStreamSubtitles,
+	useStreamTracks,
+} from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { VideoPlayerProps } from "./types";
@@ -21,7 +29,10 @@ import { VideoControlBar } from "./VideoControls";
  * - Transcode progress overlay
  */
 export function VideoPlayer({
+	src: srcProp,
 	fileId,
+	shareToken,
+	sharePassword,
 	poster,
 	className,
 	autoPlay = false,
@@ -33,11 +44,24 @@ export function VideoPlayer({
 	const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Fetch stream info (qualities, transcode status)
-	const { data: streamInfo, isLoading: isStreamInfoLoading } = useStreamInfo(fileId);
-	const { data: subtitlesData } = useStreamSubtitles(fileId);
-	const { data: tracksData } = useStreamTracks(fileId);
+	const authStreamInfoQuery = useStreamInfo(fileId);
+	const authSubtitlesQuery = useStreamSubtitles(fileId);
+	const authTracksQuery = useStreamTracks(fileId);
 
-	const src = getStreamUrl(fileId);
+	const shareStreamInfoQuery = useShareStreamInfo(shareToken, fileId, sharePassword);
+	const shareSubtitlesQuery = useShareStreamSubtitles(shareToken, fileId, sharePassword);
+	const shareTracksQuery = useShareStreamTracks(shareToken, fileId, sharePassword);
+
+	const streamInfo = shareToken ? shareStreamInfoQuery.data : authStreamInfoQuery.data;
+	const isStreamInfoLoading = shareToken
+		? shareStreamInfoQuery.isLoading
+		: authStreamInfoQuery.isLoading;
+	const subtitlesData = shareToken ? shareSubtitlesQuery.data : authSubtitlesQuery.data;
+	const tracksData = shareToken ? shareTracksQuery.data : authTracksQuery.data;
+
+	const src = useMemo(() => {
+		return typeof srcProp === "string" && srcProp.length > 0 ? srcProp : getStreamUrl(fileId);
+	}, [fileId, srcProp]);
 	const isStreamReady = streamInfo?.available ?? false;
 
 	const audioTracks = tracksData
@@ -56,7 +80,9 @@ export function VideoPlayer({
 		id: subtitle.id,
 		fileId,
 		language: subtitle.language,
-		path: `/api/stream/${fileId}/subtitles/${subtitle.id}`,
+		path: shareToken
+			? `/api/stream/share/${shareToken}/${fileId}/subtitles/${subtitle.id}${sharePassword ? `?password=${encodeURIComponent(sharePassword)}` : ""}`
+			: `/api/stream/${fileId}/subtitles/${subtitle.id}`,
 		format: "webvtt",
 		title: subtitle.title,
 	}));

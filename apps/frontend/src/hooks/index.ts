@@ -22,6 +22,9 @@ export {
 export {
 	getStreamUrl,
 	streamKeys,
+	useShareStreamInfo,
+	useShareStreamSubtitles,
+	useShareStreamTracks,
 	useStreamInfo,
 	useStreamSubtitles,
 	useStreamTracks,

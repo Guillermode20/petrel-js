@@ -431,20 +431,19 @@ class ApiClient {
 			params.set("password", password);
 		}
 		const query = params.toString();
-		const endpoint = fileId
-			? `/shares/${shareToken}/download/${fileId}`
-			: `/shares/${shareToken}/download`;
+		// Backend supports /api/shares/:token/download for file shares
+		// (folder shares use zip download endpoints)
+		const endpoint = `/shares/${shareToken}/download`;
 		return `${API_BASE}${endpoint}${query ? `?${query}` : ""}`;
 	}
 
 	getShareStreamUrl(shareToken: string, fileId: number, password?: string): string {
 		const params = new URLSearchParams();
-		params.set("shareToken", shareToken);
 		if (password) {
 			params.set("password", password);
 		}
 		const query = params.toString();
-		return `${API_BASE}/stream/${fileId}/master.m3u8?${query}`;
+		return `${API_BASE}/stream/share/${shareToken}/${fileId}/master.m3u8${query ? `?${query}` : ""}`;
 	}
 
 	getShareThumbnailUrl(
@@ -677,10 +676,44 @@ class ApiClient {
 		return this.request(`/stream/${fileId}/info`);
 	}
 
+	async getShareStreamInfo(
+		shareToken: string,
+		fileId: number,
+		password?: string,
+	): Promise<{
+		available: boolean;
+		qualities: string[];
+		isTransmux: boolean;
+		needsTranscode: boolean;
+		transcodeJob: TranscodeJob | null;
+	}> {
+		const params = new URLSearchParams();
+		if (password) {
+			params.set("password", password);
+		}
+		const query = params.toString();
+		return this.request(`/stream/share/${shareToken}/${fileId}/info${query ? `?${query}` : ""}`);
+	}
+
 	async getStreamSubtitles(
 		fileId: number,
 	): Promise<Array<{ id: number; language: string; title: string | null }>> {
 		return this.request(`/stream/${fileId}/subtitles`);
+	}
+
+	async getShareStreamSubtitles(
+		shareToken: string,
+		fileId: number,
+		password?: string,
+	): Promise<Array<{ id: number; language: string; title: string | null }>> {
+		const params = new URLSearchParams();
+		if (password) {
+			params.set("password", password);
+		}
+		const query = params.toString();
+		return this.request(
+			`/stream/share/${shareToken}/${fileId}/subtitles${query ? `?${query}` : ""}`,
+		);
 	}
 
 	async getStreamTracks(fileId: number): Promise<
@@ -693,6 +726,27 @@ class ApiClient {
 		}>
 	> {
 		return this.request(`/stream/${fileId}/tracks`);
+	}
+
+	async getShareStreamTracks(
+		shareToken: string,
+		fileId: number,
+		password?: string,
+	): Promise<
+		Array<{
+			index: number;
+			type: string;
+			codec: string;
+			language: string | null;
+			title: string | null;
+		}>
+	> {
+		const params = new URLSearchParams();
+		if (password) {
+			params.set("password", password);
+		}
+		const query = params.toString();
+		return this.request(`/stream/share/${shareToken}/${fileId}/tracks${query ? `?${query}` : ""}`);
 	}
 
 	async prepareStream(

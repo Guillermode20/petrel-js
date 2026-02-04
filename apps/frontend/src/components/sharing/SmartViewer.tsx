@@ -53,6 +53,8 @@ function renderViewer(
 				<VideoPlayer
 					src={api.getShareStreamUrl(shareToken, file.id, password)}
 					fileId={file.id}
+					shareToken={shareToken}
+					sharePassword={password}
 					className="h-full w-full"
 				/>
 			);

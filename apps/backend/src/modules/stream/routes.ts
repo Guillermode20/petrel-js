@@ -382,6 +382,351 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 	.use(shareRateLimit)
 	.get(
+		"/:token/:fileId/info",
+		async ({ params, query, set }): Promise<ApiResponse<StreamInfoResponse>> => {
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return { data: null, error };
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			if (Number.isNaN(fileId)) {
+				set.status = 400;
+				return { data: null, error: "Invalid file ID" };
+			}
+
+			const file = await fileService.getById(fileId);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			// Verify file is accessible via this share
+			if (share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
+				if (!shareContent) {
+					set.status = 400;
+					return { data: null, error: "Invalid share" };
+				}
+				if (file.parentId === null) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+				const isInFolder = await folderService.isDescendantOf(
+					file.parentId,
+					(shareContent as { path: string }).path,
+				);
+				if (!isInFolder) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
+			}
+
+			if (!file.mimeType.startsWith("video/")) {
+				set.status = 400;
+				return { data: null, error: "File is not a video" };
+			}
+
+			const filePath = fileService.resolveDiskPath(file);
+			const streamInfo = await streamService.getStreamInfo(fileId, filePath);
+			const transcodeJob = await transcodeQueue.getJobByFileId(fileId);
+
+			return {
+				data: {
+					available: streamInfo.available,
+					qualities: streamInfo.qualities,
+					isTransmux: streamInfo.isTransmux,
+					needsTranscode: streamInfo.needsTranscode,
+					transcodeJob,
+				},
+				error: null,
+			};
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	)
+	.post(
+		"/:token/:fileId/prepare",
+		async ({ params, query, set }): Promise<ApiResponse<{ jobId: number | null; ready: boolean; firstSegmentUrl: string | null }>> => {
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return { data: null, error };
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			if (Number.isNaN(fileId)) {
+				set.status = 400;
+				return { data: null, error: "Invalid file ID" };
+			}
+
+			const file = await fileService.getById(fileId);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			// Verify file is accessible via this share
+			if (share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
+				if (!shareContent) {
+					set.status = 400;
+					return { data: null, error: "Invalid share" };
+				}
+				if (file.parentId === null) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+				const isInFolder = await folderService.isDescendantOf(
+					file.parentId,
+					(shareContent as { path: string }).path,
+				);
+				if (!isInFolder) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
+			}
+
+			if (!file.mimeType.startsWith("video/")) {
+				set.status = 400;
+				return { data: null, error: "File is not a video" };
+			}
+
+			const filePath = fileService.resolveDiskPath(file);
+			const streamInfo = await streamService.getStreamInfo(fileId, filePath);
+
+			if (streamInfo.available) {
+				const firstSegmentUrl = await streamService.getFirstSegmentUrl(fileId);
+				return { data: { jobId: null, ready: true, firstSegmentUrl }, error: null };
+			}
+
+			if (streamInfo.isTransmux) {
+				await streamService.generateTransmuxStream(fileId, filePath);
+				const firstSegmentUrl = await streamService.getFirstSegmentUrl(fileId);
+				return { data: { jobId: null, ready: true, firstSegmentUrl }, error: null };
+			}
+
+			const job = await transcodeQueue.queueTranscode(fileId);
+			return { data: { jobId: job.id, ready: false, firstSegmentUrl: null }, error: null };
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	)
+	.get(
+		"/:token/:fileId/subtitles",
+		async ({ params, query, set }): Promise<ApiResponse<Array<{ id: number; language: string; title: string | null }>>> => {
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return { data: null, error };
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			if (Number.isNaN(fileId)) {
+				set.status = 400;
+				return { data: null, error: "Invalid file ID" };
+			}
+
+			if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
+			}
+
+			const file = await fileService.getById(fileId);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			if (share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
+				if (!shareContent || file.parentId === null) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+				const isInFolder = await folderService.isDescendantOf(
+					file.parentId,
+					(shareContent as { path: string }).path,
+				);
+				if (!isInFolder) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+			}
+
+			const subtitles = await videoService.getSubtitles(fileId);
+			return {
+				data: subtitles.map((s) => ({ id: s.id, language: s.language, title: s.title })),
+				error: null,
+			};
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	)
+	.get(
+		"/:token/:fileId/subtitles/:subtitleId",
+		async ({ params, query, set }) => {
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return { data: null, error };
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			const subtitleId = Number.parseInt(params.subtitleId, 10);
+			if (Number.isNaN(fileId) || Number.isNaN(subtitleId)) {
+				set.status = 400;
+				return { data: null, error: "Invalid ID" };
+			}
+
+			if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
+			}
+
+			const file = await fileService.getById(fileId);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			if (share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
+				if (!shareContent || file.parentId === null) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+				const isInFolder = await folderService.isDescendantOf(
+					file.parentId,
+					(shareContent as { path: string }).path,
+				);
+				if (!isInFolder) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+			}
+
+			const subtitles = await videoService.getSubtitles(fileId);
+			const subtitle = subtitles.find((s) => s.id === subtitleId);
+			if (!subtitle) {
+				set.status = 404;
+				return { data: null, error: "Subtitle not found" };
+			}
+
+			const absolutePath = resolveStoragePath(subtitle.path);
+			set.headers["Content-Type"] = "text/vtt";
+			set.headers["Cache-Control"] = "max-age=31536000";
+			return Bun.file(absolutePath);
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+				subtitleId: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	)
+	.get(
+		"/:token/:fileId/tracks",
+		async ({ params, query, set }): Promise<ApiResponse<Array<{ index: number; type: string; codec: string; language: string | null; title: string | null }>>> => {
+			const { share, error } = await validateShareAccess(params.token, query.password);
+			if (error) {
+				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
+				set.status = status;
+				return { data: null, error };
+			}
+
+			const fileId = Number.parseInt(params.fileId, 10);
+			if (Number.isNaN(fileId)) {
+				set.status = 400;
+				return { data: null, error: "Invalid file ID" };
+			}
+
+			if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+				set.status = 403;
+				return { data: null, error: "Access denied" };
+			}
+
+			const file = await fileService.getById(fileId);
+			if (!file) {
+				set.status = 404;
+				return { data: null, error: "File not found" };
+			}
+
+			if (share!.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share!.share);
+				if (!shareContent || file.parentId === null) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+				const isInFolder = await folderService.isDescendantOf(
+					file.parentId,
+					(shareContent as { path: string }).path,
+				);
+				if (!isInFolder) {
+					set.status = 403;
+					return { data: null, error: "Access denied" };
+				}
+			}
+
+			const tracks = await videoService.getVideoTracks(fileId);
+			return {
+				data: tracks.map((t) => ({
+					index: t.index,
+					type: t.trackType,
+					codec: t.codec,
+					language: t.language,
+					title: t.title,
+				})),
+				error: null,
+			};
+		},
+		{
+			params: t.Object({
+				token: t.String(),
+				fileId: t.String(),
+			}),
+			query: t.Object({
+				password: t.Optional(t.String()),
+			}),
+		},
+	)
+	.get(
 		"/:token/:fileId/master.m3u8",
 		async ({ params, query, set }) => {
 			const { share, error } = await validateShareAccess(params.token, query.password);
@@ -456,7 +801,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			set.headers["Cache-Control"] = "no-cache";
 
 			const password = query.password;
-			const passwordQuery = password ? `&password=${encodeURIComponent(password)}` : "";
+			const passwordQuery = password ? `?password=${encodeURIComponent(password)}` : "";
 
 			let content = "";
 			if (playlist.qualities.length > 0) {
@@ -468,8 +813,10 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				content = playlist.content;
 			}
 
-			// Replace segment URLs with share-aware URLs
-			return content.replace(/\.m3u8/g, `.m3u8?shareToken=${params.token}${passwordQuery}`);
+			// The master playlist references variant playlists relatively (e.g. 720p.m3u8)
+			// Those will resolve under /api/stream/share/:token/:fileId/ automatically.
+			// If the share is password-protected, append it to each playlist request.
+			return passwordQuery ? content.replace(/\.m3u8/g, `.m3u8${passwordQuery}`) : content;
 		},
 		{
 			params: t.Object({

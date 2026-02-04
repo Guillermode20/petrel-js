@@ -7,6 +7,7 @@ import { parseRangeHeader } from "../../lib/http-range";
 import { streamRateLimit } from "../../lib/rate-limit";
 import { audioService } from "../../services/audio.service";
 import { fileService } from "../../services/file.service";
+import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
 import { authMiddleware } from "../auth";
 
@@ -67,9 +68,29 @@ async function ensureShareAccess(
 		}
 	}
 
-	if (share.share.type !== "file" || share.share.targetId !== file.id) {
-		set.status = 403;
-		return false;
+	if (share.share.type === "file") {
+		if (share.share.targetId !== file.id) {
+			set.status = 403;
+			return false;
+		}
+	} else {
+		const content = await shareService.getShareContent(share.share);
+		if (!content) {
+			set.status = 400;
+			return false;
+		}
+		// Folder share: ensure file is inside the shared folder path
+		const sharePath = (content as { path: string }).path;
+		if (!(file.path === sharePath || file.path.startsWith(`${sharePath}/`))) {
+			set.status = 403;
+			return false;
+		}
+		// Also ensure folder actually exists in hierarchy (defensive)
+		const folder = await folderService.getFolderByPath(sharePath);
+		if (!folder) {
+			set.status = 400;
+			return false;
+		}
 	}
 
 	if (!share.settings.allowDownload) {

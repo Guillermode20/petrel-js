@@ -1,9 +1,30 @@
 import type { Folder } from "@petrel/shared";
 import { Elysia, t } from "elysia";
-import { normalizeNameSafe, normalizePathSafe, parseNumberField } from "../../../lib/route-helpers";
+import {
+	normalizeNameSafe,
+	normalizePathSafe,
+	parseNumberField,
+	resolveFolderPathById,
+} from "../../../lib/route-helpers";
 import { folderService } from "../../../services/folder.service";
 import { requireAuth, requirePermission } from "../../auth";
 import type { ApiResponse } from "../types";
+
+async function resolveCreatePath(
+	parentPath: string | null | undefined,
+	parentId: number | string | null | undefined,
+	set: { status?: number | string },
+): Promise<string | null> {
+	// If parentId is provided and not null, resolve it to a path
+	if (parentId !== undefined && parentId !== null) {
+		const parsedId = parseNumberField(parentId, set, "parentId");
+		if (parsedId === null) return null;
+		const resolved = await resolveFolderPathById(parsedId, set);
+		return resolved;
+	}
+	// Otherwise use parentPath directly (convert null to undefined)
+	return normalizePathSafe(parentPath ?? undefined, set);
+}
 
 export const folderRoutes = new Elysia({ prefix: "/api" })
 	.use(requireAuth)
@@ -16,15 +37,15 @@ export const folderRoutes = new Elysia({ prefix: "/api" })
 				return { data: null, error: "Invalid folder name" };
 			}
 
-			const parentPath = body.parentPath ? normalizePathSafe(body.parentPath, set) : "";
-			if (parentPath === null) {
+			const resolvedPath = await resolveCreatePath(body.parentPath, body.parentId, set);
+			if (resolvedPath === null) {
 				return { data: null, error: "Invalid parent path" };
 			}
 
 			try {
 				const folder = await folderService.createFolder({
 					name: safeName,
-					parentPath,
+					parentPath: resolvedPath,
 					ownerId: user.userId,
 				});
 
@@ -41,6 +62,7 @@ export const folderRoutes = new Elysia({ prefix: "/api" })
 			body: t.Object({
 				name: t.String({ minLength: 1 }),
 				parentPath: t.Optional(t.Union([t.String(), t.Null()])),
+				parentId: t.Optional(t.Union([t.Number(), t.String(), t.Null()])),
 			}),
 			detail: {
 				summary: "Create folder",
