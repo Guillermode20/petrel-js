@@ -1,9 +1,12 @@
 import type { File, ShareSettings } from "@petrel/shared";
 import { Download, Eye, FileIcon, HardDrive } from "lucide-react";
 import { useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
 import type { ContextMenuActionHandler, ShareFileContext } from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
+import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { SmartViewer } from "./SmartViewer";

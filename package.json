@@ -11,7 +11,12 @@
 		"dev": "concurrently \"bun run --filter backend dev\" \"bun run --filter frontend dev\" --names backend,frontend --prefix-colors cyan,green",
 		"format": "bunx biome format",
 		"lint": "bunx biome lint",
-		"check": "bunx biome check"
+		"check": "bunx biome check",
+		"test": "bun run test:backend && bun run test:shared && bun run test:frontend",
+		"test:backend": "cd apps/backend && bun test",
+		"test:frontend": "cd apps/frontend && bunx vitest run",
+		"test:shared": "cd packages/shared && bun test",
+		"test:watch": "concurrently \"bun run --filter backend test:watch\" \"cd apps/frontend && bunx vitest\" \"bun run --filter shared test:watch\" --names backend,frontend,shared --prefix-colors cyan,green,magenta"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.4",

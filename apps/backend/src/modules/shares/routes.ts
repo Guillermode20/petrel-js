@@ -2,13 +2,12 @@ import { stat } from "node:fs/promises";
 import type { File } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { shareRateLimit } from "../../lib/rate-limit";
-import { setShareValidationError, validateShareAccess } from "../../lib/share-validation";
+import { validateShareAccess } from "../../lib/share-validation";
 import { fileService } from "../../services/file.service";
 import { folderService } from "../../services/folder.service";
 import { shareService } from "../../services/share.service";
 import {
 	buildZipDownloadFilename,
-	cleanupZip,
 	createZipArchive,
 	getPrimaryJobFolderName,
 	getZipJob,
@@ -189,8 +188,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error };
 			}
 
-			const content = await shareService.getShareContent(share!.share);
-			if (!content || share!.share.type !== "file") {
+			const content = await shareService.getShareContent(share?.share);
+			if (!content || share?.share.type !== "file") {
 				set.status = 400;
 				return { data: null, error: "Download not available for this share" };
 			}
@@ -238,7 +237,7 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error };
 			}
 
-			if (!share!.settings.allowZip) {
+			if (!share?.settings.allowZip) {
 				set.status = 403;
 				return { data: null, error: "ZIP download not allowed for this share" };
 			}
@@ -262,8 +261,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 					}
 
 					// If it's a folder share, verify file is within the shared folder
-					if (share!.share.type === "folder") {
-						const shareContent = await shareService.getShareContent(share!.share);
+					if (share?.share.type === "folder") {
+						const shareContent = await shareService.getShareContent(share?.share);
 						if (!shareContent) {
 							set.status = 400;
 							return { data: null, error: "Invalid share" };
@@ -280,7 +279,7 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 							set.status = 403;
 							return { data: null, error: `File ${fileId} not accessible via this share` };
 						}
-					} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+					} else if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 						// For file shares, only the shared file is accessible
 						set.status = 403;
 						return { data: null, error: `File ${fileId} not accessible via this share` };
@@ -289,8 +288,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}
 
 			// Validate folderIds if provided (must be within share for folder shares)
-			if (folderIds && folderIds.length > 0 && share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (folderIds && folderIds.length > 0 && share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent) {
 					set.status = 400;
 					return { data: null, error: "Invalid share" };
@@ -408,7 +407,7 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			const response = new Response(Bun.file(job.tempPath));
 
 			// Increment download count when the actual download is initiated
-			await shareService.incrementDownloadCount(share!.share.id);
+			await shareService.incrementDownloadCount(share?.share.id);
 
 			// Clean up after streaming (fire and forget)
 			scheduleZipCleanup(params.jobId);
@@ -442,8 +441,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			}
 
 			// Get the shared folder to verify hierarchy
-			const shareContent = await shareService.getShareContent(share!.share);
-			if (!shareContent || share!.share.type !== "folder") {
+			const shareContent = await shareService.getShareContent(share?.share);
+			if (!shareContent || share?.share.type !== "folder") {
 				set.status = 400;
 				return { data: null, error: "Invalid share type" };
 			}
@@ -468,8 +467,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 
 			return {
 				data: {
-					share: share!.share,
-					settings: share!.settings,
+					share: share?.share,
+					settings: share?.settings,
 					content: folder,
 					files: fileList.files,
 					folders: childFolders,
@@ -501,13 +500,13 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error };
 			}
 
-			await shareService.incrementViewCount(share!.share.id);
+			await shareService.incrementViewCount(share?.share.id);
 
-			const content = await shareService.getShareContent(share!.share);
+			const content = await shareService.getShareContent(share?.share);
 			let files;
 			let folders;
 
-			if (share!.share.type === "folder" && content) {
+			if (share?.share.type === "folder" && content) {
 				const childFolders = await folderService.listByParentId(content.id);
 				folders = childFolders;
 
@@ -517,8 +516,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 
 			return {
 				data: {
-					share: share!.share,
-					settings: share!.settings,
+					share: share?.share,
+					settings: share?.settings,
 					content,
 					files,
 					folders,

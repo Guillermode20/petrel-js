@@ -1,5 +1,5 @@
 import type { File } from "@petrel/shared";
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { config } from "../../config";
 import { validateShareAccess } from "../../lib/share-validation";
 import { fileService } from "../../services/file.service";
@@ -56,22 +56,25 @@ export const fileReadGuard = new Elysia({ name: "file-read-guard" })
 		const shareToken = (query as Record<string, unknown> | undefined)?.shareToken;
 		const sharePassword = (query as Record<string, unknown> | undefined)?.password;
 		if (typeof shareToken === "string" && shareToken.length > 0) {
-			const result = await validateShareAccess(shareToken, typeof sharePassword === "string" ? sharePassword : undefined);
+			const result = await validateShareAccess(
+				shareToken,
+				typeof sharePassword === "string" ? sharePassword : undefined,
+			);
 			if (result.error) {
 				set.status = result.status;
 				return { data: null, error: result.error };
 			}
 
 			// Ensure file is within the share scope
-			if (result.share!.share.type === "file") {
-				if (result.share!.share.targetId !== f.id) {
+			if (result.share?.share.type === "file") {
+				if (result.share?.share.targetId !== f.id) {
 					set.status = 403;
 					return { data: null, error: "Access denied" };
 				}
 				return;
 			}
 
-			const content = await shareService.getShareContent(result.share!.share);
+			const content = await shareService.getShareContent(result.share?.share);
 			if (!content || typeof (content as { path?: unknown }).path !== "string") {
 				set.status = 400;
 				return { data: null, error: "Invalid share" };

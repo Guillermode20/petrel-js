@@ -9,11 +9,14 @@ import {
 } from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
 import type { ContextMenuActionHandler, FileContext } from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
+import { PageBar } from "@/components/navigation/PageBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageBar } from "@/components/navigation/PageBar";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { PDFViewerProps, PDFViewerState } from "./types";
@@ -235,10 +238,7 @@ export function PDFViewer({ file, className }: PDFViewerProps) {
 	return (
 		<div className={cn("flex h-full flex-col", className)} {...longPressHandlers}>
 			{/* PDF canvas */}
-			<div
-				ref={containerRef}
-				className="flex-1 overflow-auto bg-muted/50 p-4"
-			>
+			<div ref={containerRef} className="flex-1 overflow-auto bg-muted/50 p-4">
 				<div className="flex min-h-full items-start justify-center">
 					{state.isLoading ? (
 						<div className="flex h-64 items-center justify-center">

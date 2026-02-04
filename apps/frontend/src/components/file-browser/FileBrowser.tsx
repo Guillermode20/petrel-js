@@ -93,7 +93,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		setSelectedIds(new Set());
 		clearClipboard();
 		setPage(1);
-	}, [clearClipboard, folderId]);
+	}, [clearClipboard]);
 
 	const updateMutation = useUpdateFile();
 	const updateFolderMutation = useUpdateFolder();
@@ -210,30 +210,33 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		toast.success("Link copied to clipboard");
 	}, []);
 
-	const handleCopyShareLink = useCallback(async (item: File | Folder) => {
-		try {
-			const share = await createShareMutation.mutateAsync({
-				type: isFolder(item) ? "folder" : "file",
-				targetId: item.id,
-				allowDownload: true,
-				allowZip: true,
-				showMetadata: true,
-			});
-			const url = `${window.location.origin}/s/${share.token}`;
-			await navigator.clipboard.writeText(url);
-			toast.success("Share link copied to clipboard");
-		} catch (error) {
-			logger.error("Failed to create share link:", error);
-			const message = error instanceof Error ? error.message : "Unknown error";
-			if (message.includes("Unauthorized") || message.includes("null is not an object")) {
-				toast.error(
-					"You must be logged in to create share links. Please refresh the page and log in.",
-				);
-			} else {
-				toast.error(`Failed to create share link: ${message}`);
+	const handleCopyShareLink = useCallback(
+		async (item: File | Folder) => {
+			try {
+				const share = await createShareMutation.mutateAsync({
+					type: isFolder(item) ? "folder" : "file",
+					targetId: item.id,
+					allowDownload: true,
+					allowZip: true,
+					showMetadata: true,
+				});
+				const url = `${window.location.origin}/s/${share.token}`;
+				await navigator.clipboard.writeText(url);
+				toast.success("Share link copied to clipboard");
+			} catch (error) {
+				logger.error("Failed to create share link:", error);
+				const message = error instanceof Error ? error.message : "Unknown error";
+				if (message.includes("Unauthorized") || message.includes("null is not an object")) {
+					toast.error(
+						"You must be logged in to create share links. Please refresh the page and log in.",
+					);
+				} else {
+					toast.error(`Failed to create share link: ${message}`);
+				}
 			}
-		}
-	}, []);
+		},
+		[createShareMutation.mutateAsync],
+	);
 
 	const handleDownloadZip = useCallback(async () => {
 		const fileIds: number[] = [];
@@ -446,7 +449,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			if (isFolder(item)) return { type: "folder", item };
 			return { type: "file", item };
 		},
-		[selectedIds, sortedItems],
+		[selectedIds, sortedItems, getSelectedItemsForContextMenu],
 	);
 
 	const handleContextMenu = useCallback(
@@ -477,7 +480,14 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 				contextMenuHandlerId,
 			);
 		},
-		[contextMenuHandlerId, folderId, openContextMenu, selectedIds, sortedItems],
+		[
+			contextMenuHandlerId,
+			folderId,
+			openContextMenu,
+			selectedIds,
+			sortedItems,
+			getSelectedItemsForContextMenu,
+		],
 	);
 
 	useContextMenuKeyboardShortcuts({

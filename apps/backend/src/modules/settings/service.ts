@@ -205,10 +205,7 @@ class SettingsService {
 	/**
 	 * Deep merge utility for nested objects
 	 */
-	private deepMerge<T extends Record<string, unknown>>(
-		target: T,
-		source: Partial<T>,
-	): T {
+	private deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
 		const output = { ...target };
 		for (const key in source) {
 			const sourceValue = source[key];

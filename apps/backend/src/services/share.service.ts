@@ -2,7 +2,7 @@ import type { File, Folder, Share, ShareSettings, ShareType } from "@petrel/shar
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { shareSettings, shares } from "../../db/schema";
-import { cacheManager, Cacheable, CacheEvict, cacheKeys, cacheTTL } from "../cache";
+import { Cacheable, CacheEvict, cacheKeys, cacheManager, cacheTTL } from "../cache";
 import { createEventPayload, eventBus } from "../events";
 import { generateSecureToken, hashPassword, verifyPassword } from "../modules/auth/utils";
 import { fileService } from "./file.service";

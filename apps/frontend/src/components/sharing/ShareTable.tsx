@@ -1,5 +1,7 @@
+import type { File } from "@petrel/shared";
 import { format } from "date-fns";
 import { ExternalLink, Link, Lock, MoreHorizontal, Trash2 } from "lucide-react";
+import { formatFileSize, getFileIcon, getFolderIcon } from "@/components/file-browser/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,10 +18,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { formatFileSize, getFileIcon, getFolderIcon } from "@/components/file-browser/utils";
-import type { File } from "@petrel/shared";
+import { cn } from "@/lib/utils";
 import { CopyLinkButton, getShareUrl } from "./CopyLinkButton";
 import type { ShareTableProps, ShareWithContent } from "./types";
 
@@ -87,7 +87,8 @@ function ShareRow({ share, onDelete }: ShareRowProps) {
 	const fileMime = fileContent?.mimeType;
 	const isImage = Boolean(fileMime?.startsWith("image/"));
 	const Icon = fileMime ? getFileIcon(fileMime) : getFolderIcon();
-	const sizeLabel = fileContent && fileContent.size != null ? formatFileSize(fileContent.size) : "—";
+	const sizeLabel =
+		fileContent && fileContent.size != null ? formatFileSize(fileContent.size) : "—";
 	const thumbnailUrl = isImage ? api.getThumbnailUrl(content.id, DEFAULT_THUMBNAIL_SIZE) : null;
 
 	return (
@@ -96,7 +97,12 @@ function ShareRow({ share, onDelete }: ShareRowProps) {
 				<div className="flex items-center gap-3">
 					<div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-md bg-muted/50">
 						{thumbnailUrl ? (
-							<img src={thumbnailUrl} alt={content.name} className="h-full w-full object-cover" loading="lazy" />
+							<img
+								src={thumbnailUrl}
+								alt={content.name}
+								className="h-full w-full object-cover"
+								loading="lazy"
+							/>
 						) : (
 							<Icon className="h-4 w-4 text-muted-foreground" />
 						)}
@@ -110,7 +116,9 @@ function ShareRow({ share, onDelete }: ShareRowProps) {
 			</TableCell>
 
 			<TableCell className="hidden text-muted-foreground md:table-cell">{sizeLabel}</TableCell>
-			<TableCell className="text-muted-foreground">{format(new Date(share.createdAt), "MMM d, yyyy")}</TableCell>
+			<TableCell className="text-muted-foreground">
+				{format(new Date(share.createdAt), "MMM d, yyyy")}
+			</TableCell>
 			<TableCell className="text-muted-foreground">
 				{share.expiresAt ? (
 					<span className={cn(expired && "text-destructive")}>
@@ -120,9 +128,15 @@ function ShareRow({ share, onDelete }: ShareRowProps) {
 					"Never"
 				)}
 			</TableCell>
-			<TableCell className="hidden text-muted-foreground sm:table-cell">{share.viewCount ?? 0}</TableCell>
+			<TableCell className="hidden text-muted-foreground sm:table-cell">
+				{share.viewCount ?? 0}
+			</TableCell>
 			<TableCell>
-				{expired ? <Badge variant="destructive">Expired</Badge> : <Badge variant="default">Active</Badge>}
+				{expired ? (
+					<Badge variant="destructive">Expired</Badge>
+				) : (
+					<Badge variant="default">Active</Badge>
+				)}
 			</TableCell>
 			<TableCell>
 				<div className="flex items-center gap-2">
@@ -144,11 +158,7 @@ function ShareRow({ share, onDelete }: ShareRowProps) {
 	);
 }
 
-function RowActions({
-	shareToken,
-}: {
-	shareToken: string;
-}) {
+function RowActions({ shareToken }: { shareToken: string }) {
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>

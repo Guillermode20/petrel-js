@@ -1,7 +1,9 @@
+import type { File, Folder } from "@petrel/shared";
 import { format } from "date-fns";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useState } from "react";
-import type { File, Folder } from "@petrel/shared";
+import type { MenuContext } from "@/components/global-context-menu";
+import { useLongPress } from "@/components/global-context-menu";
 import {
 	Table,
 	TableBody,
@@ -10,12 +12,16 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useLongPress } from "@/components/global-context-menu";
-import type { MenuContext } from "@/components/global-context-menu";
-import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 import { cn } from "@/lib/utils";
 import type { FileListProps, SortField } from "./types";
-import { formatFileSize, getFileCategory, getFileIcon, getFolderIcon, getRelativePath } from "./utils";
+import {
+	formatFileSize,
+	getFileCategory,
+	getFileIcon,
+	getFolderIcon,
+	getRelativePath,
+} from "./utils";
+import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 
 /**
  * List view for files and folders
@@ -110,9 +116,8 @@ export function FileList({
 					const Icon = isFileItem ? getFileIcon(item.mimeType) : getFolderIcon();
 					const selectionKey = getSelectionKey(item);
 					const isSelected = selectedIds.has(selectionKey);
-					const relativeFolderPath = searchQuery && isFileItem 
-						? getRelativePath(item.path, currentFolderPath)
-						: "";
+					const relativeFolderPath =
+						searchQuery && isFileItem ? getRelativePath(item.path, currentFolderPath) : "";
 
 					return (
 						<FileListRow
@@ -141,7 +146,10 @@ export function FileList({
 										<span className="font-medium">{item.name}</span>
 									</div>
 									{relativeFolderPath && (
-										<span className="text-xs text-muted-foreground ml-11 truncate" title={relativeFolderPath}>
+										<span
+											className="text-xs text-muted-foreground ml-11 truncate"
+											title={relativeFolderPath}
+										>
 											{relativeFolderPath}
 										</span>
 									)}
@@ -179,14 +187,22 @@ interface FileListRowProps {
 	onDragLeave: () => void;
 	onDrop: (target: File | Folder, e: React.DragEvent) => void;
 	contextMenuHandlerId?: string;
-	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+	buildContextMenuContext?: (
+		item: File | Folder,
+		items: Array<File | Folder>,
+		selectedIds: Set<string>,
+	) => MenuContext;
 }
 
 function buildMenuContext(
 	item: File | Folder,
 	items: Array<File | Folder>,
 	selectedIds: Set<string>,
-	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext,
+	buildContextMenuContext?: (
+		item: File | Folder,
+		items: Array<File | Folder>,
+		selectedIds: Set<string>,
+	) => MenuContext,
 ): MenuContext {
 	if (buildContextMenuContext) {
 		return buildContextMenuContext(item, items, selectedIds);

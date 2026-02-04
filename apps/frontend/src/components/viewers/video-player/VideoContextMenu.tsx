@@ -109,10 +109,7 @@ export function VideoContextMenu({
 								Off
 							</ContextMenuItem>
 							{subtitleTracks.map((track) => (
-								<ContextMenuItem
-									key={track.id}
-									onClick={() => onSubtitleTrackChange(track.id)}
-								>
+								<ContextMenuItem key={track.id} onClick={() => onSubtitleTrackChange(track.id)}>
 									{track.id === selectedSubtitleTrack && <span className="mr-2">✓</span>}
 									{track.title ?? track.language}
 								</ContextMenuItem>

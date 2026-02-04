@@ -1,5 +1,6 @@
 import type { ShareSettings } from "@petrel/shared";
 import { CheckSquare, Copy, Download, ExternalLink, FileArchive } from "lucide-react";
+import { toast } from "sonner";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -8,7 +9,6 @@ import {
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { isFile } from "@/hooks";
-import { toast } from "sonner";
 import type { FileContextMenuHandlers } from "../file-browser/types";
 
 interface SharedFileContextMenuProps extends FileContextMenuHandlers {

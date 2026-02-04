@@ -30,7 +30,7 @@ export async function validateShareAccess(
 	return { share, error: null, status: 200 };
 }
 
-export function setShareValidationError<T>(
+export function setShareValidationError<_T>(
 	set: { status?: number },
 	result: { error: string | null; status: number },
 ): { data: null; error: string } | null {

@@ -83,7 +83,7 @@ function SettingsPage() {
 		lastError: null,
 		lastSavedAt: null,
 	});
-	const [serverSettingsState, setServerSettingsState] = useState<ServerSettingsState>({
+	const [_serverSettingsState, setServerSettingsState] = useState<ServerSettingsState>({
 		status: "idle",
 		lastError: null,
 		lastSavedAt: null,
@@ -426,7 +426,12 @@ function SettingsPage() {
 			)}
 
 			<Tabs defaultValue="sharing" className="w-full">
-				<TabsList className="grid w-full" style={{ gridTemplateColumns: user?.role === "admin" ? "repeat(3, 1fr)" : "repeat(2, 1fr)" }}>
+				<TabsList
+					className="grid w-full"
+					style={{
+						gridTemplateColumns: user?.role === "admin" ? "repeat(3, 1fr)" : "repeat(2, 1fr)",
+					}}
+				>
 					<TabsTrigger value="sharing">Sharing</TabsTrigger>
 					{user?.role === "admin" && (
 						<>

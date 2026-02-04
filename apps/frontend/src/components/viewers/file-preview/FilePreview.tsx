@@ -1,8 +1,8 @@
 import { ChevronLeft, ChevronRight, Download, FileQuestion, Share2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CreateShareModal } from "@/components/sharing";
 import { PageBar } from "@/components/navigation/PageBar";
+import { CreateShareModal } from "@/components/sharing";
+import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AudioPlayer } from "../audio-player";

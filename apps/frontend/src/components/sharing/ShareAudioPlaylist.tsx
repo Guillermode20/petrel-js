@@ -15,9 +15,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
+import { formatDuration } from "@/components/viewers/video-player/utils";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/components/viewers/video-player/utils";
 
 export interface ShareAudioPlaylistProps {
 	files: File[];
@@ -188,7 +188,7 @@ export function ShareAudioPlaylist({
 		if (isPlaying) {
 			audio.play().catch(() => setIsPlaying(false));
 		}
-	}, [audioUrl, currentIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+	}, [audioUrl, isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// Download handler
 	function handleDownload(): void {

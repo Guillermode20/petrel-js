@@ -1,8 +1,11 @@
 import { AlertCircle, Check, Copy, Edit2, Loader2, Save, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { type BundledLanguage, codeToHtml } from "shiki";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
 import type { ContextMenuActionHandler, FileContext } from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,7 +124,7 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 			await navigator.clipboard.writeText(code);
 			setCopied(true);
 			setTimeout(() => setCopied(false), 2000);
-		} catch (_err) { }
+		} catch (_err) {}
 	}
 
 	async function handleSave(): Promise<void> {
@@ -218,7 +221,10 @@ export function CodeViewer({ file, className }: CodeViewerProps) {
 
 	return (
 		<div
-			className={cn("flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card", className)}
+			className={cn(
+				"flex h-full flex-col overflow-hidden rounded-lg border border-border bg-card",
+				className,
+			)}
 			{...longPressHandlers}
 		>
 			{/* Header */}

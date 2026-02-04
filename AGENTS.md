@@ -10,9 +10,47 @@ Petrel is a **sharing-first media fileserver** with a sleek darkmatter aesthetic
 
 **Key Principles:**
 - Sharing is the primary use case — not just storage, not just viewing
-- Darkmatter aesthetic: deep dark backgrounds, purple/violet accents, modern rounded components
+- Darkmatter aesthetic: deep dark backgrounds with purple tint, orange/teal accents, sharp corners
 - Performance matters for large files (streaming > downloading)
 - Web-compatible formats are handled gracefully, others are transcoded
+
+---
+
+## Development Environment
+
+This project runs on **Windows** with **PowerShell** as the default shell.
+
+**Important Notes:**
+- All shell commands should use PowerShell syntax (e.g., `$env:VAR_NAME` for environment variables)
+- Path separators use backslashes (`\`) in configuration files, forward slashes (`/`) are acceptable in code
+- Use semicolons (`;`) to chain commands in PowerShell
+- Script execution policies may require `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
+
+---
+
+## Project Structure
+
+This is a **Bun-based monorepo** using workspaces:
+
+```
+petrel-js/
+├── apps/
+│   ├── backend/         # Elysia API server
+│   └── frontend/        # React + TanStack Router SPA
+├── packages/
+│   └── shared/          # Shared TypeScript types
+├── package.json         # Root workspace config
+├── biome.json          # Linting/formatting config
+└── tsconfig.base.json  # Shared TypeScript config
+```
+
+**Scripts (run from root):**
+- `bun run dev` - Start both backend and frontend
+- `bun run test` - Run all tests (backend + frontend + shared)
+- `bun run test:watch` - Run all tests in watch mode
+- `bun run format` - Format with Biome
+- `bun run lint` - Lint with Biome
+- `bun run check` - Run Biome check (format + lint)
 
 ---
 
@@ -83,7 +121,7 @@ export async function uploadFile(file: File) {
 
 ## File Organization
 
-### Frontend (`apps/web/src`)
+### Frontend (`apps/frontend/src`)
 
 ```
 components/
@@ -93,60 +131,155 @@ components/
   file-browser/          # Domain-specific components
     FileCard.tsx
     FileGrid.tsx
+    FileList.tsx
+    UploadZone.tsx
+    FileDialogs.tsx
+    types.ts             # Component-specific types
+    utils.ts             # File browser utilities
+    utils/selection.ts   # Selection logic
   viewers/               # Media viewers
     video-player/
-      VideoPlayer.tsx    # Main component
-      useVideoPlayer.ts  # Hook
-      VideoControls.tsx  # Sub-component
-      types.ts           # Component types
+      VideoPlayer.tsx
+      VideoControls.tsx
+      useVideoPlayer.ts
+      types.ts
     audio-player/
     image-viewer/
-  sharing/
+    document-viewer/
+    file-preview/
+  sharing/               # Share-related components
     ShareModal.tsx
     ShareTable.tsx
+  auth/                  # Authentication components
+    LoginForm.tsx
+    CreateAdminForm.tsx
+  navigation/            # Navigation components
+    Sidebar.tsx
+    FolderBreadcrumb.tsx
+    PageBar.tsx
+  settings/              # Settings components
+    accounts/
+      UserList.tsx
+      CreateUserForm.tsx
+  global-context-menu/   # Global right-click context menu
+    ContextMenuProvider.tsx
+    GlobalContextMenu.tsx
+    useContextMenu.ts
+    action-handlers.ts
 
-routes/                  # TanStack file routes
-  files/
-    index.tsx
-    $fileId.tsx
-  s/
-    $token.tsx           # Public share view
+routes/                  # TanStack file routes (file-based routing)
+  __root.tsx             # Root layout with providers
+  index.tsx              # Home redirect
+  files/                 # File browser routes
+    index.tsx            # /files - file browser
+  s/                     # Public share routes
+    $token.tsx           # /s/:token - public share view
+  settings.tsx           # /settings - user settings
+  shares.tsx             # /shares - manage shares
 
-hooks/                   # Global hooks
-  useAuth.ts
-  useFiles.ts
-
-lib/                     # Utilities
-  utils.ts
-  api.ts
-```
-
-### Backend (`apps/api/src`)
-
-```
-routes/                  # API route handlers
-  auth.ts                # One file per resource
-  files.ts
-  shares.ts
-  stream.ts              # HLS endpoints
-
-services/                # Business logic
-  file.service.ts        # Classes or objects with methods
-  transcode.service.ts
-  thumbnail.service.ts
-
-jobs/                    # Background job handlers
-  queue.ts
-  transcode.job.ts
-  thumbnail.job.ts
-
-db/
-  schema.ts              # Drizzle schema
-  index.ts
+hooks/                   # Global hooks (TanStack Query patterns)
+  useAuth.ts             # Authentication state
+  useFiles.ts            # File operations (queries + mutations)
+  useShares.ts           # Share operations
+  useStream.ts           # Streaming/HLS hooks
+  useZipDownload.ts      # ZIP download hook
+  useSettings.ts         # User settings hooks
 
 lib/                     # Utilities
-  ffmpeg.ts
-  storage.ts
+  utils.ts               # cn() and general utilities
+  api.ts                 # API client class with token handling
+  logger.ts              # Client-side logging
+```
+
+### Backend (`apps/backend/src`)
+
+```
+modules/                 # Feature-based modules
+  auth/                  # Authentication
+    index.ts
+    routes.ts
+  files/                 # File management
+    index.ts
+    guards.ts
+    types.ts
+    routes/              # Split routes by functionality
+      index.ts           # Route aggregator
+      list.routes.ts     # File listing endpoints
+      upload.routes.ts   # Upload endpoints
+      download.routes.ts # Download endpoints
+      mutate.routes.ts   # CRUD operations
+      folder.routes.ts   # Folder operations
+      media.routes.ts    # Media metadata/endpoints
+      zip.routes.ts      # ZIP generation
+  shares/                # Share management
+  stream/                # HLS streaming
+  users/                 # User management
+  admin/                 # Admin endpoints
+  audio/                 # Audio-specific endpoints
+  settings/              # User settings
+  server-settings/       # Server configuration
+  setup/                 # Initial setup
+  logs/                  # Audit logging
+
+services/                # Business logic (class-based)
+  file.service.ts        # File CRUD operations
+  folder.service.ts      # Folder operations
+  share.service.ts       # Share management
+  upload.service.ts      # File upload handling
+  stream.service.ts      # HLS streaming logic
+  transcode.service.ts   # Video transcoding
+  video.service.ts       # Video processing
+  audio.service.ts       # Audio processing
+  metadata.service.ts    # File metadata extraction
+  thumbnail.service.ts   # Thumbnail generation
+  storage-sync.service.ts # Storage synchronization
+  token.service.ts       # JWT/PAT token management
+  user.service.ts        # User management
+  zip.service.ts         # ZIP archive generation
+
+cache/                   # Caching infrastructure
+  cache.manager.ts       # Cache manager with decorators
+  cache.interface.ts     # Cache interface
+  decorators/
+    cacheable.ts         # @Cacheable decorator
+    cache-evict.ts       # @CacheEvict decorator
+  keys.ts                # Cache key generators
+  storage/
+    memory.cache.ts      # In-memory cache
+    redis.cache.ts       # Redis cache implementation
+
+events/                  # Event system
+  bus.ts                 # Event bus
+  types.ts               # Event type definitions
+  handlers/              # Event handlers
+    file-events.ts
+    share-events.ts
+
+queues/                  # BullMQ job queues
+workers/                 # Background job workers
+
+lib/                     # Utilities
+  ffmpeg.ts              # FFmpeg wrappers
+  storage.ts             # Storage path utilities
+  logger.ts              # Pino logger
+  thumbnails.ts          # Thumbnail generation utilities
+  waveform.ts            # Audio waveform generation
+  http-range.ts          # HTTP range request handling
+  rate-limit.ts          # Rate limiting
+  share-validation.ts    # Share token validation
+
+config/                  # Configuration
+  index.ts               # Config loader
+  schema.ts              # Zod config validation
+
+db/                      # Database
+  schema.ts              # Drizzle table definitions
+  index.ts               # Database connection
+
+constants/               # Constants
+  mime-types.ts          # MIME type definitions
+
+types/                   # Backend-specific types
 ```
 
 **Critical Rules:**
@@ -154,6 +287,21 @@ lib/                     # Utilities
 - Business logic goes in `services/`, never in route handlers
 - Database queries go in `services/`, never in routes directly
 - Shared types go in `packages/shared`, import from there
+
+### Shared Package (`packages/shared`)
+
+```
+src/
+  types/
+    index.ts             # All shared TypeScript types
+    permissions.ts       # Permission system types
+  index.ts               # Main exports
+```
+
+**Usage:** Import types using `@petrel/shared`:
+```typescript
+import type { File, Folder, User } from "@petrel/shared";
+```
 
 ---
 
@@ -387,23 +535,152 @@ function FileUpload() {
 
 ## Testing
 
+### Testing Infrastructure
+
+**Backend (Bun test runner):**
+- Framework: Bun's built-in test runner
+- Database: In-memory SQLite for isolated tests
+- Location: `apps/backend/tests/`
+- Scripts: `bun test`, `bun test --watch`, `bun test --coverage`
+
+**Frontend (Vitest):**
+- Framework: Vitest with jsdom environment
+- Tests: React Testing Library + jest-dom
+- Location: `apps/frontend/src/**/*.test.tsx`
+- Scripts: `bunx vitest run`, `bunx vitest` (watch)
+
+**Shared Package (Bun test runner):**
+- Framework: Bun's built-in test runner
+- Location: `packages/shared/tests/`
+- Scripts: `bun test`, `bun test --watch`
+
+**Root-level:**
+- `bun run test` - Run all tests (backend + frontend + shared)
+- `bun run test:watch` - Run all tests in watch mode
+
+### Backend Testing Patterns
+
+**Unit Tests (services, utils):**
 ```typescript
-// ✅ Services testable in isolation
-class TranscodeService {
-  constructor(private ffmpeg: FFmpeg, private storage: Storage) { }
-  // Inject dependencies for testing
-}
+import { describe, expect, it, beforeAll, afterAll } from "bun:test";
 
-// ✅ No database mocking - use test SQLite instance
-// tests/file.service.test.ts
-const testDb = createTestDatabase()
-const service = new FileService(testDb)
+describe("FileService", () => {
+  beforeAll(async () => {
+    // Setup: create test database
+  });
 
-// ✅ Integration tests for API routes
-// tests/files.routes.test.ts
-const response = await app.handle(new Request('/api/files'))
-expect(await response.json()).toEqual({ data: [], error: null })
+  afterAll(async () => {
+    // Teardown: clean up
+  });
+
+  it("should create file with valid input", async () => {
+    const result = await fileService.createFile({
+      name: "test.txt",
+      path: "/",
+      size: 1024,
+      mimeType: "text/plain",
+      hash: "abc123",
+      uploadedBy: 1,
+      parentId: null,
+      metadata: null,
+    });
+
+    expect(result.id).toBeDefined();
+    expect(result.name).toBe("test.txt");
+  });
+});
 ```
+
+**Integration Tests (API routes):**
+```typescript
+import { beforeAll, describe, expect, it } from "bun:test";
+import { Elysia } from "elysia";
+
+describe("Files API", () => {
+  let app: Elysia;
+
+  beforeAll(() => {
+    app = createTestApp(); // Minimal app with auth/setup
+  });
+
+  it("should list files for authenticated user", async () => {
+    const response = await app.handle(
+      new Request("http://localhost/api/files", {
+        headers: { authorization: "Bearer valid-token" },
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toBeDefined();
+  });
+});
+```
+
+### Frontend Testing Patterns
+
+**Component Tests:**
+```typescript
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { Badge } from "./badge";
+
+describe("Badge", () => {
+  it("should render with default variant", () => {
+    render(<Badge>Test Badge</Badge>);
+    const badge = screen.getByText("Test Badge");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-primary");
+  });
+
+  it("should handle different variants", () => {
+    render(<Badge variant="destructive">Delete</Badge>);
+    const badge = screen.getByText("Delete");
+    expect(badge).toHaveClass("bg-destructive");
+  });
+});
+```
+
+**Tests with Providers:**
+```typescript
+import { render, screen } from "@testing-library/react";
+import { renderWithProviders } from "@/test/utils";
+import { FileCard } from "./FileCard";
+
+describe("FileCard", () => {
+  it("should render file card with TanStack Query", () => {
+    renderWithProviders(<FileCard file={mockFile} />);
+    expect(screen.getByText(mockFile.name)).toBeInTheDocument();
+  });
+});
+```
+
+### Testing Best Practices
+
+1. **Test Descriptions:** Use clear, descriptive it() statements
+   - ✅ `it("should create file with valid input")`
+   - ❌ `it("works")`
+
+2. **Test Isolation:** Each test should be independent
+   - Clean up before/after using beforeAll/afterAll/beforeEach/afterEach
+
+3. **Test Coverage:** 
+   - Aim for 70%+ coverage on new code
+   - Focus on critical paths and complex logic
+   - Don't obsess over simple getters/setters
+
+4. **Test Data:** 
+   - Use realistic test data (not "asdf", "123")
+   - Reuse test helpers where possible (createTestUser, createTestFile)
+
+5. **Async Tests:**
+   - Always use async/await
+   - Don't forget to await promises in beforeAll/afterAll
+
+6. **Mocking:**
+   - Prefer test doubles over mocking libraries
+   - Only mock external services (API calls, file system)
+   - Don't mock code you own (makes tests brittle)
 
 ---
 
@@ -520,8 +797,8 @@ export function VideoPlayer({ src, subtitles, className }: VideoPlayerProps) {
 ```
 ComponentName/
   ComponentName.tsx      # Main component
+  ComponentName.test.tsx # Tests (required)
   useComponentName.ts    # Hook (if stateful)
-  ComponentName.test.tsx # Tests
   types.ts               # Component-specific types
   index.ts               # Re-exports
 ```
@@ -544,6 +821,8 @@ Before submitting generated code:
 - [ ] No `console.log` — use proper logger
 - [ ] Component has accompanying types.ts
 - [ ] No TODO comments without issue link
+- [ ] Tests written for new features (aim for 70% coverage)
+- [ ] Tests follow project conventions (patterns from existing tests)
 
 ---
 
@@ -670,4 +949,4 @@ When in doubt, ask. When confident, keep it simple.
 
 ---
 
-*Last updated: 2026-02-01*
+*Last updated: 2026-02-04*

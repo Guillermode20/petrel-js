@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
-import { config } from "../../config";
 import { shareRateLimit, streamRateLimit } from "../../lib/rate-limit";
+import { canRead } from "../../lib/route-helpers";
 import { validateShareAccess } from "../../lib/share-validation";
 import { resolveStoragePath } from "../../lib/storage";
 import { fileService } from "../../services/file.service";
@@ -10,7 +10,6 @@ import { streamService } from "../../services/stream.service";
 import { transcodeQueue } from "../../services/transcode.service";
 import { videoService } from "../../services/video.service";
 import { authMiddleware } from "../auth";
-import { canRead } from "../../lib/route-helpers";
 import type { ApiResponse, StreamInfoResponse } from "./types";
 
 const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
@@ -150,7 +149,10 @@ const authenticatedStreamRoutes = new Elysia({ prefix: "/api/stream" })
 					return { data: { processing: true }, error: null };
 				}
 				set.status = 202;
-				return { data: { processing: true, message: "Stream not ready, transcode in progress" }, error: null };
+				return {
+					data: { processing: true, message: "Stream not ready, transcode in progress" },
+					error: null,
+				};
 			}
 
 			const playlist = await streamService.getMasterPlaylist(fileId);
@@ -404,8 +406,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			}
 
 			// Verify file is accessible via this share
-			if (share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent) {
 					set.status = 400;
 					return { data: null, error: "Invalid share" };
@@ -422,7 +424,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 					set.status = 403;
 					return { data: null, error: "Access denied" };
 				}
-			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+			} else if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };
 			}
@@ -459,7 +461,13 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 	)
 	.post(
 		"/:token/:fileId/prepare",
-		async ({ params, query, set }): Promise<ApiResponse<{ jobId: number | null; ready: boolean; firstSegmentUrl: string | null }>> => {
+		async ({
+			params,
+			query,
+			set,
+		}): Promise<
+			ApiResponse<{ jobId: number | null; ready: boolean; firstSegmentUrl: string | null }>
+		> => {
 			const { share, error } = await validateShareAccess(params.token, query.password);
 			if (error) {
 				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
@@ -480,8 +488,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			}
 
 			// Verify file is accessible via this share
-			if (share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent) {
 					set.status = 400;
 					return { data: null, error: "Invalid share" };
@@ -498,7 +506,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 					set.status = 403;
 					return { data: null, error: "Access denied" };
 				}
-			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+			} else if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };
 			}
@@ -537,7 +545,11 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 	)
 	.get(
 		"/:token/:fileId/subtitles",
-		async ({ params, query, set }): Promise<ApiResponse<Array<{ id: number; language: string; title: string | null }>>> => {
+		async ({
+			params,
+			query,
+			set,
+		}): Promise<ApiResponse<Array<{ id: number; language: string; title: string | null }>>> => {
 			const { share, error } = await validateShareAccess(params.token, query.password);
 			if (error) {
 				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
@@ -551,7 +563,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				return { data: null, error: "Invalid file ID" };
 			}
 
-			if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+			if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };
 			}
@@ -562,8 +574,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				return { data: null, error: "File not found" };
 			}
 
-			if (share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent || file.parentId === null) {
 					set.status = 403;
 					return { data: null, error: "Access denied" };
@@ -611,7 +623,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				return { data: null, error: "Invalid ID" };
 			}
 
-			if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+			if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };
 			}
@@ -622,8 +634,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				return { data: null, error: "File not found" };
 			}
 
-			if (share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent || file.parentId === null) {
 					set.status = 403;
 					return { data: null, error: "Access denied" };
@@ -663,7 +675,21 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 	)
 	.get(
 		"/:token/:fileId/tracks",
-		async ({ params, query, set }): Promise<ApiResponse<Array<{ index: number; type: string; codec: string; language: string | null; title: string | null }>>> => {
+		async ({
+			params,
+			query,
+			set,
+		}): Promise<
+			ApiResponse<
+				Array<{
+					index: number;
+					type: string;
+					codec: string;
+					language: string | null;
+					title: string | null;
+				}>
+			>
+		> => {
 			const { share, error } = await validateShareAccess(params.token, query.password);
 			if (error) {
 				const status = error === "Share not found" ? 404 : error === "Share expired" ? 410 : 401;
@@ -677,7 +703,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				return { data: null, error: "Invalid file ID" };
 			}
 
-			if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+			if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };
 			}
@@ -688,8 +714,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 				return { data: null, error: "File not found" };
 			}
 
-			if (share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent || file.parentId === null) {
 					set.status = 403;
 					return { data: null, error: "Access denied" };
@@ -750,8 +776,8 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 			}
 
 			// Check if file is within shared folder (for folder shares)
-			if (share!.share.type === "folder") {
-				const shareContent = await shareService.getShareContent(share!.share);
+			if (share?.share.type === "folder") {
+				const shareContent = await shareService.getShareContent(share?.share);
 				if (!shareContent) {
 					set.status = 400;
 					return { data: null, error: "Invalid share" };
@@ -768,7 +794,7 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 					set.status = 403;
 					return { data: null, error: "Access denied" };
 				}
-			} else if (share!.share.type === "file" && share!.share.targetId !== fileId) {
+			} else if (share?.share.type === "file" && share?.share.targetId !== fileId) {
 				set.status = 403;
 				return { data: null, error: "Access denied" };
 			}
@@ -788,7 +814,10 @@ const shareStreamRoutes = new Elysia({ prefix: "/api/stream/share" })
 					return { data: { processing: true }, error: null };
 				}
 				set.status = 202;
-				return { data: { processing: true, message: "Stream not ready, transcode in progress" }, error: null };
+				return {
+					data: { processing: true, message: "Stream not ready, transcode in progress" },
+					error: null,
+				};
 			}
 
 			const playlist = await streamService.getMasterPlaylist(fileId);

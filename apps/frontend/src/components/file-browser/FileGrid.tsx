@@ -1,9 +1,9 @@
 import type { File, Folder } from "@petrel/shared";
-import { getSelectionKey, isFile, isFolder } from "./utils/selection";
-import { FileCard } from "./FileCard";
-import { useLongPress } from "@/components/global-context-menu";
 import type { MenuContext } from "@/components/global-context-menu";
+import { useLongPress } from "@/components/global-context-menu";
+import { FileCard } from "./FileCard";
 import type { FileGridProps } from "./types";
+import { getSelectionKey, isFile, isFolder } from "./utils/selection";
 
 /**
  * Grid view for files and folders
@@ -23,7 +23,10 @@ export function FileGrid({
 }: FileGridProps) {
 	const handleDragStart = (item: File | Folder, e: React.DragEvent) => {
 		const dt = e.dataTransfer;
-		dt.setData("text/plain", JSON.stringify({ id: item.id, type: isFile(item) ? "file" : "folder" }));
+		dt.setData(
+			"text/plain",
+			JSON.stringify({ id: item.id, type: isFile(item) ? "file" : "folder" }),
+		);
 		dt.effectAllowed = "move";
 	};
 
@@ -93,7 +96,11 @@ interface FileGridItemProps {
 	onDragStart: (item: File | Folder, e: React.DragEvent) => void;
 	onDrop: (target: File | Folder, e: React.DragEvent) => void;
 	contextMenuHandlerId?: string;
-	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+	buildContextMenuContext?: (
+		item: File | Folder,
+		items: Array<File | Folder>,
+		selectedIds: Set<string>,
+	) => MenuContext;
 	currentFolderPath?: string | null;
 	searchQuery?: string;
 }
@@ -102,7 +109,11 @@ function buildMenuContext(
 	item: File | Folder,
 	items: Array<File | Folder>,
 	selectedIds: Set<string>,
-	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext,
+	buildContextMenuContext?: (
+		item: File | Folder,
+		items: Array<File | Folder>,
+		selectedIds: Set<string>,
+	) => MenuContext,
 ): MenuContext {
 	if (buildContextMenuContext) {
 		return buildContextMenuContext(item, items, selectedIds);

@@ -2,7 +2,7 @@ import type { Folder } from "@petrel/shared";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { folders } from "../../db/schema";
-import { Cacheable, CacheEvict, cacheKeys, cacheManager, cacheTTL } from "../cache";
+import { Cacheable, cacheKeys, cacheManager, cacheTTL } from "../cache";
 import { normalizeRelativePath } from "../lib/storage";
 import { fileService } from "./file.service";
 
@@ -210,7 +210,7 @@ export class FolderService {
 				.returning();
 
 			const updatedFolder = (updated as (typeof folders.$inferSelect)[])[0];
-			
+
 			if (updatedFolder && nextPath !== current.path) {
 				// Recursively update children paths within the same transaction
 				await this.updateChildrenPathsInternal(id, current.path, nextPath, tx);

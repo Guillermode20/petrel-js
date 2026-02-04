@@ -1,7 +1,8 @@
-import { readdir, rename, rm, stat } from "node:fs/promises";
+import { readdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { File } from "@petrel/shared";
 import type { BunFile } from "bun";
+import { logger } from "../lib/logger";
 import {
 	buildFileRelativePath,
 	calculateFileHash,
@@ -11,7 +12,6 @@ import {
 	pathExists,
 	resolveStoragePath,
 } from "../lib/storage";
-import { logger } from "../lib/logger";
 import { type FileService, fileService } from "./file.service";
 import { type FolderService, folderService } from "./folder.service";
 import { type MetadataService, metadataService } from "./metadata.service";
@@ -95,11 +95,17 @@ export class UploadService {
 				const age = now - stats.mtimeMs;
 
 				if (age > maxAgeMs) {
-					logger.info({ uploadId, ageHours: Math.round(age / 3600000) }, "Cleaning up abandoned upload");
+					logger.info(
+						{ uploadId, ageHours: Math.round(age / 3600000) },
+						"Cleaning up abandoned upload",
+					);
 					await rm(dirPath, { recursive: true, force: true });
 				}
 			} catch (err) {
-				logger.error({ uploadId, error: err instanceof Error ? err.message : String(err) }, "Failed to stat upload directory");
+				logger.error(
+					{ uploadId, error: err instanceof Error ? err.message : String(err) },
+					"Failed to stat upload directory",
+				);
 			}
 		}
 	}

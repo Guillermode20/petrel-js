@@ -358,5 +358,3 @@ export async function transmuxToHLS(options: TransmuxToHLSOptions): Promise<stri
 	await runCommand("ffmpeg", args);
 	return playlistPath;
 }
-
-

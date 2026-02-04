@@ -2,8 +2,8 @@ import type { AudioMetadata, ImageMetadata, File as SharedFile } from "@petrel/s
 import exifr from "exifr";
 import { parseFile } from "music-metadata";
 import sharp from "sharp";
-import { videoService } from "./video.service";
 import { fileService } from "./file.service";
+import { videoService } from "./video.service";
 
 const DEFAULT_EXIF_OPTIONS = {
 	tiff: true,

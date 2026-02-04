@@ -34,7 +34,7 @@ export function CreateFolderDialog({
 
 	const isControlled = controlledOpen !== undefined;
 	const open = isControlled ? controlledOpen : internalOpen;
-	const setOpen = isControlled ? controlledOnOpenChange ?? (() => {}) : setInternalOpen;
+	const setOpen = isControlled ? (controlledOnOpenChange ?? (() => {})) : setInternalOpen;
 
 	const handleCreate = useCallback(async () => {
 		if (!name.trim()) return;
@@ -45,7 +45,7 @@ export function CreateFolderDialog({
 		} catch {
 			// Error handled by parent
 		}
-	}, [name, onCreateFolder]);
+	}, [name, onCreateFolder, setOpen]);
 
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent) => {

@@ -1,4 +1,4 @@
-import type { FilePermission, RolePermissions, UserRole } from "./permissions";
+import type { UserRole } from "./permissions";
 
 export type { FilePermission, RolePermissions, UserRole } from "./permissions";
 export { hasPermission, ROLE_PERMISSIONS } from "./permissions";
@@ -272,7 +272,4 @@ export interface PersonalAccessToken {
 	lastUsedAt: Date | null;
 }
 
-export interface ServerSettings {
-	// Server settings are currently managed via environment variables
-	// This interface is kept for future extensibility
-}
+export type ServerSettings = {};

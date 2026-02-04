@@ -11,6 +11,7 @@ export {
 	useUpdateFolder,
 	useUploadFile,
 } from "./useFiles";
+export { settingsKeys, useResetSettings, useSettings, useUpdateSettings } from "./useSettings";
 export {
 	shareKeys,
 	useCreateShare,
@@ -30,4 +31,3 @@ export {
 	useStreamTracks,
 } from "./useStream";
 export { useZipDownload } from "./useZipDownload";
-export { useSettings, useUpdateSettings, useResetSettings, settingsKeys } from "./useSettings";

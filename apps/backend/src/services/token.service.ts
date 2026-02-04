@@ -25,17 +25,18 @@ class TokenService {
 				});
 
 				if (existing) {
-					logger.warn({
-						userId: params.userId,
-						existingUserId: existing.userId,
-						tokenHash: params.tokenHash.substring(0, 8) + "...",
-					}, "Duplicate refresh token hash detected - this should not happen with SHA-256");
+					logger.warn(
+						{
+							userId: params.userId,
+							existingUserId: existing.userId,
+							tokenHash: `${params.tokenHash.substring(0, 8)}...`,
+						},
+						"Duplicate refresh token hash detected - this should not happen with SHA-256",
+					);
 				}
 
 				// Delete any existing token with the same hash
-				await tx
-					.delete(refreshTokens)
-					.where(eq(refreshTokens.tokenHash, params.tokenHash));
+				await tx.delete(refreshTokens).where(eq(refreshTokens.tokenHash, params.tokenHash));
 
 				// Insert the new token
 				await tx.insert(refreshTokens).values({

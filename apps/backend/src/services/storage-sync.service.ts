@@ -76,7 +76,9 @@ async function calculateDiskFileHash(absolutePath: string): Promise<string> {
 }
 
 export class StorageSyncService {
-	async autoImportIfDatabaseEmpty(options: { enrichMetadata: boolean }): Promise<StorageSyncReport | null> {
+	async autoImportIfDatabaseEmpty(options: {
+		enrichMetadata: boolean;
+	}): Promise<StorageSyncReport | null> {
 		const fileCount = await this.getDatabaseFileCount();
 		if (fileCount > 0) return null;
 
@@ -160,7 +162,9 @@ export class StorageSyncService {
 
 		report.createdFolderCount = await this.ensureFolderPathsExist(Array.from(folderPathsToEnsure));
 
-		await this.importDiskEntries(orphanedEntries, report, { enrichMetadata: options.enrichMetadata });
+		await this.importDiskEntries(orphanedEntries, report, {
+			enrichMetadata: options.enrichMetadata,
+		});
 
 		return report;
 	}
@@ -184,7 +188,9 @@ export class StorageSyncService {
 
 	private async scanPrimaryFilesOnDisk(): Promise<DiskFileEntry[]> {
 		const storageRoot = getStorageRoot();
-		const stack: Array<{ absolute: string; relative: string }> = [{ absolute: storageRoot, relative: "" }];
+		const stack: Array<{ absolute: string; relative: string }> = [
+			{ absolute: storageRoot, relative: "" },
+		];
 		const results: DiskFileEntry[] = [];
 
 		while (stack.length > 0) {
@@ -225,9 +231,7 @@ export class StorageSyncService {
 	}
 
 	private async ensureFolderPathsExist(folderPaths: string[]): Promise<number> {
-		const normalized = folderPaths
-			.map((p) => normalizeRelativePath(p))
-			.filter((p) => p !== "");
+		const normalized = folderPaths.map((p) => normalizeRelativePath(p)).filter((p) => p !== "");
 		const sorted = normalized.sort((a, b) => a.split("/").length - b.split("/").length);
 
 		let createdCount = 0;

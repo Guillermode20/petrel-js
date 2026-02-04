@@ -1,7 +1,7 @@
 import type { ApiResponse } from "@petrel/shared";
 import { Elysia, t } from "elysia";
-import { requireAdmin } from "../auth";
 import { storageSyncService } from "../../services/storage-sync.service";
+import { requireAdmin } from "../auth";
 
 export const adminRoutes = new Elysia({ prefix: "/api/admin" })
 	.use(requireAdmin)
@@ -25,7 +25,11 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
 	)
 	.post(
 		"/sync/repair",
-		async ({ body }): Promise<ApiResponse<Awaited<ReturnType<typeof storageSyncService.importOrphanedFiles>>>> => {
+		async ({
+			body,
+		}): Promise<
+			ApiResponse<Awaited<ReturnType<typeof storageSyncService.importOrphanedFiles>>>
+		> => {
 			try {
 				const report = await storageSyncService.importOrphanedFiles({
 					enrichMetadata: body.enrichMetadata,
@@ -48,7 +52,9 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
 	)
 	.post(
 		"/sync/cleanup",
-		async (): Promise<ApiResponse<Awaited<ReturnType<typeof storageSyncService.cleanupOrphanedDatabaseRecords>>>> => {
+		async (): Promise<
+			ApiResponse<Awaited<ReturnType<typeof storageSyncService.cleanupOrphanedDatabaseRecords>>>
+		> => {
 			try {
 				const report = await storageSyncService.cleanupOrphanedDatabaseRecords();
 				return { data: report, error: null };

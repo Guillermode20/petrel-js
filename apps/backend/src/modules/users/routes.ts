@@ -1,4 +1,4 @@
-import type { ApiResponse, User, UserRole } from "@petrel/shared";
+import type { ApiResponse, User } from "@petrel/shared";
 import { Elysia, t } from "elysia";
 import { userService } from "../../services/user.service";
 import { requireAdmin } from "../auth/middleware";

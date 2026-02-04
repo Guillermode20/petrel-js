@@ -8,10 +8,7 @@ interface SettingsServerProps {
 	isSaving?: boolean;
 }
 
-export function SettingsServer({
-	disabled = false,
-	isSaving = false,
-}: SettingsServerProps) {
+export function SettingsServer({ disabled = false, isSaving = false }: SettingsServerProps) {
 	const SavingOverlay = () =>
 		isSaving ? (
 			<div className="absolute inset-0 flex items-center justify-center bg-background/50 rounded">
@@ -29,7 +26,8 @@ export function SettingsServer({
 			</div>
 
 			<p className="text-sm text-muted-foreground">
-				No configurable server settings available. Server configuration is managed via environment variables.
+				No configurable server settings available. Server configuration is managed via environment
+				variables.
 			</p>
 		</div>
 	);

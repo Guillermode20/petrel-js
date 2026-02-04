@@ -5,7 +5,10 @@ import ReactDOM from "react-dom/client";
 import { Toaster } from "sonner";
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { ContextMenuClipboardProvider, ContextMenuProvider } from "./components/global-context-menu";
+import {
+	ContextMenuClipboardProvider,
+	ContextMenuProvider,
+} from "./components/global-context-menu";
 
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";

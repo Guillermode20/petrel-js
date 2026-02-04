@@ -11,13 +11,19 @@ import {
 	VolumeX,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+import type {
+	AudioPlayerContext,
+	ContextMenuActionHandler,
+} from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
-import type { AudioPlayerContext, ContextMenuActionHandler } from "@/components/global-context-menu";
+import { formatDuration } from "@/components/viewers/video-player/utils";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/components/viewers/video-player/utils";
 import type { AudioPlayerProps } from "./types";
 import { useAudioPlayer } from "./useAudioPlayer";
 
@@ -72,10 +78,7 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 		hasMetadata: !!metadata,
 	};
 
-	const longPressHandlers = useLongPress(
-		contextMenuContext,
-		contextMenuHandlerId,
-	);
+	const longPressHandlers = useLongPress(contextMenuContext, contextMenuHandlerId);
 
 	return (
 		<div
@@ -187,11 +190,31 @@ export function AudioPlayer({ file, className, autoPlay = false, onEnded }: Audi
 				<div className="w-full rounded-lg border border-border bg-secondary/30 p-3 text-sm">
 					<h4 className="mb-2 font-medium">Track Info</h4>
 					<div className="space-y-1 text-muted-foreground">
-						{metadata.title && <p><span className="text-foreground">Title:</span> {metadata.title}</p>}
-						{metadata.artist && <p><span className="text-foreground">Artist:</span> {metadata.artist}</p>}
-						{metadata.album && <p><span className="text-foreground">Album:</span> {metadata.album}</p>}
-						{metadata.year && <p><span className="text-foreground">Year:</span> {metadata.year}</p>}
-						{metadata.genre && <p><span className="text-foreground">Genre:</span> {metadata.genre}</p>}
+						{metadata.title && (
+							<p>
+								<span className="text-foreground">Title:</span> {metadata.title}
+							</p>
+						)}
+						{metadata.artist && (
+							<p>
+								<span className="text-foreground">Artist:</span> {metadata.artist}
+							</p>
+						)}
+						{metadata.album && (
+							<p>
+								<span className="text-foreground">Album:</span> {metadata.album}
+							</p>
+						)}
+						{metadata.year && (
+							<p>
+								<span className="text-foreground">Year:</span> {metadata.year}
+							</p>
+						)}
+						{metadata.genre && (
+							<p>
+								<span className="text-foreground">Genre:</span> {metadata.genre}
+							</p>
+						)}
 					</div>
 				</div>
 			)}

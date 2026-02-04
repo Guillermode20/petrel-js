@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useContextMenuActions } from "./useContextMenu";
 import type { ContextMenuPosition, MenuContext } from "./types";
+import { useContextMenuActions } from "./useContextMenu";
 
 export interface UseContextMenuKeyboardShortcutsOptions {
 	disabled?: boolean;
@@ -11,7 +11,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
 	return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 }
 
-function getAnchorPositionFromActiveElement(activeElement: Element | null): ContextMenuPosition | null {
+function getAnchorPositionFromActiveElement(
+	activeElement: Element | null,
+): ContextMenuPosition | null {
 	if (!(activeElement instanceof HTMLElement)) return null;
 	const rect = activeElement.getBoundingClientRect();
 	if (rect.width === 0 && rect.height === 0) return null;
@@ -66,4 +68,3 @@ export function useContextMenuKeyboardShortcuts({
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, [disabled, getContext, open]);
 }
-

@@ -1,13 +1,19 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Files, Menu, Settings, Share2 } from "lucide-react";
 import { useCallback, useState } from "react";
+import { toast } from "sonner";
+import type {
+	ContextMenuActionHandler,
+	SidebarItemContext,
+} from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
-import type { ContextMenuActionHandler, SidebarItemContext } from "@/components/global-context-menu";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 interface NavItem {
 	label: string;
@@ -63,19 +69,22 @@ function SidebarNavItem({ item, isActive, onClick, contextMenuHandlerId }: Sideb
  */
 export function Sidebar({ className }: SidebarProps) {
 	const location = useLocation();
-	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(async (action, context, _data) => {
-		if (context.type !== "sidebar-item") return;
-		void _data;
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action, context, _data) => {
+			if (context.type !== "sidebar-item") return;
+			void _data;
 
-		if (action === "open-new-tab") {
-			window.open(`${window.location.origin}${context.href}`, "_blank");
-			return;
-		}
-		if (action === "copy-link") {
-			await navigator.clipboard.writeText(`${window.location.origin}${context.href}`);
-			toast.success("Link copied to clipboard");
-		}
-	}, []);
+			if (action === "open-new-tab") {
+				window.open(`${window.location.origin}${context.href}`, "_blank");
+				return;
+			}
+			if (action === "copy-link") {
+				await navigator.clipboard.writeText(`${window.location.origin}${context.href}`);
+				toast.success("Link copied to clipboard");
+			}
+		},
+		[],
+	);
 	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
 
 	return (
@@ -108,19 +117,22 @@ export function Sidebar({ className }: SidebarProps) {
 export function MobileSidebar() {
 	const [open, setOpen] = useState(false);
 	const location = useLocation();
-	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(async (action, context, _data) => {
-		if (context.type !== "sidebar-item") return;
-		void _data;
+	const handleContextMenuAction = useCallback<ContextMenuActionHandler>(
+		async (action, context, _data) => {
+			if (context.type !== "sidebar-item") return;
+			void _data;
 
-		if (action === "open-new-tab") {
-			window.open(`${window.location.origin}${context.href}`, "_blank");
-			return;
-		}
-		if (action === "copy-link") {
-			await navigator.clipboard.writeText(`${window.location.origin}${context.href}`);
-			toast.success("Link copied to clipboard");
-		}
-	}, []);
+			if (action === "open-new-tab") {
+				window.open(`${window.location.origin}${context.href}`, "_blank");
+				return;
+			}
+			if (action === "copy-link") {
+				await navigator.clipboard.writeText(`${window.location.origin}${context.href}`);
+				toast.success("Link copied to clipboard");
+			}
+		},
+		[],
+	);
 	const contextMenuHandlerId = useRegisterContextMenuActionHandler(handleContextMenuAction);
 
 	return (

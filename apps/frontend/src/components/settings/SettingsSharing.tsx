@@ -40,7 +40,9 @@ export function SettingsSharing({
 					<Label htmlFor="default-expiry">Default Expiry Duration</Label>
 					<Select
 						value={settings.sharing.defaultExpiry}
-						onValueChange={(value: string) => onUpdate("sharing", { defaultExpiry: value as ExpiryDuration })}
+						onValueChange={(value: string) =>
+							onUpdate("sharing", { defaultExpiry: value as ExpiryDuration })
+						}
 						disabled={disabled || isSaving}
 					>
 						<SelectTrigger id="default-expiry">
@@ -60,7 +62,9 @@ export function SettingsSharing({
 					<Label htmlFor="default-quality">Default Quality for Videos</Label>
 					<Select
 						value={settings.sharing.defaultQuality}
-						onValueChange={(value: string) => onUpdate("sharing", { defaultQuality: value as VideoQuality })}
+						onValueChange={(value: string) =>
+							onUpdate("sharing", { defaultQuality: value as VideoQuality })
+						}
 						disabled={disabled || isSaving}
 					>
 						<SelectTrigger id="default-quality">

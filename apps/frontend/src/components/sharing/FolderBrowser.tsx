@@ -2,10 +2,10 @@ import type { File, Folder, ShareSettings } from "@petrel/shared";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import type { BreadcrumbItem } from "./SharedFileBrowser";
 import { SharedFileBrowser } from "./SharedFileBrowser";
 import { SmartViewer } from "./SmartViewer";
-import { api } from "@/lib/api";
 
 export interface FolderBrowserProps {
 	folder: Folder;
@@ -86,7 +86,8 @@ export function FolderBrowser({
 	// Handle breadcrumb navigation - pop back to the selected level
 	const handleBreadcrumbClick = (index: number) => {
 		// index 0 means root (reset to single item), otherwise slice to index
-		const newStack = index === 0 ? [navStack[0]!] : navStack.slice(0, index + 1) as FolderNavigationState[];
+		const newStack =
+			index === 0 ? [navStack[0]!] : (navStack.slice(0, index + 1) as FolderNavigationState[]);
 		setNavStack(newStack);
 	};
 

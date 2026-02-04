@@ -1,5 +1,14 @@
-import { isFile } from "./utils/selection";
-import { Copy, Download, ExternalLink, FileArchive, FolderInput, Link, Pencil, Share2, Trash2 } from "lucide-react";
+import {
+	Copy,
+	Download,
+	ExternalLink,
+	FileArchive,
+	FolderInput,
+	Link,
+	Pencil,
+	Share2,
+	Trash2,
+} from "lucide-react";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -7,8 +16,8 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-
 import type { FileContextMenuHandlers } from "./types";
+import { isFile } from "./utils/selection";
 
 interface FileContextMenuProps extends FileContextMenuHandlers {
 	allowZip?: boolean;

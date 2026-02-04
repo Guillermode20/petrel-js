@@ -55,9 +55,15 @@ export function useStreamTracks(fileId: number) {
 	});
 }
 
-export function useShareStreamInfo(shareToken: string | undefined, fileId: number, password?: string) {
+export function useShareStreamInfo(
+	shareToken: string | undefined,
+	fileId: number,
+	password?: string,
+) {
 	return useQuery({
-		queryKey: shareToken ? streamKeys.shareInfo(shareToken, fileId, password) : streamKeys.info(fileId),
+		queryKey: shareToken
+			? streamKeys.shareInfo(shareToken, fileId, password)
+			: streamKeys.info(fileId),
 		queryFn: () => {
 			if (!shareToken) {
 				throw new Error("Missing share token");
@@ -94,7 +100,11 @@ export function useShareStreamSubtitles(
 	});
 }
 
-export function useShareStreamTracks(shareToken: string | undefined, fileId: number, password?: string) {
+export function useShareStreamTracks(
+	shareToken: string | undefined,
+	fileId: number,
+	password?: string,
+) {
 	return useQuery({
 		queryKey: shareToken
 			? streamKeys.shareTracks(shareToken, fileId, password)

@@ -23,7 +23,7 @@ import {
 	Upload,
 	Video,
 } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -35,7 +35,6 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useContextMenuActions, useContextMenuState } from "./useContextMenu";
 import { useContextMenuClipboardState } from "./clipboard";
 import type {
 	AudioPlayerContext,
@@ -50,6 +49,7 @@ import type {
 	SidebarItemContext,
 	VideoPlayerContext,
 } from "./types";
+import { useContextMenuActions, useContextMenuState } from "./useContextMenu";
 
 interface GlobalContextMenuProps {
 	onAction: (action: string, data?: unknown) => void;
@@ -201,10 +201,7 @@ function FileMenuContent({ context, onAction }: MenuContentProps<FileContext>): 
 				Properties
 			</DropdownMenuItem>
 			<DropdownMenuSeparator />
-			<DropdownMenuItem
-				onClick={() => onAction("delete", context.item)}
-				variant="destructive"
-			>
+			<DropdownMenuItem onClick={() => onAction("delete", context.item)} variant="destructive">
 				<Trash2 className="mr-2 h-4 w-4" />
 				Delete
 				<DropdownMenuShortcut>Del</DropdownMenuShortcut>
@@ -252,10 +249,7 @@ function FolderMenuContent({ context, onAction }: MenuContentProps<FolderContext
 				Move to...
 			</DropdownMenuItem>
 			<DropdownMenuSeparator />
-			<DropdownMenuItem
-				onClick={() => onAction("delete", context.item)}
-				variant="destructive"
-			>
+			<DropdownMenuItem onClick={() => onAction("delete", context.item)} variant="destructive">
 				<Trash2 className="mr-2 h-4 w-4" />
 				Delete
 				<DropdownMenuShortcut>Del</DropdownMenuShortcut>
@@ -290,10 +284,7 @@ function MultiSelectionMenuContent({
 				<FolderInput className="mr-2 h-4 w-4" />
 				Move selected to...
 			</DropdownMenuItem>
-			<DropdownMenuItem
-				onClick={() => onAction("delete-selected")}
-				variant="destructive"
-			>
+			<DropdownMenuItem onClick={() => onAction("delete-selected")} variant="destructive">
 				<Trash2 className="mr-2 h-4 w-4" />
 				Delete selected ({count})
 			</DropdownMenuItem>
@@ -305,9 +296,7 @@ function MultiSelectionMenuContent({
 	);
 }
 
-function EmptySpaceMenuContent({
-	onAction,
-}: MenuContentProps<EmptySpaceContext>): ReactNode {
+function EmptySpaceMenuContent({ onAction }: MenuContentProps<EmptySpaceContext>): ReactNode {
 	const { items } = useContextMenuClipboardState();
 	const hasClipboardItems = items.length > 0;
 
@@ -363,16 +352,11 @@ function VideoPlayerMenuContent({
 				<DropdownMenuSubTrigger>
 					<Timer className="mr-2 h-4 w-4" />
 					Playback speed
-					<span className="ml-auto text-xs text-muted-foreground">
-						{context.playbackRate}x
-					</span>
+					<span className="ml-auto text-xs text-muted-foreground">{context.playbackRate}x</span>
 				</DropdownMenuSubTrigger>
 				<DropdownMenuSubContent>
 					{PLAYBACK_SPEEDS.map((speed) => (
-						<DropdownMenuItem
-							key={speed}
-							onClick={() => onAction("set-playback-speed", speed)}
-						>
+						<DropdownMenuItem key={speed} onClick={() => onAction("set-playback-speed", speed)}>
 							{speed === context.playbackRate && "✓ "}
 							{speed}x
 						</DropdownMenuItem>

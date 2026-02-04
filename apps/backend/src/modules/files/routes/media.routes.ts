@@ -35,19 +35,23 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					return { data: null, error: result.error };
 				}
 
-				if (result.share!.share.type === "file") {
-					if (result.share!.share.targetId !== file.id) {
+				if (result.share?.share.type === "file") {
+					if (result.share?.share.targetId !== file.id) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
 				} else {
-					const content = await shareService.getShareContent(result.share!.share);
+					const content = await shareService.getShareContent(result.share?.share);
 					if (!content || typeof (content as { path?: unknown }).path !== "string") {
 						set.status = 400;
 						return { data: null, error: "Invalid share" };
 					}
 					const sharePath = (content as { path: string }).path;
-					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+					if (
+						sharePath !== "" &&
+						file.path !== sharePath &&
+						!file.path.startsWith(`${sharePath}/`)
+					) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
@@ -111,19 +115,23 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					return { data: null, error: result.error };
 				}
 
-				if (result.share!.share.type === "file") {
-					if (result.share!.share.targetId !== file.id) {
+				if (result.share?.share.type === "file") {
+					if (result.share?.share.targetId !== file.id) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
 				} else {
-					const content = await shareService.getShareContent(result.share!.share);
+					const content = await shareService.getShareContent(result.share?.share);
 					if (!content || typeof (content as { path?: unknown }).path !== "string") {
 						set.status = 400;
 						return { data: null, error: "Invalid share" };
 					}
 					const sharePath = (content as { path: string }).path;
-					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+					if (
+						sharePath !== "" &&
+						file.path !== sharePath &&
+						!file.path.startsWith(`${sharePath}/`)
+					) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
@@ -182,19 +190,23 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					return { data: null, error: result.error };
 				}
 
-				if (result.share!.share.type === "file") {
-					if (result.share!.share.targetId !== file.id) {
+				if (result.share?.share.type === "file") {
+					if (result.share?.share.targetId !== file.id) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
 				} else {
-					const content = await shareService.getShareContent(result.share!.share);
+					const content = await shareService.getShareContent(result.share?.share);
 					if (!content || typeof (content as { path?: unknown }).path !== "string") {
 						set.status = 400;
 						return { data: null, error: "Invalid share" };
 					}
 					const sharePath = (content as { path: string }).path;
-					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+					if (
+						sharePath !== "" &&
+						file.path !== sharePath &&
+						!file.path.startsWith(`${sharePath}/`)
+					) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
@@ -252,19 +264,23 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					return { data: null, error: result.error };
 				}
 
-				if (result.share!.share.type === "file") {
-					if (result.share!.share.targetId !== file.id) {
+				if (result.share?.share.type === "file") {
+					if (result.share?.share.targetId !== file.id) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
 				} else {
-					const content = await shareService.getShareContent(result.share!.share);
+					const content = await shareService.getShareContent(result.share?.share);
 					if (!content || typeof (content as { path?: unknown }).path !== "string") {
 						set.status = 400;
 						return { data: null, error: "Invalid share" };
 					}
 					const sharePath = (content as { path: string }).path;
-					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+					if (
+						sharePath !== "" &&
+						file.path !== sharePath &&
+						!file.path.startsWith(`${sharePath}/`)
+					) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
@@ -322,19 +338,23 @@ export const mediaRoutes = new Elysia({ prefix: "/api" })
 					return { data: null, error: result.error };
 				}
 
-				if (result.share!.share.type === "file") {
-					if (result.share!.share.targetId !== file.id) {
+				if (result.share?.share.type === "file") {
+					if (result.share?.share.targetId !== file.id) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}
 				} else {
-					const content = await shareService.getShareContent(result.share!.share);
+					const content = await shareService.getShareContent(result.share?.share);
 					if (!content || typeof (content as { path?: unknown }).path !== "string") {
 						set.status = 400;
 						return { data: null, error: "Invalid share" };
 					}
 					const sharePath = (content as { path: string }).path;
-					if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
+					if (
+						sharePath !== "" &&
+						file.path !== sharePath &&
+						!file.path.startsWith(`${sharePath}/`)
+					) {
 						set.status = 403;
 						return { data: null, error: "Access denied" };
 					}

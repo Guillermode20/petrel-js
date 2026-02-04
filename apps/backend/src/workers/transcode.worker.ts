@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { Job } from "bullmq";
 import { Worker } from "bullmq";
 import { eq } from "drizzle-orm";

@@ -16,6 +16,14 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import type {
+	ContextMenuActionHandler,
+	ImageViewerContext,
+} from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
@@ -24,8 +32,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
-import type { ContextMenuActionHandler, ImageViewerContext } from "@/components/global-context-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { LightboxProps } from "./types";
@@ -282,7 +288,10 @@ export function Lightbox({
 						<Button
 							variant="ghost"
 							size="icon"
-							className={cn("h-8 w-8 text-foreground hover:bg-foreground/10", showInfo && "bg-foreground/10")}
+							className={cn(
+								"h-8 w-8 text-foreground hover:bg-foreground/10",
+								showInfo && "bg-foreground/10",
+							)}
 							onClick={() => setShowInfo((prev) => !prev)}
 						>
 							<Info className="h-4 w-4" />
@@ -320,7 +329,10 @@ export function Lightbox({
 				</div>
 
 				{/* Main image (global context menu) */}
-				<div className="flex h-full w-full items-center justify-center overflow-auto" {...longPressHandlers}>
+				<div
+					className="flex h-full w-full items-center justify-center overflow-auto"
+					{...longPressHandlers}
+				>
 					<img
 						src={api.getThumbnailUrl(currentImage.id, "large")}
 						alt={currentImage.name}

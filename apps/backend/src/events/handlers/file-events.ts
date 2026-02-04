@@ -1,5 +1,4 @@
 import { logger } from "../../lib/logger";
-import { fileService } from "../../services/file.service";
 import { metadataService } from "../../services/metadata.service";
 import { transcodeQueue } from "../../services/transcode.service";
 import { eventBus } from "../bus";

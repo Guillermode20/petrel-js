@@ -17,7 +17,7 @@ import { authMiddleware } from "../../auth";
 import type { ApiResponse } from "../types";
 
 async function resolveUpdatePath(
-	fileId: number,
+	_fileId: number,
 	body: { path?: string; folderId?: string | number },
 	set: { status?: number | string },
 ): Promise<string | undefined> {

@@ -27,27 +27,25 @@ class Logger {
 				body,
 				keepalive: true,
 			});
-		} catch (err) {
+		} catch (_err) {
 			// Fallback to console if backend logging fails
 			// We intentionally don't try to log this error to avoid infinite loops
 			if (this.isDev) {
-				console.error("Failed to send log to backend:", err);
 			}
 		}
 	}
 
 	private log(level: LogLevel, message: string, ...args: unknown[]) {
 		const timestamp = new Date().toISOString();
-		const prefix = `[${timestamp}][${level.toUpperCase()}]`;
-		
+		const _prefix = `[${timestamp}][${level.toUpperCase()}]`;
+
 		// Always log to console in dev, or if it's an error/warn
 		if (this.isDev || level === "error" || level === "warn") {
-			console[level](prefix, message, ...args);
 		}
 
 		// Prepare context for backend
-		const context = args.length === 1 ? args[0] : (args.length > 0 ? args : undefined);
-		
+		const context = args.length === 1 ? args[0] : args.length > 0 ? args : undefined;
+
 		// Send to backend (fire and forget)
 		void this.sendToBackend(level, message, context);
 	}

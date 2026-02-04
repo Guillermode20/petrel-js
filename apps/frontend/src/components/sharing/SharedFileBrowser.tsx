@@ -7,11 +7,17 @@ import { FileList } from "@/components/file-browser/FileList";
 import type { SortField, ViewMode } from "@/components/file-browser/types";
 import { getSelectionKey, parseSelectionKey } from "@/components/file-browser/utils/selection";
 import { ViewToggle } from "@/components/file-browser/ViewToggle";
-import { useZipDownload } from "@/hooks/useZipDownload";
-import { Button } from "@/components/ui/button";
+import type {
+	ContextMenuActionHandler,
+	ShareFolderContext,
+} from "@/components/global-context-menu";
+import {
+	useContextMenuActions,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import { PageBar } from "@/components/navigation/PageBar";
-import { useContextMenuActions, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
-import type { ContextMenuActionHandler, ShareFolderContext } from "@/components/global-context-menu";
+import { Button } from "@/components/ui/button";
+import { useZipDownload } from "@/hooks/useZipDownload";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -240,7 +246,11 @@ export function SharedFileBrowser({
 		(item: File | Folder, event: React.MouseEvent) => {
 			event.preventDefault();
 			event.stopPropagation();
-			openContextMenu({ x: event.clientX, y: event.clientY }, buildShareFolderContext(item), contextMenuHandlerId);
+			openContextMenu(
+				{ x: event.clientX, y: event.clientY },
+				buildShareFolderContext(item),
+				contextMenuHandlerId,
+			);
 		},
 		[buildShareFolderContext, contextMenuHandlerId, openContextMenu],
 	);
@@ -248,7 +258,10 @@ export function SharedFileBrowser({
 	const selectionStats = useMemo(() => {
 		const selectedItems = items.filter((item) => selectedIds.has(getSelectionKey(item)));
 		const count = selectedItems.length;
-		const size = selectedItems.reduce((acc, item) => ("mimeType" in item ? acc + item.size : acc), 0);
+		const size = selectedItems.reduce(
+			(acc, item) => ("mimeType" in item ? acc + item.size : acc),
+			0,
+		);
 		return { count, size };
 	}, [selectedIds, items]);
 
@@ -305,7 +318,7 @@ export function SharedFileBrowser({
 						onSelect={handleSelect}
 						onOpen={handleOpen}
 						onContextMenu={handleItemContextMenu}
-						onMove={() => { }}
+						onMove={() => {}}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						isLoading={false}
@@ -319,7 +332,7 @@ export function SharedFileBrowser({
 						onSelect={handleSelect}
 						onOpen={handleOpen}
 						onContextMenu={handleItemContextMenu}
-						onMove={() => { }}
+						onMove={() => {}}
 						onDownload={settings.allowDownload ? handleDownload : undefined}
 						onDownloadZip={settings.allowZip ? handleZipDownload : undefined}
 						sortBy={sortBy}
@@ -346,9 +359,7 @@ export function SharedFileBrowser({
 							)}
 						</div>
 					) : (
-						<div className="text-xs text-muted-foreground">
-							{items.length} items
-						</div>
+						<div className="text-xs text-muted-foreground">{items.length} items</div>
 					)}
 				</div>
 			</PageBar>

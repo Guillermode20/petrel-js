@@ -1,9 +1,9 @@
-import archiver from "archiver";
 import { createWriteStream, mkdirSync } from "node:fs";
 import { stat, unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { File, Folder, Share } from "@petrel/shared";
+import archiver from "archiver";
 import { eq, lt } from "drizzle-orm";
 import { db } from "../../db";
 import { zipJobs } from "../../db/schema";
@@ -24,42 +24,40 @@ const CLEANUP_DELAY_MS = 60 * 1000;
 const TEMP_DIR = join(tmpdir(), "petrel-zip");
 
 type ZipAccessContext =
-    | { type: "user"; userId: number }
-    | { type: "share"; share: Share; rootPath?: string };
+	| { type: "user"; userId: number }
+	| { type: "share"; share: Share; rootPath?: string };
 
 export interface ZipJob {
-    id: number;
-    jobId: string;
-    status: "pending" | "processing" | "completed" | "error" | "cancelled";
-    progress: number;
-    tempPath?: string;
-    error?: string;
-    fileIds?: number[];
-    folderIds?: number[];
-    shareToken?: string;
-    userId?: number;
-    totalSize: number;
-    fileCount: number;
-    createdAt: Date;
-    completedAt?: Date;
-    downloadedAt?: Date;
+	id: number;
+	jobId: string;
+	status: "pending" | "processing" | "completed" | "error" | "cancelled";
+	progress: number;
+	tempPath?: string;
+	error?: string;
+	fileIds?: number[];
+	folderIds?: number[];
+	shareToken?: string;
+	userId?: number;
+	totalSize: number;
+	fileCount: number;
+	createdAt: Date;
+	completedAt?: Date;
+	downloadedAt?: Date;
 }
 
 export interface CreateZipInput {
-    fileIds?: number[];
-    folderIds?: number[];
-    shareToken?: string;
-    userId?: number;
+	fileIds?: number[];
+	folderIds?: number[];
+	shareToken?: string;
+	userId?: number;
 }
 
 interface ZipEntry {
-    file: File;
-    entryPath: string;
+	file: File;
+	entryPath: string;
 }
 
-type ContextResolution =
-    | { ok: true; context: ZipAccessContext }
-    | { ok: false; error: string };
+type ContextResolution = { ok: true; context: ZipAccessContext } | { ok: false; error: string };
 
 type AccessCheckResult = { ok: true } | { ok: false; error: string };
 
@@ -91,7 +89,8 @@ async function resolveAccessContext(input: CreateZipInput): Promise<ContextResol
 			return { ok: false, error: "Folders cannot be downloaded from file shares" };
 		}
 
-		const rootPath = share.type === "folder" ? normalizeRelativePath((content as Folder).path) : undefined;
+		const rootPath =
+			share.type === "folder" ? normalizeRelativePath((content as Folder).path) : undefined;
 
 		return { ok: true, context: { type: "share", share, rootPath } };
 	}
@@ -109,7 +108,9 @@ async function resolveAccessContext(input: CreateZipInput): Promise<ContextResol
 async function validateAndCollectFiles(
 	input: CreateZipInput,
 	context: ZipAccessContext,
-): Promise<{ valid: true; entries: ZipEntry[]; totalSize: number } | { valid: false; error: string }> {
+): Promise<
+	{ valid: true; entries: ZipEntry[]; totalSize: number } | { valid: false; error: string }
+> {
 	const entries: ZipEntry[] = [];
 	const seenFileIds = new Set<number>();
 	let totalSize = 0;
@@ -545,9 +546,12 @@ export async function cleanupZip(jobId: string): Promise<void> {
 }
 
 export function scheduleZipCleanup(jobId: string, delayMs = CLEANUP_DELAY_MS): void {
-	setTimeout(() => {
-		void cleanupZip(jobId);
-	}, Math.max(delayMs, 0));
+	setTimeout(
+		() => {
+			void cleanupZip(jobId);
+		},
+		Math.max(delayMs, 0),
+	);
 }
 
 /**

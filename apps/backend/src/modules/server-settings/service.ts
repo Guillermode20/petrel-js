@@ -1,5 +1,5 @@
-import type { ServerSettings } from "@petrel/shared";
 import { mkdir, rename } from "node:fs/promises";
+import type { ServerSettings } from "@petrel/shared";
 import { logger } from "../../lib/logger";
 import { getStorageRoot, resolveStoragePath } from "../../lib/storage";
 
@@ -51,8 +51,8 @@ class ServerSettingsService {
 
 		try {
 			const filePath = getSettingsFilePath();
-			const tempFilePath = filePath + ".tmp";
-			const backupFilePath = filePath + ".bak";
+			const tempFilePath = `${filePath}.tmp`;
+			const backupFilePath = `${filePath}.bak`;
 
 			// Ensure storage directory exists
 			await mkdir(getStorageRoot(), { recursive: true });
@@ -92,8 +92,8 @@ class ServerSettingsService {
 		const defaults = structuredClone(DEFAULT_SETTINGS);
 		try {
 			const filePath = getSettingsFilePath();
-			const tempFilePath = filePath + ".tmp";
-			const backupFilePath = filePath + ".bak";
+			const tempFilePath = `${filePath}.tmp`;
+			const backupFilePath = `${filePath}.bak`;
 
 			// Ensure storage directory exists
 			await mkdir(getStorageRoot(), { recursive: true });

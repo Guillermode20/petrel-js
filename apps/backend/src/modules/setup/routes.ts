@@ -19,7 +19,10 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 	)
 	.post(
 		"/admin",
-		async ({ body, set }): Promise<ApiResponse<{ user: { id: number; username: string; role: string } }>> => {
+		async ({
+			body,
+			set,
+		}): Promise<ApiResponse<{ user: { id: number; username: string; role: string } }>> => {
 			try {
 				const user = await userService.createInitialAdmin({
 					username: body.username,

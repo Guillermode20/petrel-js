@@ -115,29 +115,32 @@ export function getFileExtension(filename: string): string {
 /**
  * Calculate relative path from current folder to file's folder
  * Returns the relative folder path if file is in a subfolder, empty string if in current folder
- * 
+ *
  * @param fileFolderPath - The folder path where the file is located (file.path)
  * @param currentFolderPath - The current folder path being viewed
  */
-export function getRelativePath(fileFolderPath: string, currentFolderPath: string | null | undefined): string {
+export function getRelativePath(
+	fileFolderPath: string,
+	currentFolderPath: string | null | undefined,
+): string {
 	if (!currentFolderPath || currentFolderPath === "") {
 		// At root, return the file's folder path
 		return fileFolderPath || "";
 	}
-	
+
 	const normalizedCurrent = currentFolderPath.trim();
 	const normalizedFile = fileFolderPath.trim();
-	
+
 	// If file is in current folder, return empty
 	if (normalizedFile === normalizedCurrent) {
 		return "";
 	}
-	
+
 	// If file is in a subfolder, return the relative path
-	if (normalizedFile.startsWith(normalizedCurrent + "/")) {
+	if (normalizedFile.startsWith(`${normalizedCurrent}/`)) {
 		return normalizedFile.slice(normalizedCurrent.length + 1);
 	}
-	
+
 	// If file path doesn't start with current path (shouldn't happen in normal search),
 	// return empty to avoid showing incorrect paths
 	return "";

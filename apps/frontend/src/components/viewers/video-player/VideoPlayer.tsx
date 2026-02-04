@@ -1,8 +1,14 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
-import type { ContextMenuActionHandler, VideoPlayerContext } from "@/components/global-context-menu";
+import type {
+	ContextMenuActionHandler,
+	VideoPlayerContext,
+} from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import {
 	getStreamUrl,
 	useShareStreamInfo,
@@ -115,7 +121,7 @@ export function VideoPlayer({
 
 		return () => {
 			const existingLink = document.getElementById(linkId);
-			if (existingLink && existingLink.parentNode) {
+			if (existingLink?.parentNode) {
 				existingLink.parentNode.removeChild(existingLink);
 			}
 		};
@@ -212,7 +218,7 @@ export function VideoPlayer({
 			} else {
 				await video.requestPictureInPicture();
 			}
-		} catch (err) {
+		} catch (_err) {
 			toast.error("Picture-in-picture not supported");
 		}
 	}, [videoRef]);
@@ -229,7 +235,11 @@ export function VideoPlayer({
 	}, [state.currentTime]);
 
 	const contextMenuAudioTracks =
-		audioTracks?.map((t) => ({ id: t.id, language: t.language ?? "Unknown", title: t.title ?? undefined })) ?? [];
+		audioTracks?.map((t) => ({
+			id: t.id,
+			language: t.language ?? "Unknown",
+			title: t.title ?? undefined,
+		})) ?? [];
 	const contextMenuSubtitleTracks =
 		subtitles?.map((s) => ({ id: s.id, language: s.language, title: s.title ?? undefined })) ?? [];
 
@@ -290,15 +300,15 @@ export function VideoPlayer({
 		state.subtitleTrack,
 	]);
 
-	const longPressHandlers = useLongPress(
-		contextMenuContext,
-		contextMenuHandlerId,
-	);
+	const longPressHandlers = useLongPress(contextMenuContext, contextMenuHandlerId);
 
 	return (
 		<div
 			ref={containerRef}
-			className={cn("group relative aspect-video w-full overflow-hidden rounded-lg bg-background", className)}
+			className={cn(
+				"group relative aspect-video w-full overflow-hidden rounded-lg bg-background",
+				className,
+			)}
 			onMouseMove={showControlsTemporarily}
 			onMouseLeave={() => state.isPlaying && setShowControls(false)}
 			{...longPressHandlers}

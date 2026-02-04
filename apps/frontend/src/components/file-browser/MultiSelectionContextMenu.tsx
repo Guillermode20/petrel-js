@@ -57,8 +57,7 @@ export function MultiSelectionContextMenu({
 				{onDeleteSelected && (
 					<ContextMenuItem onClick={onDeleteSelected} variant="destructive">
 						<Trash2 className="mr-2 h-4 w-4" />
-						Delete selected ({selectedCount})
-						<ContextMenuShortcut>Del</ContextMenuShortcut>
+						Delete selected ({selectedCount})<ContextMenuShortcut>Del</ContextMenuShortcut>
 					</ContextMenuItem>
 				)}
 				<ContextMenuSeparator />

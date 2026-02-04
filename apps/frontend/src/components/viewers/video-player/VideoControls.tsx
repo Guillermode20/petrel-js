@@ -64,7 +64,10 @@ export function VideoControlBar({ state, controls, className }: VideoControlsPro
 	if (transcodeJob?.status === "processing") {
 		return (
 			<div
-				className={cn("absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm", className)}
+				className={cn(
+					"absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm",
+					className,
+				)}
 			>
 				<div className="flex flex-col items-center gap-4 text-center">
 					<Loader2 className="h-8 w-8 animate-spin text-primary" />

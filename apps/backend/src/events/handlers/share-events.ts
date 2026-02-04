@@ -18,10 +18,7 @@ export function registerShareEventHandlers(): void {
 	});
 
 	eventBus.on("share:deleted", async (event: ShareDeletedEvent) => {
-		logger.debug(
-			{ shareId: event.shareId, token: event.token },
-			"Share deleted event received",
-		);
+		logger.debug({ shareId: event.shareId, token: event.token }, "Share deleted event received");
 	});
 
 	logger.info("Share event handlers registered");

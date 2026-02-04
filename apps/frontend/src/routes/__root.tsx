@@ -1,5 +1,5 @@
-import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { CreateAdminForm } from "../components/auth/CreateAdminForm";
 import { LoginForm } from "../components/auth/LoginForm";
 import { GlobalContextMenu, useGlobalContextMenuOnAction } from "../components/global-context-menu";

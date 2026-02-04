@@ -236,21 +236,21 @@ export async function createTestFile(
  * Clear all data from the test database
  */
 export function clearTestDatabase(testDb: TestDb): void {
-	        const tables = [
-	                "zip_jobs",
-	                "user_settings",
-	                "album_files",
-	                "albums",
-	                "subtitles",
-	                "video_tracks",
-	                "transcode_jobs",
-	                "share_settings",
-	                "shares",
-	                "folders",
-	                "files",
-	                "refresh_tokens",
-	                "users",
-	        ];
+	const tables = [
+		"zip_jobs",
+		"user_settings",
+		"album_files",
+		"albums",
+		"subtitles",
+		"video_tracks",
+		"transcode_jobs",
+		"share_settings",
+		"shares",
+		"folders",
+		"files",
+		"refresh_tokens",
+		"users",
+	];
 	for (const table of tables) {
 		testDb.sqlite.exec(`DELETE FROM ${table}`);
 	}

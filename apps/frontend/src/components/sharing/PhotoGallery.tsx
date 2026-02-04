@@ -173,7 +173,7 @@ function Lightbox({
 	// Reset zoom when image changes
 	useEffect(() => {
 		setZoom(1);
-	}, [currentIndex]);
+	}, []);
 
 	// Early return if no current file (after hooks)
 	if (!currentFile) {

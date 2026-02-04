@@ -44,13 +44,18 @@ export function FileProperties({ open, onOpenChange, item }: FilePropertiesProps
 						<Row label="ID" value={String(item.id)} />
 						<Row label="Path" value={item.path} />
 						{"createdAt" in item && <Row label="Created" value={formatDate(item.createdAt)} />}
-						{"parentId" in item && <Row label="Parent ID" value={item.parentId === null ? "—" : String(item.parentId)} />}
+						{"parentId" in item && (
+							<Row label="Parent ID" value={item.parentId === null ? "—" : String(item.parentId)} />
+						)}
 						{isFileItem && (
 							<>
 								<Row label="Size" value={`${item.size} bytes`} />
 								<Row label="MIME type" value={item.mimeType} />
 								<Row label="Hash" value={item.hash} />
-								<Row label="Uploaded by" value={item.uploadedBy === null ? "—" : String(item.uploadedBy)} />
+								<Row
+									label="Uploaded by"
+									value={item.uploadedBy === null ? "—" : String(item.uploadedBy)}
+								/>
 							</>
 						)}
 					</div>
@@ -62,10 +67,17 @@ export function FileProperties({ open, onOpenChange, item }: FilePropertiesProps
 								<Row label="Duration (s)" value={String(item.metadata.duration)} />
 							)}
 							{"width" in item.metadata && "height" in item.metadata && (
-								<Row label="Dimensions" value={`${item.metadata.width} × ${item.metadata.height}`} />
+								<Row
+									label="Dimensions"
+									value={`${item.metadata.width} × ${item.metadata.height}`}
+								/>
 							)}
-							{"codec" in item.metadata && <Row label="Codec" value={String(item.metadata.codec)} />}
-							{"format" in item.metadata && <Row label="Format" value={String(item.metadata.format)} />}
+							{"codec" in item.metadata && (
+								<Row label="Codec" value={String(item.metadata.codec)} />
+							)}
+							{"format" in item.metadata && (
+								<Row label="Format" value={String(item.metadata.format)} />
+							)}
 						</div>
 					)}
 				</div>
@@ -73,4 +85,3 @@ export function FileProperties({ open, onOpenChange, item }: FilePropertiesProps
 		</Dialog>
 	);
 }
-

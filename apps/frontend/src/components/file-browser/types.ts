@@ -42,7 +42,11 @@ export interface FileGridProps {
 	onCopyShareLink?: (item: File | Folder) => void;
 	isLoading?: boolean;
 	contextMenuHandlerId?: string;
-	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+	buildContextMenuContext?: (
+		item: File | Folder,
+		items: Array<File | Folder>,
+		selectedIds: Set<string>,
+	) => MenuContext;
 	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
 	contextMenuProps?: Record<string, unknown>;
 	currentFolderPath?: string | null;
@@ -68,7 +72,11 @@ export interface FileListProps {
 	onSort: (field: SortField) => void;
 	isLoading?: boolean;
 	contextMenuHandlerId?: string;
-	buildContextMenuContext?: (item: File | Folder, items: Array<File | Folder>, selectedIds: Set<string>) => MenuContext;
+	buildContextMenuContext?: (
+		item: File | Folder,
+		items: Array<File | Folder>,
+		selectedIds: Set<string>,
+	) => MenuContext;
 	ContextMenuComponent?: React.ComponentType<FileContextMenuHandlers>;
 	contextMenuProps?: Record<string, unknown>;
 	currentFolderPath?: string | null;

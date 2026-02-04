@@ -1,7 +1,13 @@
 import type { ImageMetadata } from "@petrel/shared";
 import { useCallback, useState } from "react";
-import { useLongPress, useRegisterContextMenuActionHandler } from "@/components/global-context-menu";
-import type { ContextMenuActionHandler, ImageViewerContext } from "@/components/global-context-menu";
+import type {
+	ContextMenuActionHandler,
+	ImageViewerContext,
+} from "@/components/global-context-menu";
+import {
+	useLongPress,
+	useRegisterContextMenuActionHandler,
+} from "@/components/global-context-menu";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { ImageViewerProps } from "./types";
@@ -50,10 +56,7 @@ export function ImageViewer({ file, className }: ImageViewerProps) {
 		showingInfo: showInfo,
 	};
 
-	const longPressHandlers = useLongPress(
-		contextMenuContext,
-		contextMenuHandlerId,
-	);
+	const longPressHandlers = useLongPress(contextMenuContext, contextMenuHandlerId);
 
 	return (
 		<div className={cn("flex flex-col items-center", className)}>
