@@ -13,10 +13,11 @@ export interface FileContext {
 export const fileResolver = new Elysia({ name: "file-resolver" }).derive(
 	{ as: "scoped" },
 	async ({ params }): Promise<{ file: File | null }> => {
-		const id = (params as Record<string, string | undefined>).id;
+		const id = (params as Record<string, string | number | undefined>).id;
 		if (id === undefined) return { file: null };
 
-		const file = await fileService.getById(Number(id));
+		const numericId = typeof id === "number" ? id : Number(id);
+		const file = await fileService.getById(numericId);
 		return { file };
 	},
 );

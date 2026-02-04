@@ -1,12 +1,10 @@
-import type { FilePermission, UserRole } from "@petrel/shared";
+import type { FilePermission } from "@petrel/shared";
 import { hasPermission } from "@petrel/shared";
 import { Elysia } from "elysia";
-import { authMiddleware } from "./middleware";
 
 export function requirePermission(permission: FilePermission) {
 	return new Elysia({ name: `require-${permission}` })
-		.use(authMiddleware)
-		.onBeforeHandle(({ user, set }) => {
+		.onBeforeHandle(({ user, set }: any) => {
 			if (!user) {
 				set.status = 401;
 				return {

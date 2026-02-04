@@ -69,7 +69,7 @@ export const zipRoutes = new Elysia({ prefix: "/api" })
 	)
 	.get(
 		"/files/download-zip/:jobId",
-		async ({ params, set, user }) => {
+		async ({ params, query, set, user }) => {
 			const job = await getZipJob(params.jobId);
 
 			if (!job) {
@@ -102,6 +102,11 @@ export const zipRoutes = new Elysia({ prefix: "/api" })
 				return { data: null, error: "ZIP file not found" };
 			}
 
+			// Return JSON status if format=json is requested
+			if (query.format === "json") {
+				return { data: { status: job.status, jobId: params.jobId }, error: null };
+			}
+
 			const folderName = await getPrimaryJobFolderName(job);
 			const filename = buildZipDownloadFilename(null, new Date(), folderName);
 
@@ -116,9 +121,12 @@ export const zipRoutes = new Elysia({ prefix: "/api" })
 			params: t.Object({
 				jobId: t.String(),
 			}),
+			query: t.Object({
+				format: t.Optional(t.String()),
+			}),
 			detail: {
 				summary: "Download ZIP file",
-				description: "Downloads a completed ZIP archive",
+				description: "Downloads a completed ZIP archive or returns status when format=json",
 				tags: ["Files"],
 			},
 		},

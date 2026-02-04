@@ -8,7 +8,7 @@ import { users } from "../../../db/schema";
 import { config } from "../../config";
 import { logger } from "../../lib/logger";
 import { tokenService } from "../../services/token.service";
-import { authMiddleware, requireAuth } from "./middleware";
+import { authMiddleware } from "./middleware";
 import type { ApiResponse, JWTPayload, MeResponse, RefreshPayload, TokenResponse } from "./types";
 import { verifyPassword } from "./utils";
 
@@ -334,7 +334,7 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 		},
 	)
 	// Get current user endpoint (protected)
-	.use(requireAuth)
+	.use(authMiddleware)
 	.get(
 		"/me",
 		async ({ user, set }): Promise<ApiResponse<MeResponse>> => {

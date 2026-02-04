@@ -286,6 +286,51 @@ app.get('/api/files', async () => {
 })
 ```
 
+### Authentication Middleware - CRITICAL JWT Plugin Pattern
+
+**⚠️ NEVER create duplicate JWT plugin instances in Elysia**
+
+Elysia plugins (like `@elysiajs/jwt`) must be registered only once per route chain. The `authMiddleware` already includes the JWT plugin, so:
+
+```typescript
+// ✅ CORRECT - Single JWT instance via authMiddleware
+export const myRoutes = new Elysia({ prefix: "/api" })
+  .use(authMiddleware)                    // Adds JWT + user to context
+  .use(requirePermission("upload"))       // Only checks permission
+  .post("/files", async ({ user }) => {
+    // user is available from authMiddleware
+  })
+
+// ✅ CORRECT - Auth routes that already have JWT
+export const authRoutes = new Elysia({ prefix: "/api/auth" })
+  .use(jwt({ secret: config.JWT_SECRET }))  // JWT plugin here
+  .post("/login", ...)
+  .use(authMiddleware)                       // Uses existing JWT instance
+  .get("/me", async ({ user }) => { ... })
+
+// ❌ WRONG - Creates duplicate JWT instances, auth will fail
+export const myRoutes = new Elysia({ prefix: "/api" })
+  .use(requireAuth)  // If this internally used authMiddleware
+  .post("/files", async ({ user }) => {
+    // user will be null due to plugin conflict
+  })
+
+// ❌ WRONG - Inline JWT verification when parent already has JWT
+export const authRoutes = new Elysia()
+  .use(jwt({ ... }))  // Already has JWT
+  .derive(async ({ jwt, headers }) => {  // Duplicate logic!
+    const token = headers.authorization?.slice(7)
+    const payload = await jwt.verify(token)
+    return { user: payload }
+  })
+```
+
+**Rules:**
+- `authMiddleware` provides JWT plugin + user context derivation
+- `requireAuth` / `requireAdmin` / `requirePermission` only check authorization, they expect `user` in context
+- Routes using `requireAuth/Admin/Permission` must first `.use(authMiddleware)`
+- Auth routes that define their own JWT plugins should use `authMiddleware` for protected endpoints, not duplicate the verification logic
+
 ### Services
 
 ```typescript
