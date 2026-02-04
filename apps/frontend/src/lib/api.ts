@@ -2,7 +2,6 @@ import type {
 	ApiResponse,
 	File,
 	Folder,
-	PaginatedResponse,
 	ServerSettings,
 	Share,
 	ShareSettings,
@@ -10,6 +9,7 @@ import type {
 	User,
 	UserSettings,
 } from "@petrel/shared";
+import { logger } from "./logger";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 
@@ -30,82 +30,93 @@ class ApiClient {
 	}
 
 	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-		if (!this.accessToken) {
-			this.accessToken = localStorage.getItem("petrel_access_token");
-		}
+		try {
+			if (!this.accessToken) {
+				this.accessToken = localStorage.getItem("petrel_access_token");
+			}
 
-		const headers: HeadersInit = {
-			"Content-Type": "application/json",
-			...options.headers,
-		};
+			const headers: HeadersInit = {
+				"Content-Type": "application/json",
+				...options.headers,
+			};
 
-		if (this.accessToken) {
-			(headers as Record<string, string>).Authorization = `Bearer ${this.accessToken}`;
-		}
+			if (this.accessToken) {
+				(headers as Record<string, string>).Authorization = `Bearer ${this.accessToken}`;
+			}
 
-		let response = await fetch(`${API_BASE}${endpoint}`, {
-			...options,
-			headers,
-		});
+			let response = await fetch(`${API_BASE}${endpoint}`, {
+				...options,
+				headers,
+			});
 
-		// Handle initial 401 - try refresh once with deduplication
-		if (response.status === 401) {
-			const refreshToken = localStorage.getItem("petrel_refresh_token");
-			if (refreshToken) {
-				try {
-					// Deduplicate refresh requests
-					if (!this.refreshPromise) {
-						this.refreshPromise = this.performRefresh(refreshToken);
+			// Handle initial 401 - try refresh once with deduplication
+			if (response.status === 401) {
+				const refreshToken = localStorage.getItem("petrel_refresh_token");
+				if (refreshToken) {
+					try {
+						// Deduplicate refresh requests
+						if (!this.refreshPromise) {
+							this.refreshPromise = this.performRefresh(refreshToken);
+						}
+						await this.refreshPromise;
+						this.refreshPromise = null;
+
+						// Retry request with new token
+						const newToken = localStorage.getItem("petrel_access_token");
+						if (newToken) {
+							(headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
+							response = await fetch(`${API_BASE}${endpoint}`, {
+								...options,
+								headers,
+							});
+						}
+					} catch (_err) {
+						// Refresh failed, clear tokens
+						this.refreshPromise = null;
+						localStorage.removeItem("petrel_access_token");
+						localStorage.removeItem("petrel_refresh_token");
+						this.setAccessToken(null);
+						this.onAuthError?.();
+						throw new Error("Unauthorized");
 					}
-					await this.refreshPromise;
-					this.refreshPromise = null;
-
-					// Retry request with new token
-					const newToken = localStorage.getItem("petrel_access_token");
-					if (newToken) {
-						(headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
-						response = await fetch(`${API_BASE}${endpoint}`, {
-							...options,
-							headers,
-						});
-					}
-				} catch (_err) {
-					// Refresh failed, clear tokens
-					this.refreshPromise = null;
+				} else {
 					localStorage.removeItem("petrel_access_token");
-					localStorage.removeItem("petrel_refresh_token");
 					this.setAccessToken(null);
 					this.onAuthError?.();
 					throw new Error("Unauthorized");
 				}
-			} else {
-				localStorage.removeItem("petrel_access_token");
-				this.setAccessToken(null);
-				this.onAuthError?.();
-				throw new Error("Unauthorized");
 			}
-		}
 
-		const contentType = response.headers.get("content-type");
-		if (!contentType?.includes("application/json")) {
-			// Handle non-JSON responses (like 404 errors)
-			const text = await response.text();
-			if (response.status === 404) {
-				throw new Error("Endpoint not found");
+			const contentType = response.headers.get("content-type");
+			if (!contentType?.includes("application/json")) {
+				// Handle non-JSON responses (like 404 errors)
+				const text = await response.text();
+				if (response.status === 404) {
+					throw new Error("Endpoint not found");
+				}
+				if (response.status >= 400) {
+					throw new Error(text || "Request failed");
+				}
+				throw new Error(`Expected JSON response but got: ${text.substring(0, 200)}`);
 			}
-			if (response.status >= 400) {
-				throw new Error(text || "Request failed");
+
+			const result = await response.json();
+
+			if (result.error) {
+				throw new Error(result.error);
 			}
-			throw new Error(`Expected JSON response but got: ${text.substring(0, 200)}`);
+
+			return result.data;
+		} catch (error) {
+			// Don't log "Unauthorized" errors as they are part of normal auth flow often
+			if (error instanceof Error && error.message !== "Unauthorized") {
+				logger.error(`API Request failed: ${options.method || "GET"} ${endpoint}`, {
+					error: error.message,
+					stack: error.stack,
+				});
+			}
+			throw error;
 		}
-
-		const result = await response.json();
-
-		if (result.error) {
-			throw new Error(result.error);
-		}
-
-		return result.data;
 	}
 
 	// Auth endpoints - these don't use the standard { data, error } wrapper
@@ -425,7 +436,7 @@ class ApiClient {
 	}
 
 	// Share-aware URL methods for public share views
-	getShareDownloadUrl(shareToken: string, password?: string, fileId?: number): string {
+	getShareDownloadUrl(shareToken: string, password?: string, _fileId?: number): string {
 		const params = new URLSearchParams();
 		if (password) {
 			params.set("password", password);

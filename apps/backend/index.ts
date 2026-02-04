@@ -9,6 +9,7 @@ import { adminRoutes } from "./src/modules/admin";
 import { audioRoutes } from "./src/modules/audio";
 import { authRoutes } from "./src/modules/auth";
 import { fileRoutes } from "./src/modules/files";
+import { logRoutes } from "./src/modules/logs";
 import { serverSettingsRoutes } from "./src/modules/server-settings/routes";
 import { settingsRoutes } from "./src/modules/settings";
 import { setupRoutes } from "./src/modules/setup";
@@ -121,7 +122,7 @@ const app = new Elysia()
 			log: createChildLogger({ correlationId }),
 		};
 	})
-	.onAfterHandle(({ request, set, correlationId, log }) => {
+	.onAfterHandle(({ request, set, log }) => {
 		const status = typeof set.status === "number" ? set.status : 200;
 		// Only log non-auth errors and successful requests
 		if (status < 400 || status === 401) {
@@ -144,7 +145,7 @@ const app = new Elysia()
 			);
 		}
 	})
-	.onError(({ error, request, log, set }) => {
+	.onError(({ error, request, log, set, correlationId }) => {
 		if (!log) return;
 
 		const isUnauthorized =
@@ -164,17 +165,27 @@ const app = new Elysia()
 				},
 				"Unauthorized request",
 			);
-			return;
+			return { error: "Unauthorized" };
 		}
 
+		// Log the full error details including stack and cause
 		log.error(
 			{
 				method: request.method,
 				url: request.url,
+				status,
 				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				cause: error instanceof Error ? error.cause : undefined,
 			},
 			"Request error",
 		);
+
+		// Return a JSON response with the error message and correlation ID
+		return {
+			error: error instanceof Error ? error.message : "Internal Server Error",
+			correlationId,
+		};
 	})
 	.use(
 		swagger({
@@ -210,6 +221,8 @@ const app = new Elysia()
 		message: "Hello World from Elysia Backend!",
 		timestamp: new Date().toISOString(),
 	}))
+	// Log routes (publicly accessible for frontend error reporting)
+	.use(logRoutes)
 	// Auth routes
 	.use(authRoutes)
 	// Setup routes (must be before user routes to allow first-time admin creation)

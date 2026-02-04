@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import { Toaster } from "sonner";
 
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ContextMenuClipboardProvider, ContextMenuProvider } from "./components/global-context-menu";
 
 // Import the generated route tree
@@ -45,25 +46,27 @@ if (rootElement && !rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
 	root.render(
 		<StrictMode>
-			<QueryClientProvider client={queryClient}>
-				<ContextMenuProvider>
-					<ContextMenuClipboardProvider>
-						<RouterProvider router={router} />
-						<Toaster
-							position="bottom-right"
-							theme="dark"
-							toastOptions={{
-								style: {
-									background: "hsl(240 6% 6%)",
-									border: "1px solid hsl(240 4% 16%)",
-									color: "hsl(0 0% 97%)",
-									fontFamily: "JetBrains Mono, IBM Plex Mono, monospace",
-								},
-							}}
-						/>
-					</ContextMenuClipboardProvider>
-				</ContextMenuProvider>
-			</QueryClientProvider>
+			<ErrorBoundary>
+				<QueryClientProvider client={queryClient}>
+					<ContextMenuProvider>
+						<ContextMenuClipboardProvider>
+							<RouterProvider router={router} />
+							<Toaster
+								position="bottom-right"
+								theme="dark"
+								toastOptions={{
+									style: {
+										background: "hsl(240 6% 6%)",
+										border: "1px solid hsl(240 4% 16%)",
+										color: "hsl(0 0% 97%)",
+										fontFamily: "JetBrains Mono, IBM Plex Mono, monospace",
+									},
+								}}
+							/>
+						</ContextMenuClipboardProvider>
+					</ContextMenuProvider>
+				</QueryClientProvider>
+			</ErrorBoundary>
 		</StrictMode>,
 	);
 }
