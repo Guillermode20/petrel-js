@@ -103,11 +103,20 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 			// Store refresh token hash in database
 			const tokenHash = tokenService.hashToken(refreshToken);
 			const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
-			await tokenService.storeRefreshToken({
-				userId: user.id,
-				tokenHash,
-				expiresAt,
-			});
+			try {
+				await tokenService.storeRefreshToken({
+					userId: user.id,
+					tokenHash,
+					expiresAt,
+				});
+			} catch (err) {
+				logger.error({ err, userId: user.id }, "Failed to store refresh token during login");
+				set.status = 500;
+				return {
+					data: null,
+					error: "Failed to establish session",
+				};
+			}
 
 			logger.info({ userId: user.id, username }, "User logged in successfully");
 

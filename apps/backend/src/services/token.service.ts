@@ -10,6 +10,7 @@ import { logger } from "../lib/logger";
 class TokenService {
 	/**
 	 * Store a new refresh token in the database
+	 * Deletes any existing token with the same hash first to handle duplicate logins
 	 */
 	async storeRefreshToken(params: {
 		userId: number;
@@ -17,11 +18,32 @@ class TokenService {
 		expiresAt: Date;
 	}): Promise<void> {
 		try {
-			await db.insert(refreshTokens).values({
-				userId: params.userId,
-				tokenHash: params.tokenHash,
-				expiresAt: params.expiresAt,
-				createdAt: new Date(),
+			await db.transaction(async (tx) => {
+				// Check for existing token with same hash (should be cryptographically impossible)
+				const existing = await tx.query.refreshTokens.findFirst({
+					where: eq(refreshTokens.tokenHash, params.tokenHash),
+				});
+
+				if (existing) {
+					logger.warn({
+						userId: params.userId,
+						existingUserId: existing.userId,
+						tokenHash: params.tokenHash.substring(0, 8) + "...",
+					}, "Duplicate refresh token hash detected - this should not happen with SHA-256");
+				}
+
+				// Delete any existing token with the same hash
+				await tx
+					.delete(refreshTokens)
+					.where(eq(refreshTokens.tokenHash, params.tokenHash));
+
+				// Insert the new token
+				await tx.insert(refreshTokens).values({
+					userId: params.userId,
+					tokenHash: params.tokenHash,
+					expiresAt: params.expiresAt,
+					createdAt: new Date(),
+				});
 			});
 
 			logger.debug({ userId: params.userId }, "Refresh token stored");

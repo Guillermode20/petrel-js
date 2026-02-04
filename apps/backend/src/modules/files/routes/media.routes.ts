@@ -5,7 +5,7 @@ import type { SpriteMetadata } from "../../../lib/thumbnails";
 import type { WaveformData } from "../../../lib/waveform";
 import { fileService } from "../../../services/file.service";
 import { mediaService } from "../../../services/media.service";
-import { fileAccessGuard, fileReadGuard } from "../guards";
+import { fileReadGuard } from "../guards";
 
 export const mediaRoutes = new Elysia({ prefix: "/api" })
 	.use(fileReadGuard)

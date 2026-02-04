@@ -1,4 +1,4 @@
-import type { UserSettings } from "@petrel/shared";
+import type { ServerSettings, UserSettings } from "@petrel/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AlertCircle, Loader2, LogIn, Save } from "lucide-react";
@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { SettingsAccounts } from "@/components/settings/SettingsAccounts";
 import { SettingsErrorBoundary } from "@/components/settings/SettingsErrorBoundary";
+import { SettingsServer } from "@/components/settings/SettingsServer";
 import { SettingsSharing } from "@/components/settings/SettingsSharing";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -66,9 +67,23 @@ interface SettingsState {
 	lastSavedAt: Date | null;
 }
 
+/**
+ * Server settings state
+ */
+interface ServerSettingsState {
+	status: "idle" | "saving" | "saved" | "error";
+	lastError: string | null;
+	lastSavedAt: Date | null;
+}
+
 function SettingsPage() {
 	const queryClient = useQueryClient();
 	const [persistenceState, setPersistenceState] = useState<SettingsState>({
+		status: "idle",
+		lastError: null,
+		lastSavedAt: null,
+	});
+	const [serverSettingsState, setServerSettingsState] = useState<ServerSettingsState>({
 		status: "idle",
 		lastError: null,
 		lastSavedAt: null,
@@ -197,6 +212,48 @@ function SettingsPage() {
 			toast.error("Failed to reset settings");
 		},
 	});
+
+	// Server settings query (admin only)
+	const { data: serverSettings } = useQuery<ServerSettings>({
+		queryKey: ["server-settings"],
+		queryFn: () => api.getServerSettings(),
+		enabled: user?.role === "admin",
+		retry: false,
+	});
+
+	const serverSettingsUpdateMutation = useMutation({
+		mutationFn: (updates: Partial<ServerSettings>) => api.updateServerSettings(updates),
+		onMutate: async () => {
+			await queryClient.cancelQueries({ queryKey: ["server-settings"] });
+			setServerSettingsState((prev) => ({ ...prev, status: "saving" }));
+		},
+		onError: (err: Error) => {
+			logger.error("Server settings update error:", err);
+			setServerSettingsState({
+				status: "error",
+				lastError: err.message,
+				lastSavedAt: null,
+			});
+			toast.error(`Failed to save server settings: ${err.message}`);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["server-settings"] });
+			setServerSettingsState({
+				status: "saved",
+				lastError: null,
+				lastSavedAt: new Date(),
+			});
+			toast.success("Server settings saved successfully");
+			setTimeout(() => {
+				setServerSettingsState((prev) => ({ ...prev, status: "idle" }));
+			}, 3000);
+		},
+	});
+
+	function handleServerSettingsUpdate(updates: Partial<ServerSettings>): void {
+		if (user?.role !== "admin") return;
+		serverSettingsUpdateMutation.mutate(updates);
+	}
 
 	/**
 	 * Handle settings updates - only send changed section/fields
@@ -369,9 +426,14 @@ function SettingsPage() {
 			)}
 
 			<Tabs defaultValue="sharing" className="w-full">
-				<TabsList className="grid w-full grid-cols-2">
+				<TabsList className="grid w-full" style={{ gridTemplateColumns: user?.role === "admin" ? "repeat(3, 1fr)" : "repeat(2, 1fr)" }}>
 					<TabsTrigger value="sharing">Sharing</TabsTrigger>
-					{user?.role === "admin" && <TabsTrigger value="accounts">Accounts</TabsTrigger>}
+					{user?.role === "admin" && (
+						<>
+							<TabsTrigger value="accounts">Accounts</TabsTrigger>
+							<TabsTrigger value="server">Server</TabsTrigger>
+						</>
+					)}
 				</TabsList>
 
 				<TabsContent value="sharing">
@@ -393,13 +455,40 @@ function SettingsPage() {
 				</TabsContent>
 
 				{user?.role === "admin" && (
-					<TabsContent value="accounts">
-						<Card>
-							<CardContent className="pt-6">
-								<SettingsAccounts currentUserRole={user.role} />
-							</CardContent>
-						</Card>
-					</TabsContent>
+					<>
+						<TabsContent value="accounts">
+							<Card>
+								<CardContent className="pt-6">
+									<SettingsAccounts currentUserRole={user.role} />
+								</CardContent>
+							</Card>
+						</TabsContent>
+
+						<TabsContent value="server">
+							<SettingsErrorBoundary sectionName="Server Settings" onRetry={handleRetry}>
+								<Card>
+									<CardHeader>
+										<CardTitle>Server Configuration</CardTitle>
+										<CardDescription>Manage server-wide settings and features</CardDescription>
+									</CardHeader>
+									<CardContent>
+										{serverSettings ? (
+											<SettingsServer
+												settings={serverSettings}
+												onUpdate={handleServerSettingsUpdate}
+												isSaving={serverSettingsUpdateMutation.isPending}
+											/>
+										) : (
+											<div className="flex items-center gap-2 text-muted-foreground">
+												<Loader2 className="h-4 w-4 animate-spin" />
+												<span>Loading server settings...</span>
+											</div>
+										)}
+									</CardContent>
+								</Card>
+							</SettingsErrorBoundary>
+						</TabsContent>
+					</>
 				)}
 			</Tabs>
 

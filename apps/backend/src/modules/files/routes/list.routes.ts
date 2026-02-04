@@ -9,10 +9,12 @@ import {
 } from "../../../lib/route-helpers";
 import { fileService } from "../../../services/file.service";
 import { folderService } from "../../../services/folder.service";
+import { authMiddleware } from "../../auth";
 import { fileReadGuard } from "../guards";
 import type { ApiResponse, FileListData } from "../types";
 
 export const listRoutes = new Elysia({ prefix: "/api" })
+	.use(authMiddleware)
 	.get(
 		"/files",
 		async ({ query, set, user }): Promise<ApiResponse<FileListData>> => {

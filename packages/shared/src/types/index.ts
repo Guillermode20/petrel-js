@@ -271,3 +271,10 @@ export interface PersonalAccessToken {
 	createdAt: Date;
 	lastUsedAt: Date | null;
 }
+
+export interface ServerSettings {
+	transcoding: {
+		audioTranscodeFlac: boolean;
+		audioOpusBitrateKbps: number;
+	};
+}

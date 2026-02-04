@@ -3,6 +3,7 @@ import type {
 	File,
 	Folder,
 	PaginatedResponse,
+	ServerSettings,
 	Share,
 	ShareSettings,
 	TranscodeJob,
@@ -18,6 +19,7 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
 class ApiClient {
 	private accessToken: string | null = null;
 	private onAuthError: (() => void) | null = null;
+	private refreshPromise: Promise<void> | null = null;
 
 	setAccessToken(token: string | null): void {
 		this.accessToken = token;
@@ -28,6 +30,10 @@ class ApiClient {
 	}
 
 	private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+		if (!this.accessToken) {
+			this.accessToken = localStorage.getItem("petrel_access_token");
+		}
+
 		const headers: HeadersInit = {
 			"Content-Type": "application/json",
 			...options.headers,
@@ -42,30 +48,41 @@ class ApiClient {
 			headers,
 		});
 
-		// Handle initial 401 - try refresh once
+		// Handle initial 401 - try refresh once with deduplication
 		if (response.status === 401) {
 			const refreshToken = localStorage.getItem("petrel_refresh_token");
 			if (refreshToken) {
 				try {
-					const data = await this.refreshToken(refreshToken);
-					localStorage.setItem("petrel_access_token", data.accessToken);
-					localStorage.setItem("petrel_refresh_token", data.refreshToken);
-					this.setAccessToken(data.accessToken);
+					// Deduplicate refresh requests
+					if (!this.refreshPromise) {
+						this.refreshPromise = this.performRefresh(refreshToken);
+					}
+					await this.refreshPromise;
+					this.refreshPromise = null;
 
 					// Retry request with new token
-					(headers as Record<string, string>).Authorization = `Bearer ${data.accessToken}`;
-					response = await fetch(`${API_BASE}${endpoint}`, {
-						...options,
-						headers,
-					});
+					const newToken = localStorage.getItem("petrel_access_token");
+					if (newToken) {
+						(headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
+						response = await fetch(`${API_BASE}${endpoint}`, {
+							...options,
+							headers,
+						});
+					}
 				} catch (_err) {
 					// Refresh failed, clear tokens
+					this.refreshPromise = null;
 					localStorage.removeItem("petrel_access_token");
 					localStorage.removeItem("petrel_refresh_token");
 					this.setAccessToken(null);
 					this.onAuthError?.();
 					throw new Error("Unauthorized");
 				}
+			} else {
+				localStorage.removeItem("petrel_access_token");
+				this.setAccessToken(null);
+				this.onAuthError?.();
+				throw new Error("Unauthorized");
 			}
 		}
 
@@ -139,20 +156,23 @@ class ApiClient {
 			},
 		});
 
-		const contentType = response.headers.get("content-type");
-		if (!contentType?.includes("application/json")) {
-			const text = await response.text();
-			throw new Error(text || `HTTP ${response.status}`);
+		if (!response.ok) {
+			throw new Error("Refresh failed");
 		}
 
-		const result: ApiResponse<{ accessToken: string; refreshToken: string; user: User }> =
-			await response.json();
-
+		const result = await response.json();
 		if (result.error || !result.data) {
 			throw new Error(result.error || "Token refresh failed");
 		}
 
 		return result.data;
+	}
+
+	private async performRefresh(refreshToken: string): Promise<void> {
+		const data = await this.refreshToken(refreshToken);
+		localStorage.setItem("petrel_access_token", data.accessToken);
+		localStorage.setItem("petrel_refresh_token", data.refreshToken);
+		this.setAccessToken(data.accessToken);
 	}
 
 	async getCurrentUser(): Promise<User | null> {
@@ -252,8 +272,9 @@ class ApiClient {
 			const xhr = new XMLHttpRequest();
 			xhr.open("POST", `${API_BASE}/files/upload`);
 
-			if (this.accessToken) {
-				xhr.setRequestHeader("Authorization", `Bearer ${this.accessToken}`);
+			const token = localStorage.getItem("petrel_access_token");
+			if (token) {
+				xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 			}
 
 			xhr.upload.onprogress = (event) => {
@@ -262,7 +283,59 @@ class ApiClient {
 				}
 			};
 
-			xhr.onload = () => {
+			xhr.onload = async () => {
+				if (xhr.status === 401) {
+					const refreshToken = localStorage.getItem("petrel_refresh_token");
+					if (refreshToken) {
+						try {
+							const data = await this.refreshToken(refreshToken);
+							localStorage.setItem("petrel_access_token", data.accessToken);
+							localStorage.setItem("petrel_refresh_token", data.refreshToken);
+							this.setAccessToken(data.accessToken);
+
+							const retryXhr = new XMLHttpRequest();
+							retryXhr.open("POST", `${API_BASE}/files/upload`);
+							retryXhr.setRequestHeader("Authorization", `Bearer ${data.accessToken}`);
+
+							retryXhr.upload.onprogress = (event) => {
+								if (event.lengthComputable && onProgress) {
+									onProgress((event.loaded / event.total) * 100);
+								}
+							};
+
+							retryXhr.onload = () => {
+								try {
+									const result = JSON.parse(retryXhr.responseText);
+									if (result.error) {
+										reject(new Error(result.error));
+									} else {
+										resolve(result.data);
+									}
+								} catch {
+									reject(new Error("Failed to parse upload response"));
+								}
+							};
+
+							retryXhr.onerror = () => reject(new Error("Upload failed"));
+							retryXhr.send(formData);
+							return;
+						} catch (_err) {
+							localStorage.removeItem("petrel_access_token");
+							localStorage.removeItem("petrel_refresh_token");
+							this.setAccessToken(null);
+							this.onAuthError?.();
+							reject(new Error("Unauthorized"));
+							return;
+						}
+					} else {
+						localStorage.removeItem("petrel_access_token");
+						this.setAccessToken(null);
+						this.onAuthError?.();
+						reject(new Error("Unauthorized"));
+						return;
+					}
+				}
+
 				try {
 					const result = JSON.parse(xhr.responseText);
 					if (result.error) {
@@ -644,8 +717,24 @@ class ApiClient {
 		return this.request("/settings/reset", { method: "POST" });
 	}
 
-	async getDefaultSettings(): Promise<Omit<UserSettings, "userId">> {
+	async getDefaultSettings(): Promise<Omit<UserSettings, "userId" | "id">> {
 		return this.request("/settings/defaults");
+	}
+
+	// Server settings endpoints (admin only)
+	async getServerSettings(): Promise<ServerSettings> {
+		return this.request("/server-settings");
+	}
+
+	async updateServerSettings(updates: Partial<ServerSettings>): Promise<ServerSettings> {
+		return this.request("/server-settings", {
+			method: "PATCH",
+			body: JSON.stringify(updates),
+		});
+	}
+
+	async resetServerSettings(): Promise<ServerSettings> {
+		return this.request("/server-settings/reset", { method: "POST" });
 	}
 
 	// Setup endpoints

@@ -9,6 +9,7 @@ import { adminRoutes } from "./src/modules/admin";
 import { audioRoutes } from "./src/modules/audio";
 import { authRoutes } from "./src/modules/auth";
 import { fileRoutes } from "./src/modules/files";
+import { serverSettingsRoutes } from "./src/modules/server-settings/routes";
 import { settingsRoutes } from "./src/modules/settings";
 import { setupRoutes } from "./src/modules/setup";
 import { shareRoutes } from "./src/modules/shares";
@@ -223,6 +224,8 @@ const app = new Elysia()
 	.use(shareRoutes)
 	// Settings routes
 	.use(settingsRoutes)
+	// Server settings routes (admin only)
+	.use(serverSettingsRoutes)
 	// Admin routes
 	.use(adminRoutes)
 	// User routes
