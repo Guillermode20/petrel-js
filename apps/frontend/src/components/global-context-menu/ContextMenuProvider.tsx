@@ -79,36 +79,17 @@ export function ContextMenuProvider({ children }: ContextMenuProviderProps): Rea
 			register: (handler: ContextMenuActionHandler) => {
 				const id = createHandlerId();
 				handlersRef.current.set(id, handler);
-				logger.debug(
-					"[ContextMenu Registry] Registered handler:",
-					id,
-					"Total handlers:",
-					handlersRef.current.size,
-				);
 				return id;
 			},
 			unregister: (handlerId: string) => {
 				handlersRef.current.delete(handlerId);
-				logger.debug(
-					"[ContextMenu Registry] Unregistered handler:",
-					handlerId,
-					"Total handlers:",
-					handlersRef.current.size,
-				);
 			},
 			dispatch: async (handlerId: string, action: string, context: MenuContext, data?: unknown) => {
-				logger.debug(
-					"[ContextMenu Registry] Dispatch lookup:",
-					handlerId,
-					"Available handlers:",
-					Array.from(handlersRef.current.keys()),
-				);
 				const handler = handlersRef.current.get(handlerId);
 				if (!handler) {
 					logger.warn("[ContextMenu Registry] Handler not found!");
 					return false;
 				}
-				logger.debug("[ContextMenu Registry] Calling handler for action:", action);
 				await handler(action, context, data);
 				return true;
 			},

@@ -1,14 +1,9 @@
 import type { ServerSettings } from "@petrel/shared";
-import { config } from "../../config";
+import { mkdir, rename } from "node:fs/promises";
 import { logger } from "../../lib/logger";
-import { resolveStoragePath } from "../../lib/storage";
+import { getStorageRoot, resolveStoragePath } from "../../lib/storage";
 
-const DEFAULT_SETTINGS: ServerSettings = {
-	transcoding: {
-		audioTranscodeFlac: config.AUDIO_TRANSCODE_FLAC,
-		audioOpusBitrateKbps: config.AUDIO_OPUS_BITRATE_KBPS,
-	},
-};
+const DEFAULT_SETTINGS: ServerSettings = {};
 
 function getSettingsFilePath(): string {
 	return resolveStoragePath("server-settings.json");
@@ -32,7 +27,7 @@ class ServerSettingsService {
 			if (await file.exists()) {
 				const content = await file.text();
 				const parsed = JSON.parse(content) as ServerSettings;
-				this.settings = this.mergeWithDefaults(parsed);
+				this.settings = { ...DEFAULT_SETTINGS, ...parsed };
 			} else {
 				this.settings = structuredClone(DEFAULT_SETTINGS);
 			}
@@ -50,18 +45,17 @@ class ServerSettingsService {
 	async updateSettings(updates: Partial<ServerSettings>): Promise<ServerSettings> {
 		const current = await this.getSettings();
 		const merged: ServerSettings = {
-			transcoding: {
-				audioTranscodeFlac:
-					updates.transcoding?.audioTranscodeFlac ?? current.transcoding.audioTranscodeFlac,
-				audioOpusBitrateKbps:
-					updates.transcoding?.audioOpusBitrateKbps ?? current.transcoding.audioOpusBitrateKbps,
-			},
+			...current,
+			...updates,
 		};
 
 		try {
 			const filePath = getSettingsFilePath();
 			const tempFilePath = filePath + ".tmp";
 			const backupFilePath = filePath + ".bak";
+
+			// Ensure storage directory exists
+			await mkdir(getStorageRoot(), { recursive: true });
 
 			// Write to temporary file first
 			await Bun.write(tempFilePath, JSON.stringify(merged, null, 2));
@@ -73,18 +67,15 @@ class ServerSettingsService {
 			}
 
 			// Atomic rename
-			await Bun.rename(tempFilePath, filePath);
+			await rename(tempFilePath, filePath);
 
 			// Clean up backup file on success
 			const backupFile = Bun.file(backupFilePath);
 			if (await backupFile.exists()) {
-				await Bun.file(backupFilePath).delete();
+				await backupFile.delete();
 			}
 
 			this.settings = merged;
-
-			// Update runtime config
-			this.applyToConfig(merged);
 
 			logger.info("Server settings updated");
 			return merged;
@@ -104,6 +95,9 @@ class ServerSettingsService {
 			const tempFilePath = filePath + ".tmp";
 			const backupFilePath = filePath + ".bak";
 
+			// Ensure storage directory exists
+			await mkdir(getStorageRoot(), { recursive: true });
+
 			// Write to temporary file first
 			await Bun.write(tempFilePath, JSON.stringify(defaults, null, 2));
 
@@ -114,18 +108,15 @@ class ServerSettingsService {
 			}
 
 			// Atomic rename
-			await Bun.rename(tempFilePath, filePath);
+			await rename(tempFilePath, filePath);
 
 			// Clean up backup file on success
 			const backupFile = Bun.file(backupFilePath);
 			if (await backupFile.exists()) {
-				await Bun.file(backupFilePath).delete();
+				await backupFile.delete();
 			}
 
 			this.settings = defaults;
-
-			// Update runtime config
-			this.applyToConfig(defaults);
 
 			logger.info("Server settings reset to defaults");
 			return defaults;
@@ -133,29 +124,6 @@ class ServerSettingsService {
 			logger.error(error, "Failed to reset server settings");
 			throw new Error("Failed to reset server settings");
 		}
-	}
-
-	/**
-	 * Apply settings to runtime config
-	 */
-	private applyToConfig(settings: ServerSettings): void {
-		config.AUDIO_TRANSCODE_FLAC = settings.transcoding.audioTranscodeFlac;
-		config.AUDIO_OPUS_BITRATE_KBPS = settings.transcoding.audioOpusBitrateKbps;
-	}
-
-	/**
-	 * Merge loaded settings with defaults for any missing fields
-	 */
-	private mergeWithDefaults(loaded: Partial<ServerSettings>): ServerSettings {
-		return {
-			transcoding: {
-				audioTranscodeFlac:
-					loaded.transcoding?.audioTranscodeFlac ?? DEFAULT_SETTINGS.transcoding.audioTranscodeFlac,
-				audioOpusBitrateKbps:
-					loaded.transcoding?.audioOpusBitrateKbps ??
-					DEFAULT_SETTINGS.transcoding.audioOpusBitrateKbps,
-			},
-		};
 	}
 }
 

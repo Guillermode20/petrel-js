@@ -359,32 +359,4 @@ export async function transmuxToHLS(options: TransmuxToHLSOptions): Promise<stri
 	return playlistPath;
 }
 
-export interface TranscodeAudioOptions {
-	inputPath: string;
-	outputPath: string;
-	bitrateKbps: number;
-}
 
-export async function transcodeAudioToOpus(options: TranscodeAudioOptions): Promise<void> {
-	const { inputPath, outputPath, bitrateKbps } = options;
-	const args = [
-		"-i",
-		inputPath,
-		"-vn",
-		"-c:a",
-		"libopus",
-		"-b:a",
-		`${bitrateKbps}k`,
-		"-vbr",
-		"on",
-		"-compression_level",
-		"10",
-		"-map_metadata",
-		"0",
-		"-f",
-		"opus",
-		outputPath,
-	];
-
-	await runCommand("ffmpeg", args);
-}

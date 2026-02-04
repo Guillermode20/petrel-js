@@ -180,7 +180,7 @@ export function useAudioPlayer({
 			howl.unload();
 			howlRef.current = null;
 		};
-	}, [streamUrl, autoPlay, file.mimeType.split, onEnded, updateProgress]);
+	}, [streamUrl, autoPlay, file.mimeType, onEnded, updateProgress]);
 
 	// Controls
 	const play = useCallback(() => {

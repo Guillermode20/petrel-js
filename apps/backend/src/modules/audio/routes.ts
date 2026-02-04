@@ -202,10 +202,11 @@ export const audioRoutes = new Elysia({ prefix: "/api/audio" })
 
 			if (rangeHeader && !range) {
 				const headers = new Headers();
-				headers.set("Content-Range", `bytes */${context.size}`);
+				setBaseHeaders(headers, context, context.size);
 				exposeStreamingHeaders(headers);
-				set.status = 416;
-				return new Response("Requested Range Not Satisfiable", { status: 416, headers });
+				set.status = 200;
+				const stream = createReadStream(context.path);
+				return new Response(stream, { status: 200, headers });
 			}
 
 			const start = range?.start ?? 0;

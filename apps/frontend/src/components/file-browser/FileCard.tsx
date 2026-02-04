@@ -1,6 +1,7 @@
 import type { File } from "@petrel/shared";
 import type { HTMLAttributes } from "react";
-import { forwardRef, useCallback, useRef, useState } from "react";
+import { forwardRef, useRef, useState } from "react";
+import { Play } from "lucide-react";
 import { isFile, isFolder, useAuth } from "@/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -8,7 +9,6 @@ import type { FileItemProps } from "./types";
 import { formatFileSize, getFileIcon, getFolderIcon, getRelativePath } from "./utils";
 
 const PRELOAD_DELAY_MS = 250; // 250ms hover before preloading
-const LONG_PRESS_THRESHOLD = 500; // 500ms for long press
 
 /**
  * File card component for grid view
@@ -26,8 +26,8 @@ export const FileCard = forwardRef<
 		const isFileItem = isFile(item);
 		const isFolderItem = isFolder(item);
 		const Icon = isFileItem ? getFileIcon((item as File).mimeType) : getFolderIcon();
-		const showThumbnail = isFileItem && (item as File).mimeType.startsWith("image/");
 		const isVideoFile = isFileItem && (item as File).mimeType.startsWith("video/");
+		const showThumbnail = isFileItem && ((item as File).mimeType.startsWith("image/") || isVideoFile);
 		
 		// Calculate relative folder path for display when searching
 		const relativeFolderPath = searchQuery && isFileItem 
@@ -120,14 +120,22 @@ export const FileCard = forwardRef<
 				{...triggerProps}
 			>
 				{/* Thumbnail or icon */}
-				<div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-secondary/30">
+				<div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-md bg-secondary/30">
 					{showThumbnail ? (
-						<img
-							src={api.getThumbnailUrl((item as File).id, "small")}
-							alt={item.name}
-							className="h-full w-full object-cover"
-							loading="lazy"
-						/>
+						<>
+							<img
+								src={api.getThumbnailUrl((item as File).id, "small")}
+								alt={item.name}
+								className="h-full w-full object-cover"
+								loading="lazy"
+							/>
+							{/* Video play indicator overlay */}
+							{isVideoFile && (
+								<div className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded bg-black/60">
+									<Play className="h-3 w-3 fill-white text-white" />
+								</div>
+							)}
+						</>
 					) : (
 						<Icon className="h-8 w-8 text-foreground/80 group-hover:text-foreground" />
 					)}

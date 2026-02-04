@@ -273,8 +273,6 @@ export interface PersonalAccessToken {
 }
 
 export interface ServerSettings {
-	transcoding: {
-		audioTranscodeFlac: boolean;
-		audioOpusBitrateKbps: number;
-	};
+	// Server settings are currently managed via environment variables
+	// This interface is kept for future extensibility
 }
