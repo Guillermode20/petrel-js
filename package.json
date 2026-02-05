@@ -16,12 +16,18 @@
 		"test:backend": "cd apps/backend && bun test",
 		"test:frontend": "cd apps/frontend && bunx vitest run",
 		"test:shared": "cd packages/shared && bun test",
-		"test:watch": "concurrently \"bun run --filter backend test:watch\" \"cd apps/frontend && bunx vitest\" \"bun run --filter shared test:watch\" --names backend,frontend,shared --prefix-colors cyan,green,magenta"
+		"test:watch": "concurrently \"bun run --filter backend test:watch\" \"cd apps/frontend && bunx vitest\" \"bun run --filter shared test:watch\" --names backend,frontend,shared --prefix-colors cyan,green,magenta",
+		"test:e2e": "cd apps/e2e && bun run test",
+		"test:e2e:ui": "cd apps/e2e && bun run test:ui",
+		"test:all": "bun run test && bun run test:e2e",
+		"typecheck": "bun run --filter backend typecheck && bun run --filter frontend typecheck",
+		"prepare": "lefthook install"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.4",
 		"@types/bun": "latest",
-		"concurrently": "^9.0.0"
+		"concurrently": "^9.0.0",
+		"lefthook": "^1.10.0"
 	},
 	"peerDependencies": {
 		"typescript": "^5"

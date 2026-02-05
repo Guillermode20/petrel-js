@@ -1,0 +1,27 @@
+# Lefthook configuration for Petrel
+# @see https://evilmartians.github.io/lefthook/
+
+pre-commit:
+  parallel: true
+  commands:
+    biome-check:
+      glob: "*.{js,ts,jsx,tsx,json}"
+      run: bunx biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+    typecheck-backend:
+      root: apps/backend
+      glob: "*.{ts}"
+      run: bun tsc --noEmit
+    typecheck-frontend:
+      root: apps/frontend
+      glob: "*.{ts,tsx}"
+      run: bunx tsc --noEmit
+
+pre-push:
+  parallel: false
+  commands:
+    test-backend:
+      run: bun run test:backend
+    test-frontend:
+      run: bun run test:frontend
+    test-shared:
+      run: bun run test:shared
