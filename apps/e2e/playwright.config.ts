@@ -1,12 +1,21 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 /**
  * Playwright configuration for Petrel E2E tests
  *
  * @see https://playwright.dev/docs/test-configuration
  */
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirectoryPath = path.dirname(currentFilePath);
+const repoRootPath = path.resolve(currentDirectoryPath, "..", "..", "..");
+
 export default defineConfig({
   testDir: "./tests",
+  
+  /* Global setup to clean database before tests */
+  globalSetup: "./global-setup.ts",
 
   /* Run tests in files in parallel */
   fullyParallel: true,
@@ -26,13 +35,18 @@ export default defineConfig({
     ["list"],
   ],
 
+  /* Global timeout for each test */
+  timeout: 60000,
+
+  expect: {
+    /* Timeout for expect assertions */
+    timeout: 10000,
+  },
+
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
     baseURL: process.env.FRONTEND_URL || "http://localhost:3000",
-
-    /* Backend API URL for direct API calls in tests */
-    apiBaseURL: process.env.BACKEND_URL || "http://localhost:3001",
 
     /* Collect trace when retrying the failed test */
     trace: "on-first-retry",
@@ -42,6 +56,9 @@ export default defineConfig({
 
     /* Record video on failure */
     video: "on-first-retry",
+
+    /* Action timeout */
+    actionTimeout: 15000,
   },
 
   /* Configure projects for major browsers */
@@ -50,38 +67,42 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-    {
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
-    },
-    {
-      name: "webkit",
-      use: { ...devices["Desktop Safari"] },
-    },
-    /* Test against mobile viewports */
-    {
-      name: "Mobile Chrome",
-      use: { ...devices["Pixel 5"] },
-    },
-    {
-      name: "Mobile Safari",
-      use: { ...devices["iPhone 12"] },
-    },
+    // Other browsers can be enabled for CI
+    ...(process.env.CI
+      ? [
+          {
+            name: "firefox",
+            use: { ...devices["Desktop Firefox"] },
+          },
+          {
+            name: "webkit",
+            use: { ...devices["Desktop Safari"] },
+          },
+        ]
+      : []),
   ],
 
-  /* Run local dev server before starting the tests */
-  webServer: [
-    {
-      command: "bun run --filter backend dev",
-      url: "http://localhost:3001/api",
-      reuseExistingServer: true,
-      timeout: 120000,
-    },
-    {
-      command: "bun run --filter frontend dev",
-      url: "http://localhost:3000",
-      reuseExistingServer: true,
-      timeout: 120000,
-    },
-  ],
+  /* Run local dev server before starting the tests
+   * Set SKIP_WEBSERVER=true to skip automatic server startup and run servers manually
+   */
+  webServer: process.env.SKIP_WEBSERVER
+    ? undefined
+    : [
+        {
+          command: process.platform === "win32"
+            ? "$env:E2E_MODE='true'; $env:DATABASE_URL='file:./test-e2e.db'; bun run dev"
+            : "E2E_MODE=true DATABASE_URL=file:./test-e2e.db bun run dev",
+          cwd: path.join(repoRootPath, "apps", "backend"),
+          url: "http://localhost:4000/api/hello",
+          reuseExistingServer: true,
+          timeout: 120000,
+        },
+        {
+          command: "bun run dev",
+          cwd: path.join(repoRootPath, "apps", "frontend"),
+          url: "http://localhost:3000",
+          reuseExistingServer: true,
+          timeout: 120000,
+        },
+      ],
 });

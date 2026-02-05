@@ -98,7 +98,33 @@ async function runStartupSyncChecks(): Promise<void> {
 				{
 					orphanedDbFileIds: report.orphanedDbFileIds.length,
 				},
-				"Found orphaned database records (files missing on disk)",
+				"Auto-cleaning orphaned database records (files missing on disk)",
+			);
+			const cleanupReport = await storageSyncService.cleanupOrphanedDatabaseRecords();
+			logger.info(
+				{
+					databaseRecordCleanupCount: cleanupReport.databaseRecordCleanupCount,
+					errors: cleanupReport.errors.length,
+				},
+				"Database record cleanup completed",
+			);
+		}
+
+		const hasOrphanedFolders = report.orphanedDbFolderIds.length > 0;
+		if (hasOrphanedFolders) {
+			logger.warn(
+				{
+					orphanedDbFolderIds: report.orphanedDbFolderIds.length,
+				},
+				"Auto-cleaning orphaned folder records (folders missing on disk)",
+			);
+			const folderCleanupReport = await storageSyncService.cleanupOrphanedFolders();
+			logger.info(
+				{
+					folderCleanupCount: folderCleanupReport.folderCleanupCount,
+					errors: folderCleanupReport.errors.length,
+				},
+				"Folder cleanup completed",
 			);
 		}
 	} catch (err) {

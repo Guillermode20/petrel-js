@@ -27,7 +27,7 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 			name: "jwtRefresh",
 		}),
 	)
-	// Rate limiting: 5 attempts per 15 minutes per IP
+	// Rate limiting: 5 attempts per 15 minutes per IP (disabled in E2E mode)
 	.use(
 		rateLimit({
 			duration: 15 * 60 * 1000, // 15 minutes
@@ -39,7 +39,10 @@ export const authRoutes = new Elysia({ prefix: "/api/auth" })
 				return `auth-login:${ip}`;
 			},
 			skip: (request) => {
-				// Skip rate limiting for non-login endpoints
+				// Skip rate limiting in E2E mode or for non-login endpoints
+				if (config.E2E_MODE) {
+					return true;
+				}
 				const url = new URL(request.url);
 				return !url.pathname.includes("/api/auth/login");
 			},

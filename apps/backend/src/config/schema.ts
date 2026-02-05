@@ -88,6 +88,12 @@ export const envSchema = z.object({
 		.transform((val) => parseInt(val, 10))
 		.pipe(z.number().int().positive().max(100))
 		.default("5"),
+
+	// E2E Testing Mode - disables rate limiting for automated tests
+	E2E_MODE: z
+		.string()
+		.transform((val) => val === "true")
+		.default("false"),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

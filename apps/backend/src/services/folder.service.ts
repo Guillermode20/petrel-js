@@ -273,6 +273,11 @@ export class FolderService {
 			normalizedFolder.startsWith(`${normalizedAncestor}/`)
 		);
 	}
+
+	async deleteFolder(id: number): Promise<void> {
+		await db.delete(folders).where(eq(folders.id, id));
+		await cacheManager.delPattern(cacheKeys.pattern.allFolders());
+	}
 }
 
 export const folderService = new FolderService();

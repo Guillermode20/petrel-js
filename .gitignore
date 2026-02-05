@@ -123,3 +123,12 @@ lpt6
 lpt7
 lpt8
 lpt9
+
+# ========== Playwright ==========
+# Reports & results
+playwright-report/
+test-results/
+
+# Other Playwright artifacts
+blob-report/
+.playwright/

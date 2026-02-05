@@ -20,9 +20,11 @@ const IGNORED_STORAGE_DIRECTORIES = new Set<string>([
 export interface StorageSyncReport {
 	orphanedFilesOnDisk: string[];
 	orphanedDbFileIds: number[];
+	orphanedDbFolderIds: number[];
 	createdFolderCount: number;
 	importedFileCount: number;
 	databaseRecordCleanupCount: number;
+	folderCleanupCount: number;
 	errors: string[];
 }
 
@@ -88,9 +90,11 @@ export class StorageSyncService {
 		const report: StorageSyncReport = {
 			orphanedFilesOnDisk: diskEntries.map((e) => e.relativeFilePath),
 			orphanedDbFileIds: [],
+			orphanedDbFolderIds: [],
 			createdFolderCount: 0,
 			importedFileCount: 0,
 			databaseRecordCleanupCount: 0,
+			folderCleanupCount: 0,
 			errors: [],
 		};
 
@@ -108,16 +112,21 @@ export class StorageSyncService {
 		const report: StorageSyncReport = {
 			orphanedFilesOnDisk: [],
 			orphanedDbFileIds: [],
+			orphanedDbFolderIds: [],
 			createdFolderCount: 0,
 			importedFileCount: 0,
 			databaseRecordCleanupCount: 0,
+			folderCleanupCount: 0,
 			errors: [],
 		};
 
-		const [diskFiles, dbRows] = await Promise.all([
+		const [diskFiles, dbRows, dbFolders] = await Promise.all([
 			this.scanPrimaryFilesOnDisk(),
 			db.query.files.findMany({
 				columns: { id: true, path: true, name: true },
+			}),
+			db.query.folders.findMany({
+				columns: { id: true, path: true },
 			}),
 		]);
 
@@ -142,6 +151,20 @@ export class StorageSyncService {
 			const key = buildFileKey(row.path, row.name);
 			if (!diskKeys.has(key)) {
 				report.orphanedDbFileIds.push(row.id);
+			}
+		}
+
+		// Detect orphaned folders (folders in DB but not on disk)
+		const diskFolderPaths = new Set<string>();
+		for (const entry of diskFiles) {
+			if (entry.folderPath) {
+				diskFolderPaths.add(entry.folderPath);
+			}
+		}
+
+		for (const folder of dbFolders) {
+			if (folder.path && !diskFolderPaths.has(folder.path)) {
+				report.orphanedDbFolderIds.push(folder.id);
 			}
 		}
 
@@ -179,6 +202,23 @@ export class StorageSyncService {
 			} catch (err) {
 				report.errors.push(
 					`Failed to cleanup DB fileId=${fileId}: ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
+		}
+
+		return report;
+	}
+
+	async cleanupOrphanedFolders(): Promise<StorageSyncReport> {
+		const report = await this.validateSync();
+
+		for (const folderId of report.orphanedDbFolderIds) {
+			try {
+				await folderService.deleteFolder(folderId);
+				report.folderCleanupCount += 1;
+			} catch (err) {
+				report.errors.push(
+					`Failed to cleanup DB folderId=${folderId}: ${err instanceof Error ? err.message : String(err)}`,
 				);
 			}
 		}

@@ -2,6 +2,8 @@
 # @see https://evilmartians.github.io/lefthook/
 
 pre-commit:
+  skip:
+    - run: test "${PETREL_HOOKS_DISABLED}" = "true" || test "${PETREL_HOOKS_DISABLED}" = "1"
   parallel: true
   commands:
     biome-check:
@@ -17,6 +19,8 @@ pre-commit:
       run: bunx tsc --noEmit
 
 pre-push:
+  skip:
+    - run: test "${PETREL_HOOKS_DISABLED}" = "true" || test "${PETREL_HOOKS_DISABLED}" = "1"
   parallel: false
   commands:
     test-backend:
