@@ -26,6 +26,9 @@ pids
 *.seed
 *.pid.lock
 
+# Lefthook local overrides
+lefthook-local.yml
+
 # Coverage directory
 coverage/
 *.lcov

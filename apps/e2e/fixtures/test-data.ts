@@ -4,8 +4,8 @@
 
 export const TEST_USERS = {
   admin: {
-    username: "e2e-admin",
-    password: "E2EAdminPass123!",
+    username: "admin",
+    password: "admin123",
     role: "admin" as const,
   },
   user: {

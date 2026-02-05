@@ -89,9 +89,7 @@ export default defineConfig({
     ? undefined
     : [
         {
-          command: process.platform === "win32"
-            ? "$env:E2E_MODE='true'; $env:DATABASE_URL='file:./test-e2e.db'; bun run dev"
-            : "E2E_MODE=true DATABASE_URL=file:./test-e2e.db bun run dev",
+          command: "bun --env-file=.env.e2e run dev",
           cwd: path.join(repoRootPath, "apps", "backend"),
           url: "http://localhost:4000/api/hello",
           reuseExistingServer: true,
