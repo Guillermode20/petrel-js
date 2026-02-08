@@ -2,10 +2,16 @@ export { EmptySpaceContextMenu } from "./EmptySpaceContextMenu";
 export { FileBrowser } from "./FileBrowser";
 export { FileCard } from "./FileCard";
 export { FileContextMenu } from "./FileContextMenu";
-export { CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
+export {
+	BulkDeleteConfirmDialog,
+	CreateFolderDialog,
+	DeleteConfirmDialog,
+	RenameDialog,
+} from "./FileDialogs";
 export { FileGrid } from "./FileGrid";
 export { FileList } from "./FileList";
 export { MultiSelectionContextMenu } from "./MultiSelectionContextMenu";
+export { MoveItemsDialog } from "./move-items-dialog";
 export { SearchBar } from "./SearchBar";
 export { SortDropdown } from "./SortDropdown";
 export * from "./types";

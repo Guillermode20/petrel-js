@@ -214,3 +214,73 @@ export function DeleteConfirmDialog({
 		</Dialog>
 	);
 }
+
+interface BulkDeleteConfirmDialogProps {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	itemCount: number;
+	fileCount: number;
+	folderCount: number;
+	onConfirm: () => Promise<void>;
+	isDeleting?: boolean;
+}
+
+function describeBulkDelete(fileCount: number, folderCount: number): string {
+	if (fileCount > 0 && folderCount > 0) {
+		return `${fileCount} file${fileCount === 1 ? "" : "s"} and ${folderCount} folder${
+			folderCount === 1 ? "" : "s"
+		}`;
+	}
+	if (fileCount > 0) {
+		return `${fileCount} file${fileCount === 1 ? "" : "s"}`;
+	}
+	if (folderCount > 0) {
+		return `${folderCount} folder${folderCount === 1 ? "" : "s"}`;
+	}
+	return "0 items";
+}
+
+/**
+ * Confirmation dialog for deleting multiple items
+ */
+export function BulkDeleteConfirmDialog({
+	open,
+	onOpenChange,
+	itemCount,
+	fileCount,
+	folderCount,
+	onConfirm,
+	isDeleting,
+}: BulkDeleteConfirmDialogProps) {
+	const handleDelete = useCallback(async () => {
+		try {
+			await onConfirm();
+			onOpenChange(false);
+		} catch {
+			// Error handled by parent
+		}
+	}, [onConfirm, onOpenChange]);
+
+	const detail = describeBulkDelete(fileCount, folderCount);
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="sm:max-w-md">
+				<DialogHeader>
+					<DialogTitle>Delete {itemCount} item{itemCount === 1 ? "" : "s"}</DialogTitle>
+					<DialogDescription>
+						Are you sure you want to delete {detail}? This action cannot be undone.
+					</DialogDescription>
+				</DialogHeader>
+				<DialogFooter>
+					<Button variant="ghost" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+						{isDeleting ? "Deleting..." : "Delete"}
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
+}

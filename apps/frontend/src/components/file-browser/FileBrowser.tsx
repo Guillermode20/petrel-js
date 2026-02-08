@@ -29,9 +29,10 @@ import {
 } from "@/hooks";
 import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
-import { CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
+import { BulkDeleteConfirmDialog, CreateFolderDialog, DeleteConfirmDialog, RenameDialog } from "./FileDialogs";
 import { FileGrid } from "./FileGrid";
 import { FileList } from "./FileList";
+import { MoveItemsDialog } from "./move-items-dialog";
 import { FileProperties } from "./FileProperties";
 import { SearchBar } from "./SearchBar";
 import { SortDropdown } from "./SortDropdown";
@@ -69,6 +70,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	// Dialog state
 	const [renameItem, setRenameItem] = useState<File | Folder | null>(null);
 	const [deleteItem, setDeleteItem] = useState<File | Folder | null>(null);
+	const [deleteSelection, setDeleteSelection] = useState<Array<File | Folder>>([]);
+	const [moveSelection, setMoveSelection] = useState<Array<File | Folder>>([]);
 	const [shareItem, setShareItem] = useState<File | Folder | null>(null);
 	const [propertiesItem, setPropertiesItem] = useState<File | Folder | null>(null);
 
@@ -92,6 +95,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	// Clear selection when folder changes
 	useEffect(() => {
 		setSelectedIds(new Set());
+		setDeleteSelection([]);
+		setMoveSelection([]);
 		clearClipboard();
 		setPage(1);
 	}, [clearClipboard]);
@@ -139,6 +144,17 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		const size = selectedItems.reduce((acc, item) => (isFile(item) ? acc + item.size : acc), 0);
 		return { count, size };
 	}, [selectedIds, sortedItems, getSelectionKey]);
+
+	const deleteSelectionStats = useMemo(() => {
+		const files = deleteSelection.filter(isFile).length;
+		const folders = deleteSelection.filter(isFolder).length;
+		return { files, folders, total: deleteSelection.length };
+	}, [deleteSelection]);
+
+	const moveExcludeFolderIds = useMemo(() => {
+		const ids = moveSelection.filter(isFolder).map((f) => f.id);
+		return new Set(ids);
+	}, [moveSelection]);
 
 	// Breadcrumb segments
 	const breadcrumbSegments = useMemo(
@@ -291,22 +307,22 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		toast.success("Refreshed");
 	}, [queryClient]);
 
+	const getSelectedItemsForContextMenu = useCallback(
+		(items: Array<File | Folder>): Array<File | Folder> =>
+			items.filter((i) => selectedIds.has(getSelectionKey(i))),
+		[selectedIds, getSelectionKey],
+	);
+
 	// Multi-selection handlers
 	const handleClearSelection = useCallback(() => {
 		setSelectedIds(new Set());
 	}, []);
 
 	const handleDeleteSelected = useCallback(() => {
-		// For now, delete first selected item (bulk delete needs confirmation dialog update)
-		const firstKey = Array.from(selectedIds)[0];
-		if (!firstKey) return;
-		const parsed = parseSelectionKey(firstKey);
-		if (!parsed) return;
-		const item = sortedItems.find(
-			(i) => i.id === parsed.id && (isFile(i) ? "file" : "folder") === parsed.type,
-		);
-		if (item) setDeleteItem(item);
-	}, [selectedIds, sortedItems]);
+		const items = getSelectedItemsForContextMenu(sortedItems);
+		if (items.length === 0) return;
+		setDeleteSelection(items);
+	}, [getSelectedItemsForContextMenu, sortedItems]);
 
 	const handleShareSelected = useCallback(() => {
 		// Share first selected item (or could create folder share for multiple)
@@ -319,10 +335,6 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		);
 		if (item) setShareItem(item);
 	}, [selectedIds, sortedItems]);
-
-	function getSelectedItemsForContextMenu(items: Array<File | Folder>): Array<File | Folder> {
-		return items.filter((i) => selectedIds.has(getSelectionKey(i)));
-	}
 
 	const handleFileBrowserContextMenuAction = useCallback<ContextMenuActionHandler>(
 		async (action: string, context: MenuContext, data?: unknown) => {
@@ -360,6 +372,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 				}
 				if (action === "share") return void setShareItem(item);
 				if (action === "rename") return void setRenameItem(item);
+				if (action === "move") return void setMoveSelection([item]);
 				if (action === "delete") return void setDeleteItem(item);
 				if (action === "copy-link") return handleCopyLink(item);
 				if (action === "copy-share-link") return void handleCopyShareLink(item);
@@ -377,7 +390,13 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 				if (action === "share-selected") return void handleShareSelected();
 				if (action === "delete-selected") return void handleDeleteSelected();
 				if (action === "clear-selection") return void handleClearSelection();
-				if (action === "move-selected") return;
+				if (action === "move-selected") {
+					const items = getSelectedItemsForContextMenu(sortedItems);
+					if (items.length > 0) {
+						setMoveSelection(items);
+					}
+					return;
+				}
 				return;
 			}
 
@@ -425,6 +444,8 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			handleOpen,
 			handleRefresh,
 			handleShareSelected,
+			getSelectedItemsForContextMenu,
+			sortedItems,
 			clipboardItems,
 			clearClipboard,
 			setClipboardItems,
@@ -581,6 +602,37 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 		[updateMutation, updateFolderMutation],
 	);
 
+	const handleMoveSelection = useCallback(
+		async (targetFolderId: number | null) => {
+			if (moveSelection.length === 0) return;
+			const results = await Promise.allSettled(
+				moveSelection.map((item) =>
+					isFolder(item)
+						? updateFolderMutation.mutateAsync({
+								id: item.id,
+								data: { parentId: targetFolderId },
+							})
+						: updateMutation.mutateAsync({
+								id: item.id,
+								data: { folderId: targetFolderId },
+							}),
+				),
+			);
+
+			const succeeded = results.filter((r) => r.status === "fulfilled").length;
+			const failed = results.filter((r) => r.status === "rejected").length;
+			if (failed > 0) {
+				toast.error(`Failed to move ${failed} of ${moveSelection.length} item${moveSelection.length === 1 ? "" : "s"}`);
+			}
+			if (succeeded > 0) {
+				toast.success(`Moved ${succeeded} item${succeeded === 1 ? "" : "s"}`);
+			}
+			setSelectedIds(new Set());
+			setMoveSelection([]);
+		},
+		[moveSelection, updateFolderMutation, updateMutation],
+	);
+
 	const handleDelete = useCallback(async () => {
 		if (!deleteItem) return;
 		if (isFolder(deleteItem)) {
@@ -596,6 +648,30 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			return next;
 		});
 	}, [deleteMutation, deleteFolderMutation, deleteItem, getSelectionKey]);
+
+	const handleDeleteSelection = useCallback(async () => {
+		if (deleteSelection.length === 0) return;
+		const results = await Promise.allSettled(
+			deleteSelection.map((item) =>
+				isFolder(item)
+					? deleteFolderMutation.mutateAsync(item.id)
+					: deleteMutation.mutateAsync(item.id),
+			),
+		);
+
+		const succeeded = results.filter((r) => r.status === "fulfilled").length;
+		const failed = results.filter((r) => r.status === "rejected").length;
+		if (failed > 0) {
+			toast.error(`Failed to delete ${failed} of ${deleteSelection.length} item${deleteSelection.length === 1 ? "" : "s"}`);
+		}
+		if (succeeded > 0) {
+			toast.success(
+				`Deleted ${succeeded} item${succeeded === 1 ? "" : "s"}`,
+			);
+		}
+		setSelectedIds(new Set());
+		setDeleteSelection([]);
+	}, [deleteSelection, deleteFolderMutation, deleteMutation]);
 
 	const handleUpload = useCallback(
 		async (files: FileList) => {
@@ -808,6 +884,25 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 				itemType={deleteItem && isFile(deleteItem) ? "file" : "folder"}
 				onConfirm={handleDelete}
 				isDeleting={deleteMutation.isPending}
+			/>
+
+			<BulkDeleteConfirmDialog
+				open={deleteSelection.length > 0}
+				onOpenChange={(open) => !open && setDeleteSelection([])}
+				itemCount={deleteSelectionStats.total}
+				fileCount={deleteSelectionStats.files}
+				folderCount={deleteSelectionStats.folders}
+				onConfirm={handleDeleteSelection}
+				isDeleting={deleteMutation.isPending || deleteFolderMutation.isPending}
+			/>
+
+			<MoveItemsDialog
+				open={moveSelection.length > 0}
+				onOpenChange={(open) => !open && setMoveSelection([])}
+				itemCount={moveSelection.length}
+				initialFolderId={folderId ?? null}
+				excludeFolderIds={moveExcludeFolderIds}
+				onMove={handleMoveSelection}
 			/>
 
 			{shareItem && (

@@ -14,6 +14,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": fileURLToPath(new URL("./src", import.meta.url)),
+			"@/tests": fileURLToPath(new URL("./tests", import.meta.url)),
 			"@petrel/shared": fileURLToPath(new URL("../shared/src", import.meta.url)),
 		},
 	},
