@@ -3,7 +3,6 @@ import { Elysia, t } from "elysia";
 import { config } from "../../../config";
 import { validateShareAccess } from "../../../lib/share-validation";
 import { fileService } from "../../../services/file.service";
-import { shareService } from "../../../services/share.service";
 import { authMiddleware } from "../../auth";
 
 export const downloadRoutes = new Elysia({ prefix: "/api" }).use(authMiddleware).get(
@@ -31,6 +30,11 @@ export const downloadRoutes = new Elysia({ prefix: "/api" }).use(authMiddleware)
 				return { data: null, error: result.error };
 			}
 
+			if (!result.share?.settings.allowDownload) {
+				set.status = 403;
+				return { data: null, error: "Download not allowed for this share" };
+			}
+
 			// Ensure file is within the share scope
 			if (result.share?.share.type === "file") {
 				if (result.share?.share.targetId !== file.id) {
@@ -38,16 +42,9 @@ export const downloadRoutes = new Elysia({ prefix: "/api" }).use(authMiddleware)
 					return { data: null, error: "Access denied" };
 				}
 			} else {
-				const content = await shareService.getShareContent(result.share?.share);
-				if (!content || typeof (content as { path?: unknown }).path !== "string") {
-					set.status = 400;
-					return { data: null, error: "Invalid share" };
-				}
-				const sharePath = (content as { path: string }).path;
-				if (sharePath !== "" && file.path !== sharePath && !file.path.startsWith(`${sharePath}/`)) {
-					set.status = 403;
-					return { data: null, error: "Access denied" };
-				}
+				// Folder shares are ZIP-only for downloads
+				set.status = 403;
+				return { data: null, error: "Direct download not available for folder shares" };
 			}
 		} else if (!user && !config.PETREL_GUEST_ACCESS) {
 			set.status = 401;

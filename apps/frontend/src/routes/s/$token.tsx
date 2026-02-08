@@ -164,6 +164,11 @@ function SharePage(): React.ReactNode {
 	}
 
 	// Render folder share
+	const folderShareSettings: Share & ShareSettings = {
+		...share,
+		allowDownload: false,
+	};
+
 	return (
 		<ShareLayout expiresAt={expiresAt}>
 			<ShareFolderView
@@ -172,7 +177,7 @@ function SharePage(): React.ReactNode {
 				folders={folders ?? []}
 				shareToken={token}
 				password={password}
-				settings={share}
+				settings={folderShareSettings}
 			/>
 		</ShareLayout>
 	);

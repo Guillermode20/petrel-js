@@ -440,7 +440,7 @@ class ApiClient {
 	}
 
 	// Share-aware URL methods for public share views
-	getShareDownloadUrl(shareToken: string, password?: string, _fileId?: number): string {
+	getShareDownloadUrl(shareToken: string, password?: string): string {
 		const params = new URLSearchParams();
 		if (password) {
 			params.set("password", password);

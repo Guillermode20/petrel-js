@@ -185,7 +185,7 @@ export function SharedFileBrowser({
 		(item: File | Folder) => {
 			if (!settings.allowDownload) return;
 			if ("mimeType" in item) {
-				window.open(api.getShareDownloadUrl(shareToken, password, item.id), "_blank");
+				window.open(api.getShareDownloadUrl(shareToken, password), "_blank");
 			}
 		},
 		[password, settings.allowDownload, shareToken],

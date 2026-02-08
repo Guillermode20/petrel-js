@@ -188,6 +188,11 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 				return { data: null, error };
 			}
 
+			if (!share?.settings.allowDownload) {
+				set.status = 403;
+				return { data: null, error: "Download not allowed for this share" };
+			}
+
 			const content = await shareService.getShareContent(share?.share);
 			if (!content || share?.share.type !== "file") {
 				set.status = 400;
@@ -210,6 +215,8 @@ const publicRoutes = new Elysia({ prefix: "/shares" })
 			headers["Content-Type"] = fileRecord.mimeType;
 			headers["Content-Length"] = fileStat.size.toString();
 			headers["Content-Disposition"] = `attachment; filename="${fileRecord.name}"`;
+
+			await shareService.incrementDownloadCount(share?.share.id);
 
 			return new Response(Bun.file(filePath));
 		},

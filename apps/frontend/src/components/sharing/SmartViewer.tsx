@@ -45,7 +45,7 @@ function renderViewer(
 	file: File,
 	shareToken: string,
 	password: string | undefined,
-	_settings: ShareSettings,
+	settings: ShareSettings,
 ): React.ReactNode {
 	switch (previewType) {
 		case "video":
@@ -74,6 +74,7 @@ function renderViewer(
 					file={file}
 					shareToken={shareToken}
 					password={password}
+					allowDownload={settings.allowDownload}
 					message="Preview not available for this file type in shared view"
 				/>
 			);
@@ -84,6 +85,7 @@ function renderViewer(
 					file={file}
 					shareToken={shareToken}
 					password={password}
+					allowDownload={settings.allowDownload}
 					message="This file type cannot be previewed"
 				/>
 			);
@@ -138,6 +140,7 @@ interface DownloadOnlyViewProps {
 	shareToken: string;
 	password?: string;
 	message: string;
+	allowDownload: boolean;
 }
 
 /**
@@ -148,8 +151,10 @@ function DownloadOnlyView({
 	shareToken,
 	password,
 	message,
+	allowDownload,
 }: DownloadOnlyViewProps): React.ReactNode {
 	function handleDownload(): void {
+		if (!allowDownload) return;
 		const url = api.getShareDownloadUrl(shareToken, password);
 		const link = document.createElement("a");
 		link.href = url;
@@ -164,10 +169,16 @@ function DownloadOnlyView({
 			<FileQuestion className="h-16 w-16 text-muted-foreground" />
 			<p className="text-lg font-medium">{file.name}</p>
 			<p className="text-sm text-muted-foreground">{message}</p>
-			<Button onClick={handleDownload} className="mt-4">
-				<Download className="mr-2 h-4 w-4" />
-				Download File
-			</Button>
+			{allowDownload ? (
+				<Button onClick={handleDownload} className="mt-4">
+					<Download className="mr-2 h-4 w-4" />
+					Download File
+				</Button>
+			) : (
+				<p className="mt-2 text-xs text-muted-foreground">
+					Downloads are available via ZIP only.
+				</p>
+			)}
 		</div>
 	);
 }
