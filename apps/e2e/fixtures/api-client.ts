@@ -1,10 +1,18 @@
 import type { APIRequestContext } from "@playwright/test";
 
 /**
- * API client for backend operations in E2E tests
+ * API client for backend operations in E2E tests.
+ * Provides direct API access for setup, teardown, and verification.
  */
 export class ApiClient {
+  private token: string | null = null;
+
   constructor(private request: APIRequestContext, private baseURL: string) {}
+
+  private authHeaders(): Record<string, string> {
+    if (!this.token) return {};
+    return { Authorization: `Bearer ${this.token}` };
+  }
 
   async login(
     username: string,
@@ -21,7 +29,23 @@ export class ApiClient {
     }
 
     const body = await response.json();
+    this.token = body.data.token;
     return { token: body.data.token, user: body.data.user };
+  }
+
+  async setupInitialAdmin(data: {
+    username: string;
+    password: string;
+  }): Promise<void> {
+    const response = await this.request.post(`${this.baseURL}/api/setup/admin`, {
+      data,
+    });
+
+    if (!response.ok() && response.status() !== 409) {
+      throw new Error(
+        `Setup admin failed: ${response.status()} ${await response.text()}`,
+      );
+    }
   }
 
   async createUser(data: {
@@ -31,6 +55,7 @@ export class ApiClient {
   }): Promise<unknown> {
     const response = await this.request.post(`${this.baseURL}/api/admin/users`, {
       data,
+      headers: this.authHeaders(),
     });
 
     if (!response.ok()) {
@@ -43,35 +68,67 @@ export class ApiClient {
     return body.data;
   }
 
-  async setupInitialAdmin(data: {
-    username: string;
-    password: string;
-  }): Promise<void> {
-    const response = await this.request.post(`${this.baseURL}/api/setup/admin`, {
-      data,
-    });
+  async listFiles(folderId?: number): Promise<{ items: unknown[]; total: number }> {
+    const params = new URLSearchParams();
+    if (folderId !== undefined) params.set("folderId", String(folderId));
 
-    if (!response.ok() && response.status() !== 409) {
-      // 409 means admin already exists
-      throw new Error(
-        `Setup admin failed: ${response.status()} ${await response.text()}`,
-      );
+    const response = await this.request.get(
+      `${this.baseURL}/api/files?${params.toString()}`,
+      { headers: this.authHeaders() },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`List files failed: ${response.status()}`);
+    }
+
+    const body = await response.json();
+    return body.data;
+  }
+
+  async deleteFile(fileId: number): Promise<void> {
+    const response = await this.request.delete(
+      `${this.baseURL}/api/files/${fileId}`,
+      { headers: this.authHeaders() },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`Delete file failed: ${response.status()}`);
     }
   }
 
-  async cleanupTestData(authToken: string): Promise<void> {
-    const headers = { Authorization: `Bearer ${authToken}` };
+  async deleteFolder(folderId: number): Promise<void> {
+    const response = await this.request.delete(
+      `${this.baseURL}/api/folders/${folderId}`,
+      { headers: this.authHeaders() },
+    );
 
-    // Delete test files
-    await this.request.post(`${this.baseURL}/api/files/cleanup`, {
-      headers,
-      data: { pattern: "e2e-" },
-    });
+    if (!response.ok()) {
+      throw new Error(`Delete folder failed: ${response.status()}`);
+    }
+  }
 
-    // Delete test users
-    await this.request.post(`${this.baseURL}/api/admin/users/cleanup`, {
-      headers,
-      data: { pattern: "e2e-" },
-    });
+  async listShares(): Promise<unknown[]> {
+    const response = await this.request.get(
+      `${this.baseURL}/api/shares`,
+      { headers: this.authHeaders() },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`List shares failed: ${response.status()}`);
+    }
+
+    const body = await response.json();
+    return body.data;
+  }
+
+  async deleteShare(shareId: number): Promise<void> {
+    const response = await this.request.delete(
+      `${this.baseURL}/api/shares/${shareId}`,
+      { headers: this.authHeaders() },
+    );
+
+    if (!response.ok()) {
+      throw new Error(`Delete share failed: ${response.status()}`);
+    }
   }
 }

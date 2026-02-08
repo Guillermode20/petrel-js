@@ -111,6 +111,7 @@ export const FileCard = forwardRef<
 		<div
 			ref={ref}
 			draggable
+			data-testid={`file-item-${item.name}`}
 			onDragStart={(e) => onDragStart?.(item, e)}
 			onDragOver={handleDragOver}
 			onDragLeave={handleDragLeave}

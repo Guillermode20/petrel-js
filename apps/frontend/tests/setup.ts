@@ -1,12 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { setupServer } from "msw/node";
-import { afterEach, beforeAll, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { handlers, mswUnhandledRequestHandler } from "./mocks/handlers";
-
-afterEach(() => {
-	cleanup();
-});
 
 if (typeof window !== "undefined") {
 	Object.defineProperty(window, "matchMedia", {
@@ -44,7 +40,12 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+	cleanup();
 	server.resetHandlers();
+});
+
+afterAll(() => {
+	server.close();
 });
 
 export { server };

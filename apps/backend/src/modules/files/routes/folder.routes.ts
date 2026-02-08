@@ -141,4 +141,47 @@ export const folderRoutes = new Elysia({ prefix: "/api" })
 				tags: ["Folders"],
 			},
 		},
+	)
+	.delete(
+		"/folders/:id",
+		async ({ params, user, set }): Promise<ApiResponse<{ id: number }>> => {
+			const folderId = Number.parseInt(params.id, 10);
+			if (Number.isNaN(folderId)) {
+				set.status = 400;
+				return { data: null, error: "Invalid folder ID" };
+			}
+
+			const folder = await folderService.getById(folderId);
+			if (!folder) {
+				set.status = 404;
+				return { data: null, error: "Folder not found" };
+			}
+
+			// Ownership check
+			if (user.role !== "admin" && folder.ownerId !== null && folder.ownerId !== user.userId) {
+				set.status = 403;
+				return { data: null, error: "Forbidden - You can only delete your own folders" };
+			}
+
+			try {
+				await folderService.deleteFolder(folderId);
+				return { data: { id: folderId }, error: null };
+			} catch (err) {
+				set.status = 500;
+				return {
+					data: null,
+					error: err instanceof Error ? err.message : "Failed to delete folder",
+				};
+			}
+		},
+		{
+			params: t.Object({
+				id: t.String(),
+			}),
+			detail: {
+				summary: "Delete folder",
+				description: "Permanently deletes a folder and its contents",
+				tags: ["Folders"],
+			},
+		},
 	);

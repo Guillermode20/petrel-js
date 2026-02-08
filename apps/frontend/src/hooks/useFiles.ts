@@ -99,6 +99,23 @@ export function useDeleteFile() {
 }
 
 /**
+ * Hook for deleting folders
+ */
+export function useDeleteFolder() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (id: number) => api.deleteFolder(id),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: fileKeys.lists() });
+		},
+		onError: (error: Error) => {
+			toast.error(`Delete folder failed: ${error.message}`);
+		},
+	});
+}
+
+/**
  * Hook for updating files (rename, move)
  */
 export function useUpdateFile() {

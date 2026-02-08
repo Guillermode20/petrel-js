@@ -368,6 +368,10 @@ class ApiClient {
 		return this.request(`/files/${id}`, { method: "DELETE" });
 	}
 
+	async deleteFolder(id: number): Promise<void> {
+		return this.request(`/folders/${id}`, { method: "DELETE" });
+	}
+
 	async updateFile(id: number, data: { name?: string; folderId?: number | null }): Promise<File> {
 		return this.request(`/files/${id}`, {
 			method: "PATCH",

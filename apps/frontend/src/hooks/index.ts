@@ -5,6 +5,7 @@ export {
 	isFolder,
 	useCreateFolder,
 	useDeleteFile,
+	useDeleteFolder,
 	useFile,
 	useFiles,
 	useUpdateFile,

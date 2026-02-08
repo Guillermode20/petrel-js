@@ -33,7 +33,7 @@ export function Header() {
 					{isAuthenticated && user ? (
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
-								<Button variant="ghost" size="icon" className="rounded-full">
+								<Button variant="ghost" size="icon" className="rounded-full" data-testid="user-avatar">
 									<Avatar className="h-8 w-8">
 										<AvatarFallback className="bg-primary text-primary-foreground text-xs">
 											{user.username.slice(0, 2).toUpperCase()}
@@ -54,7 +54,7 @@ export function Header() {
 									</Link>
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem onClick={() => logout()}>
+								<DropdownMenuItem onClick={() => logout()} data-testid="logout-button">
 									<LogOut className="mr-2 h-4 w-4" />
 									Log out
 								</DropdownMenuItem>

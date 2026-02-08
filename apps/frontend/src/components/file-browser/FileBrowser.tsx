@@ -20,6 +20,7 @@ import {
 	useCreateFolder,
 	useCreateShare,
 	useDeleteFile,
+	useDeleteFolder,
 	useFiles,
 	useUpdateFile,
 	useUpdateFolder,
@@ -100,6 +101,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 	const createFolderMutation = useCreateFolder();
 	const uploadMutation = useUploadFile();
 	const deleteMutation = useDeleteFile();
+	const deleteFolderMutation = useDeleteFolder();
 	const createShareMutation = useCreateShare();
 	const pendingZipToastRef = useRef<string | number | undefined>(undefined);
 	const { startDownload: startZipDownload } = useZipDownload({
@@ -581,7 +583,11 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 
 	const handleDelete = useCallback(async () => {
 		if (!deleteItem) return;
-		await deleteMutation.mutateAsync(deleteItem.id);
+		if (isFolder(deleteItem)) {
+			await deleteFolderMutation.mutateAsync(deleteItem.id);
+		} else {
+			await deleteMutation.mutateAsync(deleteItem.id);
+		}
 		toast.success(`"${deleteItem.name}" deleted`);
 		setDeleteItem(null);
 		setSelectedIds((prev) => {
@@ -589,7 +595,7 @@ export function FileBrowser({ folderId, folderPath }: FileBrowserProps) {
 			next.delete(getSelectionKey(deleteItem));
 			return next;
 		});
-	}, [deleteMutation, deleteItem, getSelectionKey]);
+	}, [deleteMutation, deleteFolderMutation, deleteItem, getSelectionKey]);
 
 	const handleUpload = useCallback(
 		async (files: FileList) => {

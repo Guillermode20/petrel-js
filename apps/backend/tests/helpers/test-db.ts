@@ -1,14 +1,15 @@
 import { Database } from "bun:sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import path from "node:path";
 import * as schema from "../../db/schema";
 
 /**
  * Test database utilities for integration testing.
  * Uses in-memory SQLite for fast, isolated tests.
  *
- * ⚠️ WARNING: This file duplicates the database schema inline.
- * If the production schema (db/schema.ts) changes, this file must be updated.
- * Consider running a schema validation check in CI to detect drift.
+ * Schema is applied via Drizzle migrations (the same ones used in production),
+ * so test and production schemas can never drift out of sync.
  */
 
 export interface TestDb {
@@ -17,151 +18,17 @@ export interface TestDb {
 	close: () => void;
 }
 
+const MIGRATIONS_FOLDER = path.resolve(import.meta.dir, "..", "..", "drizzle");
+
 /**
  * Create an in-memory test database with the full schema
+ * applied via Drizzle migrations (same as production).
  */
 export function createTestDatabase(): TestDb {
 	const sqlite = new Database(":memory:");
-
-	// Create tables matching the schema
-	sqlite.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user',
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-
-    CREATE TABLE IF NOT EXISTS refresh_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      token_hash TEXT NOT NULL UNIQUE,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      revoked_at INTEGER
-    );
-
-    CREATE INDEX IF NOT EXISTS refresh_tokens_user_id_idx ON refresh_tokens(user_id);
-    CREATE INDEX IF NOT EXISTS refresh_tokens_token_hash_idx ON refresh_tokens(token_hash);
-
-    CREATE TABLE IF NOT EXISTS files (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      path TEXT NOT NULL,
-      size INTEGER NOT NULL,
-      mime_type TEXT NOT NULL,
-      hash TEXT NOT NULL,
-      uploaded_by INTEGER REFERENCES users(id),
-      metadata TEXT,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-
-    CREATE TABLE IF NOT EXISTS folders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      path TEXT NOT NULL,
-      parent_id INTEGER REFERENCES folders(id),
-      owner_id INTEGER REFERENCES users(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS shares (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      type TEXT NOT NULL,
-      target_id INTEGER NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      expires_at INTEGER,
-      password_hash TEXT,
-      download_count INTEGER NOT NULL DEFAULT 0,
-      view_count INTEGER NOT NULL DEFAULT 0
-    );
-
-    CREATE TABLE IF NOT EXISTS share_settings (
-      share_id INTEGER PRIMARY KEY REFERENCES shares(id),
-      allow_download INTEGER NOT NULL DEFAULT 1,
-      allow_zip INTEGER NOT NULL DEFAULT 0,
-      show_metadata INTEGER NOT NULL DEFAULT 1
-    );
-
-    CREATE TABLE IF NOT EXISTS albums (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      description TEXT,
-      cover_file_id INTEGER REFERENCES files(id),
-      owner_id INTEGER REFERENCES users(id),
-      created_at INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-
-    CREATE TABLE IF NOT EXISTS album_files (
-      album_id INTEGER NOT NULL REFERENCES albums(id),
-      file_id INTEGER NOT NULL REFERENCES files(id),
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (album_id, file_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS transcode_jobs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      file_id INTEGER NOT NULL REFERENCES files(id),
-      status TEXT NOT NULL DEFAULT 'pending',
-      progress INTEGER NOT NULL DEFAULT 0,
-      output_path TEXT,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      completed_at INTEGER,
-      error TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS video_tracks (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      file_id INTEGER NOT NULL REFERENCES files(id),
-      track_type TEXT NOT NULL,
-      codec TEXT NOT NULL,
-      language TEXT,
-      "index" INTEGER NOT NULL,
-      title TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS subtitles (
-      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-      file_id INTEGER NOT NULL REFERENCES files(id),
-      language TEXT NOT NULL,
-      path TEXT NOT NULL,
-      format TEXT NOT NULL,
-      title TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS user_settings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      settings TEXT NOT NULL,
-      updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-    );
-
-    CREATE INDEX IF NOT EXISTS user_settings_user_id_idx ON user_settings(user_id);
-
-    CREATE TABLE IF NOT EXISTS zip_jobs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      job_id TEXT NOT NULL UNIQUE,
-      status TEXT NOT NULL DEFAULT 'pending',
-      progress INTEGER NOT NULL DEFAULT 0,
-      temp_path TEXT,
-      error TEXT,
-      file_ids TEXT,
-      folder_ids TEXT,
-      share_token TEXT,
-      user_id INTEGER REFERENCES users(id),
-      total_size INTEGER DEFAULT 0,
-      file_count INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-      completed_at INTEGER,
-      downloaded_at INTEGER
-    );
-
-    CREATE INDEX IF NOT EXISTS zip_jobs_job_id_idx ON zip_jobs(job_id);
-    CREATE INDEX IF NOT EXISTS zip_jobs_status_idx ON zip_jobs(status);
-    CREATE INDEX IF NOT EXISTS zip_jobs_created_at_idx ON zip_jobs(created_at);
-  `);
-
 	const db = drizzle(sqlite, { schema });
+
+	migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
 
 	return {
 		db,
@@ -173,35 +40,26 @@ export function createTestDatabase(): TestDb {
 /**
  * Create a test user and return the user data
  */
-export async function createTestUser(
+export function createTestUser(
 	testDb: TestDb,
 	userData: { username: string; passwordHash: string; role?: string },
-): Promise<typeof schema.users.$inferSelect> {
-	const result = testDb.sqlite
-		.prepare(`
-    INSERT INTO users (username, password_hash, role)
-    VALUES (?, ?, ?)
-  `)
-		.run(userData.username, userData.passwordHash, userData.role ?? "user");
-
-	const user = testDb.sqlite
-		.prepare("SELECT * FROM users WHERE id = ?")
-		.get(result.lastInsertRowid) as Record<string, unknown>;
-
-	// Map snake_case columns to camelCase
-	return {
-		id: user.id as number,
-		username: user.username as string,
-		passwordHash: user.password_hash as string,
-		role: user.role as string,
-		createdAt: user.created_at ? new Date((user.created_at as number) * 1000) : new Date(),
-	};
+): typeof schema.users.$inferSelect {
+	const inserted = testDb.db
+		.insert(schema.users)
+		.values({
+			username: userData.username,
+			passwordHash: userData.passwordHash,
+			role: userData.role ?? "user",
+		})
+		.returning()
+		.get();
+	return inserted;
 }
 
 /**
  * Create a test file and return the file data
  */
-export async function createTestFile(
+export function createTestFile(
 	testDb: TestDb,
 	fileData: {
 		name: string;
@@ -210,44 +68,31 @@ export async function createTestFile(
 		mimeType: string;
 		hash: string;
 		uploadedBy?: number;
+		parentId?: number;
+		metadata?: unknown;
 	},
-): Promise<typeof schema.files.$inferSelect> {
-	const result = testDb.sqlite
-		.prepare(`
-    INSERT INTO files (name, path, size, mime_type, hash, uploaded_by)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `)
-		.run(
-			fileData.name,
-			fileData.path,
-			fileData.size,
-			fileData.mimeType,
-			fileData.hash,
-			fileData.uploadedBy ?? null,
-		);
-
-	const file = testDb.sqlite
-		.prepare("SELECT * FROM files WHERE id = ?")
-		.get(result.lastInsertRowid) as Record<string, unknown>;
-
-	// Map snake_case columns to camelCase
-	return {
-		id: file.id as number,
-		name: file.name as string,
-		path: file.path as string,
-		size: file.size as number,
-		mimeType: file.mime_type as string,
-		hash: file.hash as string,
-		uploadedBy: file.uploaded_by as number | null,
-		metadata: file.metadata as unknown,
-		createdAt: file.created_at ? new Date((file.created_at as number) * 1000) : new Date(),
-	};
+): typeof schema.files.$inferSelect {
+	const inserted = testDb.db
+		.insert(schema.files)
+		.values({
+			name: fileData.name,
+			path: fileData.path,
+			size: fileData.size,
+			mimeType: fileData.mimeType,
+			hash: fileData.hash,
+			uploadedBy: fileData.uploadedBy ?? null,
+			parentId: fileData.parentId ?? null,
+			metadata: fileData.metadata ?? null,
+		})
+		.returning()
+		.get();
+	return inserted;
 }
 
 /**
  * Create a test folder and return the folder data
  */
-export async function createTestFolder(
+export function createTestFolder(
 	testDb: TestDb,
 	folderData: {
 		name: string;
@@ -255,49 +100,81 @@ export async function createTestFolder(
 		parentId: number | null;
 		ownerId: number | null;
 	},
-): Promise<typeof schema.folders.$inferSelect> {
-	const result = testDb.sqlite
-		.prepare(`
-    INSERT INTO folders (name, path, parent_id, owner_id)
-    VALUES (?, ?, ?, ?)
-  `)
-		.run(
-			folderData.name,
-			folderData.path,
-			folderData.parentId,
-			folderData.ownerId,
-		);
-
-	const folder = testDb.sqlite
-		.prepare("SELECT * FROM folders WHERE id = ?")
-		.get(result.lastInsertRowid) as Record<string, unknown>;
-
-	// Map snake_case columns to camelCase
-	return {
-		id: folder.id as number,
-		name: folder.name as string,
-		path: folder.path as string,
-		parentId: folder.parent_id as number | null,
-		ownerId: folder.owner_id as number | null,
-	};
+): typeof schema.folders.$inferSelect {
+	const inserted = testDb.db
+		.insert(schema.folders)
+		.values({
+			name: folderData.name,
+			path: folderData.path,
+			parentId: folderData.parentId,
+			ownerId: folderData.ownerId,
+		})
+		.returning()
+		.get();
+	return inserted;
 }
 
 /**
- * Clear all data from the test database
+ * Create a test share with settings and return both
+ */
+export function createTestShare(
+	testDb: TestDb,
+	shareData: {
+		type: string;
+		targetId: number;
+		token: string;
+		createdBy?: number | null;
+		expiresAt?: Date | null;
+		passwordHash?: string | null;
+	},
+	settingsData?: {
+		allowDownload?: boolean;
+		allowZip?: boolean;
+		showMetadata?: boolean;
+	},
+): { share: typeof schema.shares.$inferSelect; settings: typeof schema.shareSettings.$inferSelect } {
+	const share = testDb.db
+		.insert(schema.shares)
+		.values({
+			type: shareData.type,
+			targetId: shareData.targetId,
+			token: shareData.token,
+			createdBy: shareData.createdBy ?? null,
+			expiresAt: shareData.expiresAt ?? null,
+			passwordHash: shareData.passwordHash ?? null,
+		})
+		.returning()
+		.get();
+
+	const settings = testDb.db
+		.insert(schema.shareSettings)
+		.values({
+			shareId: share.id,
+			allowDownload: settingsData?.allowDownload ?? true,
+			allowZip: settingsData?.allowZip ?? false,
+			showMetadata: settingsData?.showMetadata ?? true,
+		})
+		.returning()
+		.get();
+
+	return { share, settings };
+}
+
+/**
+ * Clear all data from the test database.
+ * Tables are deleted in dependency order (children before parents).
  */
 export function clearTestDatabase(testDb: TestDb): void {
 	const tables = [
 		"zip_jobs",
 		"user_settings",
-		"album_files",
-		"albums",
 		"subtitles",
 		"video_tracks",
 		"transcode_jobs",
 		"share_settings",
 		"shares",
-		"folders",
 		"files",
+		"folders",
 		"refresh_tokens",
 		"users",
 	];

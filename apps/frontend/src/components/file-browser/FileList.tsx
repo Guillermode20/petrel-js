@@ -242,6 +242,7 @@ function FileListRow({
 
 	return (
 		<TableRow
+			data-testid={`file-item-${item.name}`}
 			className={cn(
 				"cursor-pointer group",
 				isSelected && "bg-primary/10",

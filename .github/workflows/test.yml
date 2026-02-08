@@ -28,7 +28,7 @@ jobs:
         run: bun run check
 
       - name: Run unit and integration tests
-        run: bun run test
+        run: bun run test:unit
 
   e2e:
     runs-on: ubuntu-latest
