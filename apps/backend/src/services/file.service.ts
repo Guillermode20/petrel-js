@@ -5,12 +5,14 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { files, subtitles, transcodeJobs, videoTracks } from "../../db/schema";
 import { Cacheable, CacheEvict, cacheKeys, cacheManager, cacheTTL } from "../cache";
+import { logger } from "../lib/logger";
 import {
 	buildFileRelativePath,
 	calculateFileHash,
 	normalizeRelativePath,
 	resolveStoragePath,
 } from "../lib/storage";
+import type { DatabaseTransaction } from "../types/db";
 
 export interface FileListResult {
 	files: File[];
@@ -36,7 +38,16 @@ export interface UpdateFileInput {
 export class FileService {
 	private async deletePrimaryFileOnDisk(file: File): Promise<void> {
 		const diskPath = this.resolveDiskPath(file);
-		await unlink(diskPath).catch(() => null);
+		await unlink(diskPath).catch((err) => {
+			logger.warn(
+				{
+					err: err instanceof Error ? err.message : String(err),
+					fileId: file.id,
+					diskPath,
+				},
+				"Failed to delete file from disk",
+			);
+		});
 	}
 
 	private async deleteDerivedAssets(fileId: number): Promise<void> {
@@ -51,7 +62,16 @@ export class FileService {
 		await Promise.all(
 			directoriesToRemove.map(async (relativeDir) => {
 				const absoluteDir = resolveStoragePath(relativeDir);
-				await rm(absoluteDir, { recursive: true, force: true }).catch(() => null);
+				await rm(absoluteDir, { recursive: true, force: true }).catch((err) => {
+					logger.warn(
+						{
+							err: err instanceof Error ? err.message : String(err),
+							fileId,
+							absoluteDir,
+						},
+						"Failed to remove derived assets directory",
+					);
+				});
 			}),
 		);
 	}
@@ -221,7 +241,7 @@ export class FileService {
 	async updateFilesPathInFolderInternal(
 		oldFolderPath: string,
 		newFolderPath: string,
-		tx: any,
+		tx: DatabaseTransaction | typeof db,
 	): Promise<void> {
 		const normalizedOld = normalizeRelativePath(oldFolderPath);
 		const normalizedNew = normalizeRelativePath(newFolderPath);
@@ -302,7 +322,15 @@ export class FileService {
 		} catch (err) {
 			await Bun.file(tempPath)
 				.delete()
-				.catch(() => {});
+				.catch((deleteErr) => {
+					logger.debug(
+						{
+							err: deleteErr instanceof Error ? deleteErr.message : String(deleteErr),
+							tempPath,
+						},
+						"Failed to delete temp file (may not exist)",
+					);
+				});
 			throw err;
 		}
 	}

@@ -3,7 +3,9 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "../../db";
 import { folders } from "../../db/schema";
 import { Cacheable, cacheKeys, cacheManager, cacheTTL } from "../cache";
+import { logger } from "../lib/logger";
 import { normalizeRelativePath } from "../lib/storage";
+import type { DatabaseTransaction } from "../types/db";
 import { fileService } from "./file.service";
 
 export interface CreateFolderInput {
@@ -150,26 +152,25 @@ export class FolderService {
 			return [];
 		}
 
-		const visited = new Set<number>();
-		const chain: Folder[] = [];
-		let currentId: number | null = folderId;
+		// Use recursive CTE for single query instead of N+1 queries
+		// Track depth to prevent infinite recursion from circular references
+		const result = await db.all(sql`
+			WITH RECURSIVE parent_chain(id, name, path, parent_id, owner_id, depth) AS (
+				SELECT id, name, path, parent_id, owner_id, 0 as depth FROM folders WHERE id = ${folderId}
+				UNION ALL
+				SELECT f.id, f.name, f.path, f.parent_id, f.owner_id, pc.depth + 1
+				FROM folders f
+				INNER JOIN parent_chain pc ON f.id = pc.parent_id
+				WHERE pc.parent_id IS NOT NULL AND pc.depth < 100
+			)
+			SELECT id, name, path, parent_id as parentId, owner_id as ownerId
+			FROM parent_chain
+			ORDER BY depth DESC
+		`);
 
-		while (currentId !== null) {
-			if (visited.has(currentId)) {
-				break;
-			}
-			visited.add(currentId);
-
-			const current = await this.getById(currentId);
-			if (!current) {
-				break;
-			}
-
-			chain.push(current);
-			currentId = current.parentId;
-		}
-
-		return chain.reverse();
+		// Order by depth DESC gives root-to-leaf (root first, leaf last)
+		// So result is already in correct order: [root, ..., leaf]
+		return result.map((row) => this.mapFolderRow(row as typeof folders.$inferSelect));
 	}
 
 	async updateFolder(
@@ -233,7 +234,7 @@ export class FolderService {
 		folderId: number,
 		oldParentPath: string,
 		newParentPath: string,
-		tx: any,
+		tx: DatabaseTransaction | typeof db,
 		visited: Set<number> = new Set(),
 	): Promise<void> {
 		if (visited.has(folderId)) {

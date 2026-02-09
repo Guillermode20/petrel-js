@@ -27,20 +27,6 @@ export const refreshTokens = sqliteTable(
 	}),
 );
 
-export const files = sqliteTable("files", {
-	id: integer("id").primaryKey({ autoIncrement: true }),
-	name: text("name").notNull(),
-	path: text("path").notNull(),
-	size: integer("size").notNull(),
-	mimeType: text("mime_type").notNull(),
-	hash: text("hash").notNull(),
-	uploadedBy: integer("uploaded_by").references(() => users.id),
-	parentId: integer("parent_id").references(() => folders.id),
-	thumbnailPath: text("thumbnail_path"),
-	metadata: text("metadata", { mode: "json" }),
-	createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-});
-
 export const folders = sqliteTable("folders", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
 	name: text("name").notNull(),
@@ -48,6 +34,29 @@ export const folders = sqliteTable("folders", {
 	parentId: integer("parent_id").references(() => folders.id),
 	ownerId: integer("owner_id").references(() => users.id),
 });
+
+export const files = sqliteTable(
+	"files",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		name: text("name").notNull(),
+		path: text("path").notNull(),
+		size: integer("size").notNull(),
+		mimeType: text("mime_type").notNull(),
+		hash: text("hash").notNull(),
+		uploadedBy: integer("uploaded_by").references(() => users.id),
+		parentId: integer("parent_id").references(() => folders.id),
+		thumbnailPath: text("thumbnail_path"),
+		metadata: text("metadata", { mode: "json" }),
+		createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+	},
+	(table) => ({
+		pathIdx: index("files_path_idx").on(table.path),
+		parentIdx: index("files_parent_idx").on(table.parentId),
+		pathNameIdx: index("files_path_name_idx").on(table.path, table.name),
+		mimeTypeIdx: index("files_mime_type_idx").on(table.mimeType),
+	}),
+);
 
 export const shares = sqliteTable("shares", {
 	id: integer("id").primaryKey({ autoIncrement: true }),
