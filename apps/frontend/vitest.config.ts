@@ -26,7 +26,21 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			reporter: ["text", "json", "html"],
-			exclude: ["node_modules/", "tests/", "src/index.css", "src/main.tsx", "**/*.stories.tsx"],
+			exclude: [
+				"node_modules/",
+				"tests/",
+				"**/*.test.ts",
+				"**/*.test.tsx",
+				"src/index.css",
+				"src/main.tsx",
+				"**/*.stories.tsx",
+			],
+			thresholds: {
+				lines: 70,
+				functions: 70,
+				branches: 60,
+				statements: 70,
+			},
 		},
 		deps: {
 			inline: ["@testing-library/jest-dom"],

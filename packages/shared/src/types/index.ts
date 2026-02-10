@@ -272,4 +272,35 @@ export interface PersonalAccessToken {
 	lastUsedAt: Date | null;
 }
 
-export type ServerSettings = {};
+export interface ServerSettings {
+	general: {
+		appName: string;
+		maxUploadSize: number; // in bytes
+		defaultFolderView: "grid" | "list";
+	};
+	guestAccess: {
+		enabled: boolean;
+		requireApproval: boolean;
+		defaultQuota: number; // in bytes, 0 = unlimited
+	};
+	transcoding: {
+		enabled: boolean;
+		maxResolution: "1080p" | "720p" | "480p";
+		autoTranscode: boolean;
+		parallelJobs: number;
+		deleteOriginal: boolean;
+	};
+	zipDownload: {
+		enabled: boolean;
+		maxSize: number; // in bytes
+		maxFiles: number;
+	};
+	logging: {
+		level: "debug" | "info" | "warn" | "error";
+		retainDays: number;
+	};
+}
+
+export type ServerSettingsUpdate = Partial<{
+	[K in keyof ServerSettings]: Partial<ServerSettings[K]>;
+}>;

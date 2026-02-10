@@ -360,6 +360,36 @@ export const handlers = [
 		});
 	}),
 
+	http.get(`${API_BASE}/stream/share/:token/:fileId/subtitles`, ({ request }) => {
+		const url = new URL(request.url);
+		const password = url.searchParams.get("password");
+		// Return empty subtitles for tests, or add logic if needed
+		return HttpResponse.json({
+			data: password
+				? [{ id: 1, language: "eng", title: "English (Protected)" }]
+				: [{ id: 1, language: "eng", title: "English" }],
+			error: null,
+		});
+	}),
+
+	http.get(`${API_BASE}/stream/share/:token/:fileId/tracks`, ({ request }) => {
+		const url = new URL(request.url);
+		const password = url.searchParams.get("password");
+		return HttpResponse.json({
+			data: [
+				{ index: 0, type: "video", codec: "h264", language: null, title: null },
+				{
+					index: 1,
+					type: "audio",
+					codec: "aac",
+					language: "eng",
+					title: password ? "English (Protected)" : "English",
+				},
+			],
+			error: null,
+		});
+	}),
+
 	http.post(`${API_BASE}/stream/:id/prepare`, () => {
 		return HttpResponse.json({
 			data: { ready: true, firstSegmentUrl: "/api/stream/1/segment0.ts" },

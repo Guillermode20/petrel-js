@@ -1,5 +1,8 @@
 export { EmptySpaceContextMenu } from "./EmptySpaceContextMenu";
 export { FileBrowser } from "./FileBrowser";
+export { FileBrowserDialogs } from "./FileBrowserDialogs";
+export { FileBrowserStatusBar } from "./FileBrowserStatusBar";
+export { FileBrowserToolbar } from "./FileBrowserToolbar";
 export { FileCard } from "./FileCard";
 export { FileContextMenu } from "./FileContextMenu";
 export {
